@@ -3,9 +3,10 @@ import {
     Users,
     Shield,
     ClipboardList,
-    Video,
+    CalendarDays,
+    FileClock,
+    Settings,
 } from 'lucide-vue-next'
-
 
 export default [
     {
@@ -30,16 +31,30 @@ export default [
     },
 
     {
-        title: 'Task Reports',
+        title: 'Planificacion',
+        icon: CalendarDays,
+        route: '/planning',
+        permission: 'manage tasks',
+    },
+
+    {
+        title: 'Reportes',
         icon: ClipboardList,
         route: '/task-reports',
         permission: 'view reports',
     },
 
     {
-        title: 'Video Tasks',
-        icon: Video,
-        route: '/video-tasks',
-        permission: 'view video tasks',
+        title: 'Historial',
+        icon: FileClock,
+        route: '/report-history',
+        permission: 'view reports',
+    },
+
+    {
+        title: 'Empresa',
+        icon: Settings,
+        route: '/settings',
+        permission: 'manage tasks',
     },
 ]

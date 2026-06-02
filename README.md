@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión operativa, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, control de acceso basado en roles (RBAC), módulos de usuarios, roles, tareas de video y reportes, con una interfaz tipo dashboard moderna.
+GrowthOS es una plataforma SaaS interna para gestión operativa, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, módulos de usuarios, roles, planificación de tareas (calendario), tareas extra, reportes PDF, histórico de reportes, dashboard con KPIs reales y configuración empresa/canales.
 
 ---
 
@@ -41,8 +41,13 @@ GrowthOS es una plataforma SaaS interna para gestión operativa, construida con 
 | Dashboard | `/dashboard` | `view dashboard` |
 | Usuarios | `/users` | `manage users` |
 | Roles | `/roles` | `manage roles` |
-| Tareas de video | `/video-tasks` | `manage tasks` |
-| Reportes de tareas | `/task-reports` | `view reports` |
+| Planificación | `/planning` | `manage tasks` |
+| Calendario (mes/semana) | — | `manage tasks` |
+| Tareas extra (sidebar) | — | `manage tasks` |
+| Reportes | `/task-reports` | `view reports` |
+| Reportes PDF | `/task-reports/pdf` | `view reports` |
+| Historial de reportes | `/report-history` | `view reports` |
+| Empresa / Canales | `/settings` | `manage tasks` |
 | Perfil | `/profile` | Usuario autenticado |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -189,48 +194,54 @@ Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
 ```
 app/
 ├── Http/
-│   ├── Controllers/      # Users, Roles, VideoTasks, Profile, Dashboard, Reports
-│   ├── Middleware/       # HandleInertiaRequests (auth + flash compartidos)
-│   └── Requests/         # Validación (Store/Update User, Profile, etc.)
-├── Models/               # User, VideoTask
-├── Policies/             # UserPolicy
-└── Services/             # UserService, DashboardService
+│   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory, Settings, Users, Roles, Profile
+│   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
+│   └── Requests/           # Validación (Store/Update User, Profile, etc.)
+├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel
+├── Policies/                # UserPolicy
+└── Services/                # PlanningCalendarService, DashboardService, UserService
 
 database/
-├── migrations/           # users, permissions, activity_log, video_tasks
-└── seeders/              # RolesAndPermissionsSeeder, AdminUserSeeder
+├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history, organizations, channels
+└── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
+
+resources/views/pdf/         # report.blade.php (template PDF con dompdf)
 
 resources/js/
 ├── Components/
-│   ├── Forms/            # TextInput, SearchInput
-│   ├── Modals/           # Modal, ConfirmDelete
-│   ├── Navigation/       # Sidebar, Topbar, SidebarItem
-│   ├── Notifications/    # Toast, ToastContainer
-│   └── UI/               # PrimaryButton, FlashMessage, Pagination, StatCard
+│   ├── Forms/               # TextInput, SearchInput
+│   ├── Modals/              # Modal, ConfirmDelete
+│   ├── Navigation/          # Sidebar, Topbar, SidebarItem
+│   ├── Notifications/       # Toast, ToastContainer
+│   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard
 ├── config/
-│   └── navigation.js     # Menú lateral filtrado por permiso
+│   └── navigation.js        # Menú lateral filtrado por permiso
 ├── Layouts/
-│   └── AppLayout.vue     # Layout principal autenticado
+│   └── AppLayout.vue        # Layout principal autenticado
 └── Pages/
     ├── Auth/
-    ├── Dashboard/
+    ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento
+    ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal
     ├── Profile/
-    ├── Reports/
+    ├── Reports/             # History.vue (listado + re-descarga de PDFs)
     ├── Roles/
+    ├── Settings/            # Empresa (nombre, logo, color) + Canales (CRUD inline)
     ├── Users/
-    └── VideoTasks/
+    └── VideoTasks/          # Create, Edit, Show, VideoTaskForm
 ```
 
 ---
 
 ## Arquitectura
 
-- **Service Layer** — lógica de negocio desacoplada de controladores (`UserService`)
+- **Service Layer** — lógica de negocio desacoplada de controladores (`UserService`, `DashboardService`, `PlanningCalendarService`)
 - **Form Requests** — validación centralizada
 - **Policies + middleware `can`** — autorización en backend (no solo en UI)
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
 - **Activity Log** — registro de cambios en `name` y `email` del modelo `User`
+- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días
+- **Permisos por ruta** — `manage tasks` para planificación, tareas extra y settings; `view reports` para reportes e historial
 
 ---
 
@@ -285,16 +296,17 @@ php artisan test     # Tests PHPUnit
 - [x] Toasts y flash messages
 - [x] Modal de confirmación (delete)
 - [x] Activity log en usuarios
-- [x] Módulo video tasks (backend + listado)
-- [x] Pantalla de reportes (estructura)
+- [x] CRUD completo Video Tasks (Create, Edit, Show, formulario reutilizable)
+- [x] Planificación con calendario (vista mes/semana, sidebar de tareas por día, feriados Perú)
+- [x] Tareas extra (CRUD inline en sidebar del calendario, indicador oficina/fuera)
+- [x] Reportes PDF con dompdf (scope anual/mensual/semanal/día, agrupado por día)
+- [x] Historial de reportes (listado + re-descarga exacta)
+- [x] Dashboard con KPIs reales (tareas video/extra, progreso, rendimiento semanal, estadísticas hoy)
+- [x] Configuración empresa (nombre, logo, color principal) y canales (CRUD)
 
-### En progreso / pendiente
-- [ ] Formularios completos de Video Tasks (Create/Edit)
-- [ ] Reportes con datos reales (actualmente métricas de ejemplo)
-- [ ] Dashboard con métricas desde `DashboardService`
+### Pendiente
 - [ ] Paginación activa en listados
 - [ ] Tests de autorización y CRUD
-- [ ] Alinear permiso de navegación `view video tasks` con `manage tasks`
 - [ ] Multi-tenancy y suscripciones
 
 ---
