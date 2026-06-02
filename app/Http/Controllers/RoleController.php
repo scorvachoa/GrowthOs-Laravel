@@ -13,6 +13,7 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $roles = Role::query()
+            ->withCount('permissions', 'users')
             ->when(
                 $request->search,
                 fn ($query, $search) =>
@@ -23,7 +24,13 @@ class RoleController extends Controller
                     )
             )
             ->paginate(10)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn ($role) => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'permissions_count' => $role->permissions_count,
+                'users_count' => $role->users_count,
+            ]);
 
         return Inertia::render(
             'Roles/Index',

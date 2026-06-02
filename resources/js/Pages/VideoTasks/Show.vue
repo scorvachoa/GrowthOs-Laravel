@@ -1,11 +1,13 @@
 <script setup>
+import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { Copy, Check, ExternalLink } from 'lucide-vue-next'
 
 const props = defineProps({
     task: Object,
     statuses: Array,
+    channels: Array,
 })
 
 const statusLabel = (value) => {
@@ -32,59 +34,117 @@ const confirmDelete = () => {
         onSuccess: () => showDeleteModal.value = false,
     })
 }
+
+const copiedKey = ref(null)
+function copyText(text, key) {
+    navigator.clipboard.writeText(text)
+    copiedKey.value = key
+    setTimeout(() => { copiedKey.value = null }, 1500)
+}
+
+const embedUrl = computed(() => {
+    const url = props.task.youtube_url
+    if (!url) return null
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/)
+    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`
+    return null
+})
 </script>
 
 <template>
     <AppLayout>
-        <div class="max-w-3xl mx-auto">
+        <div class="max-w-7xl mx-auto">
             <div class="flex items-center justify-between mb-6">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Detalle de Tarea</h1>
-                <Link href="/planning" class="text-indigo-600 hover:text-indigo-700">Volver al calendario</Link>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 space-y-6">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ task.title }}</h2>
-                        <p class="text-sm text-gray-500 mt-1">{{ task.task_date }} &middot; {{ task.time_range }}</p>
-                    </div>
-                    <span class="px-3 py-1 rounded-full text-sm font-medium" :class="statusColor(task.status)">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ task.title }}</h1>
+                    <span class="px-3 py-0.5 rounded-full text-xs font-medium" :class="statusColor(task.status)">
                         {{ statusLabel(task.status) }}
                     </span>
                 </div>
+                <Link href="/planning" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 text-sm">Volver al calendario</Link>
+            </div>
 
-                <div v-if="task.script" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Guion</h3>
-                    <p class="text-gray-900 dark:text-white whitespace-pre-wrap">{{ task.script }}</p>
+            <div class="mb-4 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <span>{{ task.task_date }} &middot; {{ task.time_range }}</span>
+                <span v-if="task.channel" class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: task.channel.color }"></span>
+                    {{ task.channel.name }}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo del video</h2>
+                        <button @click="copyText(task.title, 'title')"
+                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                            <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
+                            <Copy v-else class="w-4 h-4" />
+                        </button>
+                    </div>
+                    <p class="text-gray-900 dark:text-white font-medium">{{ task.title }}</p>
                 </div>
 
-                <div v-if="task.copy" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Copy / Descripcion</h3>
-                    <p class="text-gray-900 dark:text-white whitespace-pre-wrap">{{ task.copy }}</p>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Guion</h2>
+                        <button v-if="task.script" @click="copyText(task.script, 'script')"
+                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                            <Check v-if="copiedKey === 'script'" class="w-4 h-4 text-green-500" />
+                            <Copy v-else class="w-4 h-4" />
+                        </button>
+                    </div>
+                    <p v-if="task.script" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.script }}</p>
+                    <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin guion</p>
                 </div>
 
-                <div v-if="task.key_phrases" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Frases clave</h3>
-                    <p class="text-gray-900 dark:text-white whitespace-pre-wrap">{{ task.key_phrases }}</p>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Copy / Descripcion</h2>
+                        <button v-if="task.copy" @click="copyText(task.copy, 'copy')"
+                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                            <Check v-if="copiedKey === 'copy'" class="w-4 h-4 text-green-500" />
+                            <Copy v-else class="w-4 h-4" />
+                        </button>
+                    </div>
+                    <p v-if="task.copy" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.copy }}</p>
+                    <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin copy</p>
                 </div>
 
-                <div v-if="task.youtube_url" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">URL del video</h3>
-                    <a :href="task.youtube_url" target="_blank" class="text-indigo-600 hover:text-indigo-700 break-all">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Video</h2>
+                        <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"
+                            class="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline">
+                            <ExternalLink class="w-3 h-3" /> Abrir en YouTube
+                        </a>
+                    </div>
+                    <iframe v-if="embedUrl" :src="embedUrl"
+                        class="w-full aspect-video rounded-xl"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                    </iframe>
+                    <a v-else-if="task.youtube_url" :href="task.youtube_url" target="_blank"
+                        class="flex items-center justify-center h-32 rounded-xl bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 text-sm text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition gap-2">
+                        <ExternalLink class="w-5 h-5" />
                         {{ task.youtube_url }}
                     </a>
+                    <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10">Sin enlace de video</p>
                 </div>
+            </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 flex gap-3">
-                    <Link :href="`/video-tasks/${task.id}/edit`"
-                        class="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium transition">
-                        Editar
-                    </Link>
-                    <button @click="showDeleteModal = true"
-                        class="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition">
-                        Eliminar
-                    </button>
-                </div>
+            <div class="flex gap-3 mt-6">
+                <Link :href="`/video-tasks/${task.id}/edit`"
+                    class="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium transition text-sm">
+                    Editar
+                </Link>
+                <button @click="showDeleteModal = true"
+                    class="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition text-sm">
+                    Eliminar
+                </button>
             </div>
 
             <transition name="fade">
@@ -94,11 +154,11 @@ const confirmDelete = () => {
                         <p class="text-gray-600 dark:text-gray-300 mb-6">Esta accion no se puede deshacer.</p>
                         <div class="flex justify-end gap-3">
                             <button @click="showDeleteModal = false"
-                                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
+                                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm">
                                 Cancelar
                             </button>
                             <button @click="confirmDelete"
-                                class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white">
+                                class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm">
                                 Eliminar
                             </button>
                         </div>

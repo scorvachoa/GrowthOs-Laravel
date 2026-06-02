@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\VideoTask;
 use App\Services\PlanningCalendarService;
+use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -81,5 +83,30 @@ class PlanningController extends Controller
         return response()->json(
             $this->calendar->tasksForDate($request->string('fecha'))
         );
+    }
+
+    public function occupiedBlocks(Request $request)
+    {
+        $request->validate([
+            'date' => ['required', 'date'],
+            'except_task_id' => ['nullable', 'exists:video_tasks,id'],
+        ]);
+
+        $query = VideoTask::query()
+            ->whereDate('task_date', $request->string('date'));
+
+        if ($request->filled('except_task_id')) {
+            $query->where('id', '!=', $request->integer('except_task_id'));
+        }
+
+        $occupied = $query->pluck('time_range')->toArray();
+
+        $allBlocks = WorkBlocks::ALL;
+
+        return response()->json([
+            'occupied' => $occupied,
+            'available' => array_values(array_diff($allBlocks, $occupied)),
+            'all' => $allBlocks,
+        ]);
     }
 }

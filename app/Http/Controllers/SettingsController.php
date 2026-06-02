@@ -13,7 +13,7 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $org = Organization::query()->firstOrCreate(['name' => 'GrowthOS']);
+        $org = Organization::query()->first();
         $channels = Channel::query()->orderBy('name')->get()->map(fn ($c) => [
             'id' => $c->id,
             'name' => $c->name,
@@ -23,13 +23,13 @@ class SettingsController extends Controller
         ]);
 
         return Inertia::render('Settings/Index', [
-            'organization' => [
+            'organization' => $org ? [
                 'id' => $org->id,
                 'name' => $org->name,
                 'logo_path' => $org->logo_path,
                 'primary_color' => $org->primary_color,
                 'logo_url' => $org->logo_path ? Storage::url($org->logo_path) : null,
-            ],
+            ] : null,
             'channels' => $channels,
         ]);
     }
@@ -41,7 +41,10 @@ class SettingsController extends Controller
             'primary_color' => ['required', 'string', 'max:20'],
         ]);
 
-        $org = Organization::query()->firstOrCreate(['name' => 'GrowthOS']);
+        $org = Organization::query()->first();
+        if (!$org) {
+            return redirect()->back()->with('error', 'No existe la empresa');
+        }
         $org->name = $validated['name'];
         $org->primary_color = $validated['primary_color'];
 

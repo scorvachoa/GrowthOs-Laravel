@@ -2,10 +2,10 @@ import {
     LayoutDashboard,
     Users,
     Shield,
-    ClipboardList,
     CalendarDays,
     FileClock,
     Settings,
+    Youtube,
 } from 'lucide-vue-next'
 
 export default [
@@ -38,17 +38,17 @@ export default [
     },
 
     {
-        title: 'Reportes',
-        icon: ClipboardList,
-        route: '/task-reports',
-        permission: 'view reports',
-    },
-
-    {
         title: 'Historial',
         icon: FileClock,
         route: '/report-history',
         permission: 'view reports',
+    },
+
+    {
+        title: 'YouTube',
+        icon: Youtube,
+        route: '/youtube',
+        permission: 'view youtube',
     },
 
     {

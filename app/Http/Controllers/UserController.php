@@ -6,6 +6,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -33,7 +34,14 @@ class UserController extends Controller
             )
             ->latest()
             ->paginate(10)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first(),
+                'created_at' => $user->created_at?->diffForHumans(),
+            ]);
 
         return Inertia::render('Users/Index', [
             'users' => $users,

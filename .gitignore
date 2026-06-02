@@ -21,3 +21,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Database files (SQLite - can contain channel IDs and sensitive data)
+*.sqlite
+*.sqlite3
+*.db

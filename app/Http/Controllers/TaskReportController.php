@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Organization;
 use App\Models\ReportHistory;
 use App\Models\VideoTask;
 use App\Models\ExtraTask;
@@ -9,37 +10,11 @@ use App\Support\VideoTaskStatuses;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Inertia\Inertia;
 
 class TaskReportController extends Controller
 {
-    public function index()
-    {
-        $today = Carbon::today();
-
-        $totalTasks = VideoTask::query()->count();
-        $completed = VideoTask::query()->where('status', 'published')->count();
-        $pending = VideoTask::query()->whereIn('status', ['pending', 'script_ready', 'editing', 'review'])->count();
-        $overdue = VideoTask::query()
-            ->whereNotIn('status', ['published', 'cancelled'])
-            ->where('task_date', '<', $today)
-            ->count();
-
-        return Inertia::render('Reports/Tasks', [
-            'stats' => [
-                'total' => $totalTasks,
-                'completed' => $completed,
-                'pending' => $pending,
-                'overdue' => $overdue,
-            ],
-            'year' => $today->year,
-            'month' => $today->month,
-            'today' => $today->format('Y-m-d'),
-            'week_start' => $today->copy()->startOfWeek(Carbon::MONDAY)->format('Y-m-d'),
-        ]);
-    }
-
     public function exportPdf(Request $request)
     {
         $validated = $request->validate([
@@ -108,7 +83,22 @@ class TaskReportController extends Controller
 
         $generatedAt = now()->format('Y-m-d H:i');
 
-        $pdf = Pdf::loadView('pdf.report', compact('title', 'days', 'generatedAt'));
+        $org = Organization::query()->first();
+        $company = $org ? [
+            'name' => $org->name,
+            'primary_color' => $org->primary_color ?: '#4f46e5',
+            'logo_base64' => $org->logo_path && Storage::disk('public')->exists($org->logo_path)
+                ? 'data:image/' . pathinfo($org->logo_path, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($org->logo_path))
+                : null,
+        ] : [
+            'name' => 'GrowthOS',
+            'primary_color' => '#4f46e5',
+            'logo_base64' => null,
+        ];
+
+        $systemName = config('app.name');
+
+        $pdf = Pdf::loadView('pdf.report', compact('title', 'days', 'generatedAt', 'company', 'systemName'));
         $pdf->setPaper('letter');
 
         $filename = 'reporte_' . $scope . '_' . $start->format('Y-m-d') . '.pdf';

@@ -1,89 +1,79 @@
 <script setup>
+import { ref, watch } from 'vue'
+import { router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import SearchInput from '@/Components/Forms/SearchInput.vue'
+import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import { Shield, Plus, Pencil, Users, KeyRound } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
     roles: Object,
+    filters: Object,
+})
+
+const search = ref(props.filters?.search || '')
+
+watch(search, (value) => {
+    router.get('/roles', { search: value }, { preserveState: true, replace: true })
 })
 </script>
 
 <template>
     <AppLayout>
-
         <div class="space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900">
+                        <Shield class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Roles</h1>
+                        <p class="text-gray-500 dark:text-gray-400 mt-1">{{ roles.total || 0 }} roles en el sistema</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <SearchInput v-model="search" />
+                    <Link href="/roles/create">
+                        <PrimaryButton>
+                            <Plus class="w-4 h-4 mr-1.5" /> Nuevo rol
+                        </PrimaryButton>
+                    </Link>
+                </div>
+            </div>
 
-            <div class="flex items-center justify-between">
-
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                        Roles
-                    </h1>
-
-                    <p class="text-gray-500">
-                        Manage system roles
-                    </p>
+            <div class="grid gap-4">
+                <div v-for="role in roles?.data || []" :key="role.id"
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 hover:shadow-md transition flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
+                            <Shield class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-900 dark:text-white">{{ role.name }}</h3>
+                            <div class="flex items-center gap-3 mt-1">
+                                <span class="flex items-center gap-1 text-xs text-gray-500">
+                                    <KeyRound class="w-3 h-3" />
+                                    {{ role.permissions_count }} permiso{{ role.permissions_count !== 1 ? 's' : '' }}
+                                </span>
+                                <span class="flex items-center gap-1 text-xs text-gray-500">
+                                    <Users class="w-3 h-3" />
+                                    {{ role.users_count }} usuario{{ role.users_count !== 1 ? 's' : '' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <Link :href="`/roles/${role.id}/edit`"
+                        class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition">
+                        <Pencil class="w-4 h-4" />
+                    </Link>
                 </div>
 
-                <a
-                    href="/roles/create"
-                    class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                    Create Role
-                </a>
-
+                <div v-if="!roles?.data?.length"
+                    class="text-center py-16 text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <Shield class="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    No se encontraron roles
+                </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-
-                <table class="w-full">
-
-                    <thead class="bg-gray-50 dark:bg-gray-800">
-
-                        <tr>
-
-                            <th class="text-left p-4">
-                                Name
-                            </th>
-
-                            <th class="text-left p-4">
-                                Actions
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        <tr
-                            v-for="role in roles?.data || []"
-                            :key="role.id"
-                            class="border-t border-gray-100 dark:border-gray-800"
-                        >
-
-                            <td class="p-4">
-                                {{ role.name }}
-                            </td>
-
-                            <td class="p-4 flex gap-3">
-
-                                <a
-                                    :href="`/roles/${role.id}/edit`"
-                                    class="text-indigo-600"
-                                >
-                                    Edit
-                                </a>
-
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
         </div>
-
     </AppLayout>
 </template>

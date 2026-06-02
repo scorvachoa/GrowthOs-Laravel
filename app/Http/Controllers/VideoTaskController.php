@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Channel;
 use App\Models\VideoTask;
 use App\Support\VideoTaskStatuses;
 use App\Support\WorkBlocks;
@@ -24,6 +25,7 @@ class VideoTaskController extends Controller
             ],
             'work_blocks' => WorkBlocks::all(),
             'statuses' => VideoTaskStatuses::options(),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
 
@@ -45,18 +47,22 @@ class VideoTaskController extends Controller
 
     public function show(VideoTask $videoTask)
     {
+        $videoTask->load('channel');
         return Inertia::render('VideoTasks/Show', [
             'task' => $this->serializeTask($videoTask),
             'statuses' => VideoTaskStatuses::options(),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
 
     public function edit(VideoTask $videoTask)
     {
+        $videoTask->load('channel');
         return Inertia::render('VideoTasks/Edit', [
             'task' => $this->serializeTask($videoTask),
             'work_blocks' => WorkBlocks::all(),
             'statuses' => VideoTaskStatuses::options(),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
 
@@ -138,8 +144,8 @@ class VideoTaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'script' => ['nullable', 'string'],
             'copy' => ['nullable', 'string'],
-            'key_phrases' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
+            'channel_id' => ['nullable', 'exists:channels,id'],
             'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
         ]);
 
@@ -196,9 +202,11 @@ class VideoTaskController extends Controller
             'title' => $task->title,
             'script' => $task->script,
             'copy' => $task->copy,
-            'key_phrases' => $task->key_phrases,
             'youtube_url' => $task->youtube_url,
             'status' => $task->status,
+            'channel' => $task->relationLoaded('channel') && $task->channel
+                ? ['id' => $task->channel->id, 'name' => $task->channel->name, 'color' => $task->channel->color]
+                : null,
         ];
     }
 }

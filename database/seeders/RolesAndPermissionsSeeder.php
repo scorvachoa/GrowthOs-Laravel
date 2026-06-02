@@ -20,6 +20,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage roles',
             'manage tasks',
             'view reports',
+            'view youtube',
         ];
 
         foreach ($permissions as $permission) {

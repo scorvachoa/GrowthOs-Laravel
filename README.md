@@ -44,10 +44,10 @@ GrowthOS es una plataforma SaaS interna para gestión operativa, construida con 
 | Planificación | `/planning` | `manage tasks` |
 | Calendario (mes/semana) | — | `manage tasks` |
 | Tareas extra (sidebar) | — | `manage tasks` |
-| Reportes | `/task-reports` | `view reports` |
-| Reportes PDF | `/task-reports/pdf` | `view reports` |
+| YouTube (canales + API) | `/youtube` | `view youtube` |
+| Reportes PDF (Dashboard / Planning) | `/dashboard`, `/planning` | `view reports` |
 | Historial de reportes | `/report-history` | `view reports` |
-| Empresa / Canales | `/settings` | `manage tasks` |
+| Empresa (nombre, logo, color, canales) | `/settings` | `manage tasks` |
 | Perfil | `/profile` | Usuario autenticado |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -205,7 +205,7 @@ database/
 ├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history, organizations, channels
 └── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
 
-resources/views/pdf/         # report.blade.php (template PDF con dompdf)
+resources/views/pdf/         # report.blade.php (template PDF con logo, color empresa y footer)
 
 resources/js/
 ├── Components/
@@ -223,7 +223,7 @@ resources/js/
     ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento
     ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal
     ├── Profile/
-    ├── Reports/             # History.vue (listado + re-descarga de PDFs)
+    ├── Reports/             # History.vue (historial de reportes PDF)
     ├── Roles/
     ├── Settings/            # Empresa (nombre, logo, color) + Canales (CRUD inline)
     ├── Users/
@@ -240,7 +240,7 @@ resources/js/
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
 - **Activity Log** — registro de cambios en `name` y `email` del modelo `User`
-- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días
+- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa, color corporativo y footer con nombre del sistema
 - **Permisos por ruta** — `manage tasks` para planificación, tareas extra y settings; `view reports` para reportes e historial
 
 ---
@@ -282,6 +282,8 @@ php artisan test     # Tests PHPUnit
 | `DB_*` | Conexión MySQL |
 | `ADMIN_PASSWORD` | Contraseña del usuario admin al ejecutar seeders |
 | `VITE_APP_NAME` | Nombre mostrado en el frontend |
+| `YOUTUBE_API_KEY` | API Key de YouTube Data API v3 para estadisticas de canales |
+| `IMPORT_SOURCE_PATH` | Ruta al archivo SQLite del proyecto Python (`database/tasks.db`) para migrar datos |
 
 ---
 
@@ -299,10 +301,11 @@ php artisan test     # Tests PHPUnit
 - [x] CRUD completo Video Tasks (Create, Edit, Show, formulario reutilizable)
 - [x] Planificación con calendario (vista mes/semana, sidebar de tareas por día, feriados Perú)
 - [x] Tareas extra (CRUD inline en sidebar del calendario, indicador oficina/fuera)
-- [x] Reportes PDF con dompdf (scope anual/mensual/semanal/día, agrupado por día)
+- [x] Reportes PDF con dompdf (scope anual/mensual/semanal/día, agrupado por día, logo empresa, color corporativo)
 - [x] Historial de reportes (listado + re-descarga exacta)
 - [x] Dashboard con KPIs reales (tareas video/extra, progreso, rendimiento semanal, estadísticas hoy)
 - [x] Configuración empresa (nombre, logo, color principal) y canales (CRUD)
+- [x] YouTube section con estadisticas via API (suscriptores, vistas, videos recientes)
 
 ### Pendiente
 - [ ] Paginación activa en listados

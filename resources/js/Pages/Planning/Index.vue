@@ -3,7 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { router, Link, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, ExternalLink } from 'lucide-vue-next'
+import ExportPdfModal from '@/Components/ExportPdfModal.vue'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, ExternalLink, FileDown } from 'lucide-vue-next'
 
 const props = defineProps({
     calendar: Object,
@@ -25,6 +26,7 @@ const showExtraDeleteModal = ref(false)
 const deleteTarget = ref(null)
 const extraDeleteTarget = ref(null)
 const loading = ref(false)
+const showPdfModal = ref(false)
 const dragging = ref(null)
 const showExtraModal = ref(false)
 const editingExtra = ref(null)
@@ -406,6 +408,11 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                             <ChevronRight class="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                     </div>
+                    <button @click="showPdfModal = true"
+                        class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2">
+                        <FileDown class="w-4 h-4" />
+                        Exportar PDF
+                    </button>
                 </div>
 
                 <div v-if="loading" class="text-center py-12 text-gray-500">Cargando...</div>
@@ -487,7 +494,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     <template v-for="task in day.tasks" :key="task.id">
                                         <div v-if="task.time_range === block"
                                             @click.stop="viewTask(task.id)"
-                                            class="text-xs rounded px-1.5 py-0.5 mb-0.5 truncate text-white cursor-pointer"
+                                            class="text-xs rounded px-1.5 py-0.5 mb-0.5 line-clamp-2 leading-tight text-white cursor-pointer"
                                             :class="statusColors[task.status] || 'bg-gray-500'"
                                             :title="task.title + ' (' + (statusLabels[task.status] || task.status) + ')'">
                                             {{ task.title }}
@@ -574,6 +581,10 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     class="text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white py-1 px-2">
                                     <option v-for="s in snapshot.statuses || []" :key="s.value" :value="s.value">{{ s.label }}</option>
                                 </select>
+                                <button @click="viewTask(task.id)"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
+                                    Ver
+                                </button>
                                 <button @click="editTask(task.id)"
                                     class="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition">
                                     Editar
@@ -737,6 +748,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                 </div>
             </div>
         </transition>
+        <ExportPdfModal :show="showPdfModal" @close="showPdfModal = false" />
     </AppLayout>
 </template>
 

@@ -15,10 +15,10 @@ class VideoTask extends Model
         'title',
         'script',
         'copy',
-        'key_phrases',
         'youtube_url',
         'status',
         'created_by',
+        'channel_id',
     ];
 
     protected $casts = [
@@ -31,5 +31,10 @@ class VideoTask extends Model
             User::class,
             'created_by'
         );
+    }
+
+    public function channel()
+    {
+        return $this->belongsTo(Channel::class);
     }
 }

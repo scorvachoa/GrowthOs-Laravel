@@ -1,9 +1,10 @@
 <script setup>
-import { computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
-import { ListChecks, ClockAlert, CheckCircle2, TrendingUp, ExternalLink } from 'lucide-vue-next'
+import ExportPdfModal from '@/Components/ExportPdfModal.vue'
+import { ListChecks, ClockAlert, CheckCircle2, TrendingUp, ExternalLink, Eye, FileDown } from 'lucide-vue-next'
 
 const props = defineProps({
     stats: Object,
@@ -23,14 +24,23 @@ const statusColor = (status) => {
 }
 
 const goToPlanning = () => router.get('/planning')
+const viewTask = (id) => router.get(`/video-tasks/${id}`)
+const showPdfModal = ref(false)
 </script>
 
 <template>
     <AppLayout>
         <div class="space-y-8">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de produccion de video</p>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de produccion de video</p>
+                </div>
+                <button @click="showPdfModal = true"
+                    class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2">
+                    <FileDown class="w-4 h-4" />
+                    Exportar PDF
+                </button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
@@ -58,16 +68,19 @@ const goToPlanning = () => router.get('/planning')
                             Sin tareas para hoy
                         </div>
                         <div v-for="task in stats.today_tasks" :key="'v' + task.id"
-                            @click="goToPlanning"
+                            @click="viewTask(task.id)"
                             class="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition">
                             <div class="flex-1 min-w-0">
                                 <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ task.title }}</p>
                                 <p class="text-xs text-gray-500">{{ task.time_range }}</p>
                             </div>
-                            <span class="text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ml-2"
-                                :class="statusColor(task.status)">
-                                {{ task.status_label }}
-                            </span>
+                            <div class="flex items-center gap-2 ml-2">
+                                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap"
+                                    :class="statusColor(task.status)">
+                                    {{ task.status_label }}
+                                </span>
+                                <Eye class="w-3.5 h-3.5 text-indigo-500" />
+                            </div>
                         </div>
                         <div v-for="task in stats.today_extra" :key="'e' + task.id"
                             @click="goToPlanning"
@@ -155,5 +168,6 @@ const goToPlanning = () => router.get('/planning')
                 </div>
             </div>
         </div>
+        <ExportPdfModal :show="showPdfModal" @close="showPdfModal = false" />
     </AppLayout>
 </template>
