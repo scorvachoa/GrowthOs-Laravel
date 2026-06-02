@@ -18,6 +18,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'view dashboard',
             'manage users',
             'manage roles',
+            'manage tasks',
+            'view reports',
         ];
 
         foreach ($permissions as $permission) {

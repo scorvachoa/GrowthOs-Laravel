@@ -6,7 +6,7 @@ const page = usePage()
 
 <template>
     <div
-        v-if="page.props.flash.success"
+        v-if="page.props.flash?.success"
         class="mb-6 p-4 rounded-xl bg-green-100 text-green-800"
     >
         {{ page.props.flash.success }}

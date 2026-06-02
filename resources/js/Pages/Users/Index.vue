@@ -5,13 +5,46 @@ import { router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
+import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
 
 const props = defineProps({
-    users: Object,
-    filters: Object,
+
+    users: {
+        type: Object,
+        default: () => ({
+            data: [],
+            links: [],
+        }),
+    },
+
+    filters: {
+        type: Object,
+        default: () => ({}),
+    },
+
 })
 
-const search = ref(props.filters.search || '')
+const search = ref(
+    props.filters?.search || ''
+)
+
+const showDeleteModal = ref(false)
+
+const selectedUser = ref(null)
+
+const openDeleteModal = (user) => {
+    selectedUser.value = user
+    showDeleteModal.value = true
+}
+
+const confirmDelete = () => {
+    router.delete(`/users/${selectedUser.value.id}`, {
+        onSuccess: () => {
+            showDeleteModal.value = false
+        }
+    })
+}
 
 watch(search, (value) => {
     router.get(
@@ -58,7 +91,7 @@ watch(search, (value) => {
 
                     <tbody>
                         <tr
-                            v-for="user in users.data"
+                            v-for="user in users?.data || []"
                             :key="user.id"
                             class="border-b border-gray-100 dark:border-gray-700"
                         >
@@ -81,7 +114,7 @@ watch(search, (value) => {
                                     </Link>
 
                                     <button
-                                        @click="router.delete(`/users/${user.id}`)"
+                                        @click="openDeleteModal(user)"
                                         class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
                                     >
                                         Delete
@@ -92,7 +125,13 @@ watch(search, (value) => {
                         </tr>
                     </tbody>
                 </table>
+                <!-- <Pagination :links="users?.links || []" /> -->
             </div>
+            <ConfirmDelete
+                :show="showDeleteModal"
+                @close="showDeleteModal = false"
+                @confirm="confirmDelete"
+            />
 
         </div>
     </AppLayout>

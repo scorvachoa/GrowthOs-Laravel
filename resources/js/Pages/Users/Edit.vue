@@ -14,11 +14,11 @@ const form = useForm({
     name: props.user.name,
     email: props.user.email,
     password: '',
-    role: props.user.roles?.[0] || '',
+    role: props.user.role || '',
 })
 
 const submit = () => {
-    form.put(`/users/${props.user.id}`)
+    form.put(route('users.update', props.user.id))
 }
 </script>
 

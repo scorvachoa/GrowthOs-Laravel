@@ -6,15 +6,15 @@ defineProps({
 </script>
 
 <template>
-    <div
-        class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6"
-    >
-        <h3 class="text-gray-500 dark:text-gray-400 text-sm">
-            {{ title }}
-        </h3>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
 
-        <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-            {{ value }}
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            {{ title }}
         </p>
+
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {{ value }}
+        </h2>
+
     </div>
 </template>
