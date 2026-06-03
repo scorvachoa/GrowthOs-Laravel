@@ -15,6 +15,8 @@ use App\Http\Controllers\YoutubeController;
 use App\Http\Controllers\VideoTaskController;
 use App\Http\Controllers\ExtraTaskController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\IdeaController;
+use App\Http\Controllers\TaskHistoryController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -60,6 +62,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/extra-tasks', [ExtraTaskController::class, 'store'])->name('extra-tasks.store');
         Route::patch('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'update'])->name('extra-tasks.update');
         Route::delete('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'destroy'])->name('extra-tasks.destroy');
+
+        Route::get('/task-history', [TaskHistoryController::class, 'index'])->name('task-history.index');
+        Route::get('/task-history/{video_task}', [TaskHistoryController::class, 'show'])->name('task-history.show');
+
+        Route::get('/ideas', [IdeaController::class, 'index'])->name('ideas.index');
+        Route::post('/ideas', [IdeaController::class, 'store'])->name('ideas.store');
+        Route::post('/ideas/import', [IdeaController::class, 'import'])->name('ideas.import');
+        Route::get('/ideas/export', [IdeaController::class, 'export'])->name('ideas.export');
+        Route::patch('/ideas/{idea}/used', [IdeaController::class, 'toggleUsed'])->name('ideas.toggle-used');
+        Route::patch('/ideas/{idea}', [IdeaController::class, 'update'])->name('ideas.update');
+        Route::delete('/ideas/{idea}', [IdeaController::class, 'destroy'])->name('ideas.destroy');
     });
 });
 

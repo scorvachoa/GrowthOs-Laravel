@@ -254,6 +254,14 @@ function closeSidebar() {
     dayTasks.value = []
 }
 
+function allBlocksFull(day, blocks) {
+    return blocks?.every(b => (day.blocks?.[b] || 0) > 0) ?? false
+}
+
+function isBlockOccupied(day, block) {
+    return day.tasks?.some(t => t.time_range === block) ?? false
+}
+
 function createTask(fecha, bloque) {
     const params = new URLSearchParams({ fecha, bloque }).toString()
     window.location.href = `/video-tasks/create?${params}`
@@ -460,7 +468,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                         class="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
                                         {{ day.count }} tarea{{ day.count !== 1 ? 's' : '' }}
                                     </div>
-                                    <button v-if="!day.isSunday"
+                                    <button v-if="!day.isSunday && !allBlocksFull(day, snapshot.work_blocks)"
                                         @click.stop="createTask(day.date, '09:00-11:00')"
                                         class="absolute top-1 right-1 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                                         <Plus class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -500,7 +508,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                             {{ task.title }}
                                         </div>
                                     </template>
-                                    <button v-if="!day.isSunday"
+                                    <button v-if="!day.isSunday && !isBlockOccupied(day, block)"
                                         @click.stop="createTask(day.date, block)"
                                         class="absolute bottom-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                                         <Plus class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />

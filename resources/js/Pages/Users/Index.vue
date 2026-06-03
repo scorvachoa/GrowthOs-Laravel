@@ -66,7 +66,7 @@ const roleColor = (role) => {
                 <div class="flex gap-3">
                     <SearchInput v-model="search" />
                     <Link href="/users/create">
-                        <PrimaryButton>
+                        <PrimaryButton class="inline-flex items-center gap-2">
                             <Plus class="w-4 h-4 mr-1.5" /> Nuevo usuario
                         </PrimaryButton>
                     </Link>

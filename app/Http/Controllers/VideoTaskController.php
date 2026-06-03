@@ -19,9 +19,9 @@ class VideoTaskController extends Controller
         return Inertia::render('VideoTasks/Create', [
             'prefilled' => [
                 'task_date' => $request->string('fecha', now()->format('Y-m-d')),
-                'time_range' => $this->resolveBlock(
-                    $request->string('bloque')->toString()
-                ),
+                'time_range' => $request->filled('bloque')
+                    ? $this->resolveBlock($request->string('bloque')->toString())
+                    : '',
             ],
             'work_blocks' => WorkBlocks::all(),
             'statuses' => VideoTaskStatuses::options(),

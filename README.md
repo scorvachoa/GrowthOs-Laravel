@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión operativa, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, módulos de usuarios, roles, planificación de tareas (calendario), tareas extra, reportes PDF, histórico de reportes, dashboard con KPIs reales y configuración empresa/canales.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas, historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, integración con YouTube API, e importación desde proyecto Python legado.
 
 ---
 
@@ -13,7 +13,7 @@ GrowthOS es una plataforma SaaS interna para gestión operativa, construida con 
 | Laravel 12 | Framework |
 | MySQL | Base de datos |
 | [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles y permisos |
-| [Spatie Activity Log](https://github.com/spatie/laravel-activitylog) | Auditoría de cambios en usuarios |
+| [Spatie Activity Log](https://github.com/spatie/laravel-activitylog) | Auditoría de cambios en usuarios y video tareas |
 | Laravel Sanctum | API tokens (preparado) |
 | Inertia Laravel 2 | SPA server-driven |
 
@@ -41,10 +41,11 @@ GrowthOS es una plataforma SaaS interna para gestión operativa, construida con 
 | Dashboard | `/dashboard` | `view dashboard` |
 | Usuarios | `/users` | `manage users` |
 | Roles | `/roles` | `manage roles` |
-| Planificación | `/planning` | `manage tasks` |
-| Calendario (mes/semana) | — | `manage tasks` |
+| Planificación (mes/semana) | `/planning` | `manage tasks` |
 | Tareas extra (sidebar) | — | `manage tasks` |
-| YouTube (canales + API) | `/youtube` | `view youtube` |
+| Ideas (CRUD + import/export txt) | `/ideas` | `manage tasks` |
+| Historial de tareas (auditoría) | `/task-history` | `manage tasks` |
+| YouTube (canales + API stats) | `/youtube` | `view youtube` |
 | Reportes PDF (Dashboard / Planning) | `/dashboard`, `/planning` | `view reports` |
 | Historial de reportes | `/report-history` | `view reports` |
 | Empresa (nombre, logo, color, canales) | `/settings` | `manage tasks` |
@@ -72,6 +73,7 @@ manage users
 manage roles
 manage tasks
 view reports
+view youtube
 ```
 
 ### CRUD de usuarios
@@ -92,8 +94,11 @@ view reports
 - Topbar con perfil y logout
 - Flash messages y toasts
 - Modal de confirmación para eliminaciones
-- Componentes reutilizables (formularios, botones, paginación)
+- Componentes reutilizables (formularios, botones, paginación, modales)
 - Soporte modo claro / oscuro (Tailwind `dark:`)
+- Vista cards / lista toggleable en sección de videos recientes
+- Auto-selección del primer bloque horario libre al crear tarea
+- Botón "+" se oculta cuando el bloque o día están completos
 
 ---
 
@@ -194,21 +199,25 @@ Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
 ```
 app/
 ├── Http/
-│   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory, Settings, Users, Roles, Profile
+│   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory,
+│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
-├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel
+├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea
 ├── Policies/                # UserPolicy
-└── Services/                # PlanningCalendarService, DashboardService, UserService
+├── Services/                # PlanningCalendarService, DashboardService, UserService, IdeaService
+└── Support/                 # WorkBlocks, VideoTaskStatuses (enums planos con constantes)
 
 database/
-├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history, organizations, channels
+├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history,
+│                           # organizations, channels, ideas
 └── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
 
 resources/views/pdf/         # report.blade.php (template PDF con logo, color empresa y footer)
 
 resources/js/
 ├── Components/
+│   ├── ExportPdfModal.vue   # Modal reutilizable para exportar PDF (Dashboard + Planning)
 │   ├── Forms/               # TextInput, SearchInput
 │   ├── Modals/              # Modal, ConfirmDelete
 │   ├── Navigation/          # Sidebar, Topbar, SidebarItem
@@ -220,28 +229,32 @@ resources/js/
 │   └── AppLayout.vue        # Layout principal autenticado
 └── Pages/
     ├── Auth/
-    ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento
-    ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal
+    ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento + Exportar PDF
+    ├── Ideas/               # Index (tabs por canal, búsqueda, sort, CRUD, import/export txt)
+    ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal + Exportar PDF
     ├── Profile/
     ├── Reports/             # History.vue (historial de reportes PDF)
     ├── Roles/
     ├── Settings/            # Empresa (nombre, logo, color) + Canales (CRUD inline)
+    ├── TaskHistory/         # Index (lista tareas con estado) + Show (timeline de cambios)
     ├── Users/
-    └── VideoTasks/          # Create, Edit, Show, VideoTaskForm
+    ├── VideoTasks/          # Create, Edit, Show (3 columnas + video embed), VideoTaskForm
+    └── Youtube/             # Index (tabs canal, estadísticas, cards/lista videos, estado videos)
 ```
 
 ---
 
 ## Arquitectura
 
-- **Service Layer** — lógica de negocio desacoplada de controladores (`UserService`, `DashboardService`, `PlanningCalendarService`)
-- **Form Requests** — validación centralizada
+- **Service Layer** — lógica de negocio desacoplada de controladores (`UserService`, `DashboardService`, `PlanningCalendarService`, `IdeaService`)
+- **Support classes** — constantes y helpers sin enums nativos (`WorkBlocks`, `VideoTaskStatuses`)
 - **Policies + middleware `can`** — autorización en backend (no solo en UI)
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
-- **Activity Log** — registro de cambios en `name` y `email` del modelo `User`
-- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa, color corporativo y footer con nombre del sistema
-- **Permisos por ruta** — `manage tasks` para planificación, tareas extra y settings; `view reports` para reportes e historial
+- **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
+- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
+- **Import Python** — comando `import:python-data` migra datos desde SQLite (tasks.db) a Laravel, con detección de duplicados
+- **Permisos por ruta** — `manage tasks` para planificación, tareas extra, ideas, historial de tareas y settings; `view reports` para reportes e historial; `view youtube` para sección YouTube
 
 ---
 
@@ -272,6 +285,14 @@ npm run build    # Build de producción
 php artisan test     # Tests PHPUnit
 ```
 
+### Importar datos desde Python
+
+```bash
+php artisan import:python-data "E:\Python\Git\GrowthOS\database\tasks.db"
+```
+
+Importa video tareas, tareas extra, ideas y canales desde la base SQLite del proyecto Python legado. Es idempotente (detecta duplicados por fecha+bloque y los salta).
+
 ---
 
 ## Variables de entorno relevantes
@@ -297,18 +318,24 @@ php artisan test     # Tests PHPUnit
 - [x] Sidebar dinámico por permisos
 - [x] Toasts y flash messages
 - [x] Modal de confirmación (delete)
-- [x] Activity log en usuarios
+- [x] Activity log en usuarios y video tareas (spatie/laravel-activitylog)
 - [x] CRUD completo Video Tasks (Create, Edit, Show, formulario reutilizable)
 - [x] Planificación con calendario (vista mes/semana, sidebar de tareas por día, feriados Perú)
 - [x] Tareas extra (CRUD inline en sidebar del calendario, indicador oficina/fuera)
-- [x] Reportes PDF con dompdf (scope anual/mensual/semanal/día, agrupado por día, logo empresa, color corporativo)
+- [x] Reportes PDF con dompdf (scope anual/mensual/semanal/día, agrupado por día, logo empresa base64, color corporativo, links cursiva, footer)
 - [x] Historial de reportes (listado + re-descarga exacta)
-- [x] Dashboard con KPIs reales (tareas video/extra, progreso, rendimiento semanal, estadísticas hoy)
-- [x] Configuración empresa (nombre, logo, color principal) y canales (CRUD)
-- [x] YouTube section con estadisticas via API (suscriptores, vistas, videos recientes)
+- [x] Dashboard con KPIs reales + botón Exportar PDF
+- [x] Configuración empresa (nombre, logo, color principal) y canales (CRUD inline)
+- [x] YouTube section con estadísticas via API (suscriptores, vistas, videos recientes, toggle cards/lista)
+- [x] Ideas (CRUD, tabs por canal, búsqueda, sort, import/export txt)
+- [x] Historial de tareas (listado con filtros + timeline de cambios por tarea)
+- [x] Import Python (comando `import:python-data` — migra tasks, extra_tasks, ideas desde SQLite)
+- [x] Planning: botón "+" oculto cuando bloque/día completo
+- [x] VideoTaskForm: auto-selección del primer bloque libre
+- [x] Show: layout 3 columnas (guion, copy, video) + YouTube/TikTok embed
+- [x] PDF mejorado: line-height 1.6, escalado proporcional, footer, color en links
 
 ### Pendiente
-- [ ] Paginación activa en listados
 - [ ] Tests de autorización y CRUD
 - [ ] Multi-tenancy y suscripciones
 

@@ -31,6 +31,10 @@ watch(() => props.form.task_date, async (date) => {
         }
         const res = await axios.get('/planning/occupied-blocks', { params })
         occupiedBlocks.value = res.data.occupied || []
+        if (!props.form.time_range) {
+            const free = props.workBlocks?.find(b => !occupiedBlocks.value.includes(b))
+            if (free) props.form.time_range = free
+        }
     } catch {
         occupiedBlocks.value = []
     } finally {
@@ -66,7 +70,6 @@ function blockDisabled(block) {
                         </label>
                         <select v-model="form.time_range"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">Seleccionar bloque</option>
                             <option v-for="block in workBlocks" :key="block" :value="block"
                                 :disabled="blockDisabled(block)"
                                 :class="{ 'text-gray-400 dark:text-gray-600 line-through': blockDisabled(block) }">

@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
-import { Youtube, Film, BarChart3, ExternalLink, Users, Eye, Video, Globe, AlertCircle, ChevronRight, MessageCircle } from 'lucide-vue-next'
+import { Youtube, Film, BarChart3, ExternalLink, Users, Eye, Video, Globe, AlertCircle, ChevronRight, MessageCircle, LayoutGrid, List } from 'lucide-vue-next'
 
 const props = defineProps({
     channels: Array,
@@ -11,6 +11,7 @@ const props = defineProps({
 })
 
 const activeTab = ref(0)
+const viewMode = ref('cards')
 
 const activeChannel = computed(() => props.channels[activeTab.value] || null)
 
@@ -149,8 +150,20 @@ const formatNumber = (n) => {
 
                         <div class="flex items-center gap-4 mb-6">
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Ultimos videos</h2>
+                            <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+                                <button @click="viewMode = 'cards'"
+                                    class="p-1.5 rounded-md transition"
+                                    :class="viewMode === 'cards' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                                    <LayoutGrid class="w-4 h-4" />
+                                </button>
+                                <button @click="viewMode = 'list'"
+                                    class="p-1.5 rounded-md transition"
+                                    :class="viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                                    <List class="w-4 h-4" />
+                                </button>
+                            </div>
                             <a v-if="activeChannel.channel_url" :href="activeChannel.channel_url" target="_blank"
-                                class="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:underline">
+                                class="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:underline ml-auto">
                                 <ExternalLink class="w-4 h-4" /> Ver canal en YouTube
                             </a>
                         </div>
@@ -161,7 +174,7 @@ const formatNumber = (n) => {
                             No se pudieron obtener videos recientes
                         </div>
 
-                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             <a v-for="video in activeChannel.videos" :key="video.id" :href="video.url" target="_blank"
                                 class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition group bg-white dark:bg-gray-800/50">
                                 <div class="relative">
@@ -184,6 +197,42 @@ const formatNumber = (n) => {
                                     <p class="text-xs text-gray-400 mt-1">{{ video.published_at ? new Date(video.published_at).toLocaleDateString() : '' }}</p>
                                 </div>
                             </a>
+                        </div>
+
+                        <div v-else class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-200 dark:border-gray-700">
+                                        <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Video</th>
+                                        <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Titulo</th>
+                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">
+                                            <Eye class="w-3 h-3 inline" /> Vistas
+                                        </th>
+                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">
+                                            <MessageCircle class="w-3 h-3 inline" /> Comentarios
+                                        </th>
+                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Publicado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="video in activeChannel.videos" :key="video.id"
+                                        class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <td class="py-3 px-3 w-16">
+                                            <img :src="video.medium_thumbnail" :alt="video.title"
+                                                class="w-14 h-10 rounded-lg object-cover" />
+                                        </td>
+                                        <td class="py-3 px-3">
+                                            <a :href="video.url" target="_blank"
+                                                class="font-medium text-gray-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition line-clamp-1">
+                                                {{ video.title }}
+                                            </a>
+                                        </td>
+                                        <td class="py-3 px-3 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatNumber(video.view_count) }}</td>
+                                        <td class="py-3 px-3 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatNumber(video.comment_count) }}</td>
+                                        <td class="py-3 px-3 text-right text-gray-400 text-xs whitespace-nowrap">{{ video.published_at ? new Date(video.published_at).toLocaleDateString() : '' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

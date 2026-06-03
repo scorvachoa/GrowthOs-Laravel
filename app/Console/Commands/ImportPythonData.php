@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Channel;
 use App\Models\ExtraTask;
+use App\Models\Idea;
+use App\Models\User;
 use App\Models\VideoTask;
 use Illuminate\Console\Command;
 use PDO;
@@ -12,7 +14,7 @@ class ImportPythonData extends Command
 {
     protected $signature = 'import:python-data {sqlite=E:\Python\Git\GrowthOS\database\tasks.db}';
 
-    protected $description = 'Import tasks, extra tasks, and channels from Python GrowthOS SQLite database';
+    protected $description = 'Import tasks, extra tasks, channels and ideas from Python GrowthOS SQLite database';
 
     public function handle(): int
     {
@@ -26,11 +28,16 @@ class ImportPythonData extends Command
         $db = new PDO("sqlite:{$path}");
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $defaultUserId = 1;
+        $defaultUserId = User::query()->where('email', 'admin@growthos.com')->value('id') ?? User::query()->first()?->id;
+        if (!$defaultUserId) {
+            $this->error('No users found in database. Run db:seed first.');
+            return Command::FAILURE;
+        }
 
         $this->importChannels($db);
         $this->importVideoTasks($db, $defaultUserId);
         $this->importExtraTasks($db, $defaultUserId);
+        $this->importIdeas($db);
 
         return Command::SUCCESS;
     }
@@ -161,5 +168,56 @@ class ImportPythonData extends Command
         }
 
         $this->info("  Imported {$count} extra tasks");
+    }
+
+    protected function importIdeas(PDO $db): void
+    {
+        $this->info('Importing ideas...');
+
+        $channelMap = [];
+        $rows = $db->query('SELECT * FROM ideas ORDER BY id');
+        $count = 0;
+
+        foreach ($rows as $row) {
+            if (!isset($channelMap[$row['channel_id']])) {
+                $ch = $db->query("SELECT id, name FROM channels WHERE id = {$row['channel_id']}")->fetch(PDO::FETCH_ASSOC);
+                if ($ch) {
+                    $laravelChannel = \App\Models\Channel::query()->where('name', $ch['name'])->first();
+                    $channelMap[$row['channel_id']] = $laravelChannel?->id;
+                } else {
+                    $channelMap[$row['channel_id']] = null;
+                }
+            }
+
+            $channelId = $channelMap[$row['channel_id']];
+            if (!$channelId) {
+                $this->warn("  Idea #{$row['id']} has no matching channel, skipping");
+                continue;
+            }
+
+            $exists = Idea::query()
+                ->where('channel_id', $channelId)
+                ->where('content', $row['content'])
+                ->exists();
+
+            if ($exists) {
+                $this->warn("  Idea '{$row['content']}' already exists, skipping");
+                continue;
+            }
+
+            Idea::query()->create([
+                'channel_id' => $channelId,
+                'content' => $row['content'],
+                'is_used' => (bool) $row['is_used'],
+                'tags' => $row['tags'] ?? '',
+                'priority' => (int) ($row['priority'] ?? 0),
+                'category' => $row['category'] ?? '',
+                'created_at' => $row['created_at'] ?: now(),
+                'updated_at' => $row['created_at'] ?: now(),
+            ]);
+            $count++;
+        }
+
+        $this->info("  Imported {$count} ideas");
     }
 }

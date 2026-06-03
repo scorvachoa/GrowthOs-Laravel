@@ -6,6 +6,8 @@ import {
     FileClock,
     Settings,
     Youtube,
+    Lightbulb,
+    ClipboardList,
 } from 'lucide-vue-next'
 
 export default [
@@ -38,6 +40,13 @@ export default [
     },
 
     {
+        title: 'Tareas',
+        icon: ClipboardList,
+        route: '/task-history',
+        permission: 'manage tasks',
+    },
+
+    {
         title: 'Historial',
         icon: FileClock,
         route: '/report-history',
@@ -49,6 +58,13 @@ export default [
         icon: Youtube,
         route: '/youtube',
         permission: 'view youtube',
+    },
+
+    {
+        title: 'Ideas',
+        icon: Lightbulb,
+        route: '/ideas',
+        permission: 'manage tasks',
     },
 
     {

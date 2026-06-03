@@ -45,7 +45,7 @@ function copyText(text, key) {
 const embedUrl = computed(() => {
     const url = props.task.youtube_url
     if (!url) return null
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
     const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/)
     if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`
@@ -55,8 +55,8 @@ const embedUrl = computed(() => {
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto">
-            <div class="flex items-center justify-between mb-6">
+        <div class="max-w-7xl mx-auto space-y-6">
+            <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ task.title }}</h1>
                     <span class="px-3 py-0.5 rounded-full text-xs font-medium" :class="statusColor(task.status)">
@@ -66,27 +66,27 @@ const embedUrl = computed(() => {
                 <Link href="/planning" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 text-sm">Volver al calendario</Link>
             </div>
 
-            <div class="mb-4 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                <span>{{ task.task_date }} &middot; {{ task.time_range }}</span>
-                <span v-if="task.channel" class="flex items-center gap-1.5">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                {{ task.task_date }} &middot; {{ task.time_range }}
+                <span v-if="task.channel" class="ml-2 inline-flex items-center gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: task.channel.color }"></span>
                     {{ task.channel.name }}
                 </span>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo del video</h2>
-                        <button @click="copyText(task.title, 'title')"
-                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
-                            <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
-                            <Copy v-else class="w-4 h-4" />
-                        </button>
-                    </div>
-                    <p class="text-gray-900 dark:text-white font-medium">{{ task.title }}</p>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo del video</h2>
+                    <button @click="copyText(task.title, 'title')"
+                        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                        <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
+                        <Copy v-else class="w-4 h-4" />
+                    </button>
                 </div>
+                <p class="text-gray-900 dark:text-white font-medium">{{ task.title }}</p>
+            </div>
 
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Guion</h2>
@@ -113,30 +113,32 @@ const embedUrl = computed(() => {
                     <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin copy</p>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 flex flex-col">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Video</h2>
-                        <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"
-                            class="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:underline">
-                            <ExternalLink class="w-3 h-3" /> Abrir en YouTube
-                        </a>
+                        <button v-if="task.youtube_url" @click="copyText(task.youtube_url, 'url')"
+                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                            <Check v-if="copiedKey === 'url'" class="w-4 h-4 text-green-500" />
+                            <Copy v-else class="w-4 h-4" />
+                        </button>
                     </div>
                     <iframe v-if="embedUrl" :src="embedUrl"
                         class="w-full aspect-video rounded-xl"
                         frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen>
                     </iframe>
-                    <a v-else-if="task.youtube_url" :href="task.youtube_url" target="_blank"
-                        class="flex items-center justify-center h-32 rounded-xl bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 text-sm text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition gap-2">
-                        <ExternalLink class="w-5 h-5" />
+                    <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"
+                        class="mt-2 text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 truncate inline-flex items-center gap-1">
+                        <ExternalLink class="w-3 h-3 flex-shrink-0" />
                         {{ task.youtube_url }}
                     </a>
-                    <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10">Sin enlace de video</p>
+                    <p v-if="!task.youtube_url" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-6">
+            <div class="flex gap-3">
                 <Link :href="`/video-tasks/${task.id}/edit`"
                     class="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium transition text-sm">
                     Editar
