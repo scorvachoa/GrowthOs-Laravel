@@ -1,7 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 import UseTaskModal from '@/Components/AI/UseTaskModal.vue'
 import { ChevronLeft, ChevronRight, Sparkles, FileText, CopyCheck, Quote, Eye, Trash2, Download, CalendarPlus } from 'lucide-vue-next'
 import axios from 'axios'
@@ -102,7 +106,7 @@ const formatDate = (dateStr) => {
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-1">
-                                        <button @click="downloadTxt(v.id)"
+                                        <button v-if="can('download ai')" @click="downloadTxt(v.id)"
                                             class="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-500 hover:text-blue-600 transition"
                                             title="Descargar TXT">
                                             <Download class="w-4 h-4" />

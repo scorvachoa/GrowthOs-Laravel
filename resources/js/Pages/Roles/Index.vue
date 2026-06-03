@@ -1,21 +1,31 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { router, Link } from '@inertiajs/vue3'
+import { router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Shield, Plus, Pencil, Users, KeyRound } from 'lucide-vue-next'
+import { Shield, Plus, Pencil, Trash2, Users, KeyRound } from 'lucide-vue-next'
 
 const props = defineProps({
     roles: Object,
     filters: Object,
 })
 
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
+
 const search = ref(props.filters?.search || '')
 
 watch(search, (value) => {
     router.get('/roles', { search: value }, { preserveState: true, replace: true })
 })
+
+const confirmDelete = (role) => {
+    if (confirm(`¿Eliminar el rol "${role.name}"? Esta acción no se puede deshacer.`)) {
+        router.delete(`/roles/${role.id}`)
+    }
+}
 </script>
 
 <template>
@@ -33,7 +43,7 @@ watch(search, (value) => {
                 </div>
                 <div class="flex gap-3">
                     <SearchInput v-model="search" />
-                    <Link href="/roles/create">
+                    <Link v-if="can('create roles')" href="/roles/create">
                         <PrimaryButton class="inline-flex items-center gap-2">
                             <Plus class="w-4 h-4 mr-1.5" /> Nuevo rol
                         </PrimaryButton>
@@ -62,10 +72,16 @@ watch(search, (value) => {
                             </div>
                         </div>
                     </div>
-                    <Link :href="`/roles/${role.id}/edit`"
-                        class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition">
-                        <Pencil class="w-4 h-4" />
-                    </Link>
+                    <div class="flex items-center gap-1">
+                        <Link v-if="can('edit roles')" :href="`/roles/${role.id}/edit`"
+                            class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition">
+                            <Pencil class="w-4 h-4" />
+                        </Link>
+                        <button v-if="can('delete roles')" @click="confirmDelete(role)"
+                            class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition">
+                            <Trash2 class="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <div v-if="!roles?.data?.length"

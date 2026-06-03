@@ -1,7 +1,11 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -187,12 +191,12 @@ const sortOptions = [
                                             title="Copiar">
                                             <Copy class="w-3.5 h-3.5" />
                                         </button>
-                                        <button @click="startEdit(idea)"
+                                        <button v-if="can('edit ideas')" @click="startEdit(idea)"
                                             class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-amber-600 transition"
                                             title="Editar">
                                             <Pencil class="w-3.5 h-3.5" />
                                         </button>
-                                        <button @click="confirmDelete(idea)"
+                                        <button v-if="can('delete ideas')" @click="confirmDelete(idea)"
                                             class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition"
                                             title="Eliminar">
                                             <Trash2 class="w-3.5 h-3.5" />
@@ -208,12 +212,12 @@ const sortOptions = [
                         </div>
 
                         <div class="p-6 space-y-4">
-                            <button @click="showDrawer = true"
+                            <button v-if="can('create ideas')" @click="showDrawer = true"
                                 class="w-full px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center justify-center gap-2">
                                 <Plus class="w-4 h-4" /> Crear ideas
                             </button>
 
-                            <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
+                            <div v-if="can('import ideas')" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
                                 <label class="flex flex-col items-center gap-2 cursor-pointer">
                                     <Upload class="w-5 h-5 text-gray-400" />
                                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Importar TXT</span>
@@ -221,7 +225,7 @@ const sortOptions = [
                                 </label>
                             </div>
 
-                            <button @click="exportTxt"
+                            <button v-if="can('export ideas')" @click="exportTxt"
                                 class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2">
                                 <Download class="w-4 h-4" /> Exportar TXT
                             </button>

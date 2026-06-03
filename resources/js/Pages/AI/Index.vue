@@ -13,6 +13,8 @@ const props = defineProps({
 })
 
 const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 
 const showUseModal = ref(false)
 
@@ -246,7 +248,7 @@ async function copyText(text, emptyMessage, successMessage) {
                         Genera guiones, copy y frases para YouTube Shorts usando Gemini AI.
                     </p>
                 </div>
-                <button @click="router.get('/ai/history')"
+                <button v-if="can('view ai history')" @click="router.get('/ai/history')"
                     class="shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
                     Historial
                 </button>

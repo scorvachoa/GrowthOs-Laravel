@@ -1,8 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { Link, router } from '@inertiajs/vue3'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import { Copy, Check, ExternalLink } from 'lucide-vue-next'
+
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 
 const props = defineProps({
     task: Object,
@@ -139,11 +143,11 @@ const embedUrl = computed(() => {
             </div>
 
             <div class="flex gap-3">
-                <Link :href="`/video-tasks/${task.id}/edit`"
+                <Link v-if="can('edit planning')" :href="`/video-tasks/${task.id}/edit`"
                     class="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-medium transition text-sm">
                     Editar
                 </Link>
-                <button @click="showDeleteModal = true"
+                <button v-if="can('delete planning')" @click="showDeleteModal = true"
                     class="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition text-sm">
                     Eliminar
                 </button>

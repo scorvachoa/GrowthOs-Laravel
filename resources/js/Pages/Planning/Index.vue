@@ -12,6 +12,8 @@ const props = defineProps({
 })
 
 const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 const currentYear = ref(props.calendar.year)
 const currentMonth = ref(props.calendar.month)
 const currentWeekStart = ref(props.calendar.week_start)
@@ -416,7 +418,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                             <ChevronRight class="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                     </div>
-                    <button @click="showPdfModal = true"
+                    <button v-if="can('export planning')" @click="showPdfModal = true"
                         class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2">
                         <FileDown class="w-4 h-4" />
                         Exportar PDF
@@ -468,7 +470,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                         class="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
                                         {{ day.count }} tarea{{ day.count !== 1 ? 's' : '' }}
                                     </div>
-                                    <button v-if="!day.isSunday && !allBlocksFull(day, snapshot.work_blocks)"
+                                    <button v-if="can('create planning') && !day.isSunday && !allBlocksFull(day, snapshot.work_blocks)"
                                         @click.stop="createTask(day.date, '09:00-11:00')"
                                         class="absolute top-1 right-1 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                                         <Plus class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -508,7 +510,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                             {{ task.title }}
                                         </div>
                                     </template>
-                                    <button v-if="!day.isSunday && !isBlockOccupied(day, block)"
+                                    <button v-if="can('create planning') && !day.isSunday && !isBlockOccupied(day, block)"
                                         @click.stop="createTask(day.date, block)"
                                         class="absolute bottom-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                                         <Plus class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
@@ -540,7 +542,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button @click="createTask(selectedDate, '09:00-11:00')"
+                            <button v-if="can('create planning')" @click="createTask(selectedDate, '09:00-11:00')"
                                 class="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
                                 <Plus class="w-4 h-4" />
                             </button>
@@ -593,11 +595,11 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
                                     Ver
                                 </button>
-                                <button @click="editTask(task.id)"
+                                <button v-if="can('edit planning')" @click="editTask(task.id)"
                                     class="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition">
                                     Editar
                                 </button>
-                                <button @click="confirmDeleteTask(task)"
+                                <button v-if="can('delete planning')" @click="confirmDeleteTask(task)"
                                     class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">
                                     <Trash2 class="w-3 h-3" />
                                 </button>
@@ -607,7 +609,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
                             <div class="flex items-center justify-between mb-3">
                                 <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tareas extra</h4>
-                                <button @click="openExtraModal()"
+                                <button v-if="can('create planning')" @click="openExtraModal()"
                                     class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1">
                                     <Plus class="w-3 h-3" /> Nueva
                                 </button>
@@ -639,11 +641,11 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-2 mt-2 pt-2 border-t border-teal-200 dark:border-teal-800">
-                                    <button @click="openExtraModal(task)"
+                                    <button v-if="can('edit planning')" @click="openExtraModal(task)"
                                         class="text-xs px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition">
                                         Editar
                                     </button>
-                                    <button @click="confirmDeleteExtra(task)"
+                                    <button v-if="can('delete planning')" @click="confirmDeleteExtra(task)"
                                         class="text-xs px-2 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">
                                         <Trash2 class="w-3 h-3" />
                                     </button>

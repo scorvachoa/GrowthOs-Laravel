@@ -39,18 +39,39 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 | Módulo | Ruta | Permiso requerido |
 |--------|------|-------------------|
 | Dashboard | `/dashboard` | `view dashboard` |
-| Usuarios | `/users` | `manage users` |
-| Roles | `/roles` | `manage roles` |
-| Planificación (mes/semana) | `/planning` | `manage tasks` |
-| Tareas extra (sidebar) | — | `manage tasks` |
-| Ideas (CRUD + import/export txt) | `/ideas` | `manage tasks` |
-| Historial de tareas (auditoría) | `/task-history` | `manage tasks` |
+| Usuarios (ver) | `/users` | `view users` |
+| Usuarios (crear) | `/users/create` | `create users` |
+| Usuarios (editar) | `/users/{id}/edit` | `edit users` |
+| Usuarios (eliminar) | — | `delete users` |
+| Roles (ver) | `/roles` | `view roles` |
+| Roles (crear) | `/roles/create` | `create roles` |
+| Roles (editar) | `/roles/{id}/edit` | `edit roles` |
+| Roles (eliminar) | — | `delete roles` |
+| Planificación (ver) | `/planning` | `view planning` |
+| Planificación (crear) | — | `create planning` |
+| Planificación (editar) | — | `edit planning` |
+| Planificación (eliminar) | — | `delete planning` |
+| Planificación (exportar PDF) | — | `export planning` |
+| Tareas extra (ver) | — | `view extra tasks` |
+| Tareas extra (crear) | — | `create extra tasks` |
+| Tareas extra (editar) | — | `edit extra tasks` |
+| Tareas extra (eliminar) | — | `delete extra tasks` |
+| Ideas (ver) | `/ideas` | `view ideas` |
+| Ideas (crear) | — | `create ideas` |
+| Ideas (editar) | — | `edit ideas` |
+| Ideas (eliminar) | — | `delete ideas` |
+| Ideas (importar/exportar) | — | `import ideas`, `export ideas` |
+| Historial de tareas (auditoría) | `/task-history` | `view task history` |
+| Reportes PDF (ver) | `/dashboard`, `/planning` | `view reports` |
+| Reportes PDF (exportar) | — | `download reports` |
+| Historial de reportes (ver) | `/report-history` | `view reports` |
+| Historial de reportes (descargar) | — | `download reports` |
 | YouTube (canales + API stats) | `/youtube` | `view youtube` |
-| Reportes PDF (Dashboard / Planning) | `/dashboard`, `/planning` | `view reports` |
-| Historial de reportes | `/report-history` | `view reports` |
-| Empresa (nombre, logo, color, canales) | `/settings` | `manage tasks` |
-| AI Generator (guiones, copy, frases, audio) | `/ai` | Usuario autenticado |
-| Historial de generaciones AI | `/ai/history` | Usuario autenticado |
+| Empresa (editar) | `/settings` | `edit company` |
+| Canales (CRUD) | — | `create channels`, `edit channels`, `delete channels` |
+| AI Generator | `/ai` | `view ai` |
+| AI Historial (ver) | `/ai/history` | `view ai history` |
+| AI Historial (descargar) | — | `download ai` |
 | Perfil | `/profile` | Usuario autenticado |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -67,15 +88,21 @@ Roles por defecto tras `db:seed`:
 | **Super Admin** | Todos |
 | **Employee** | Sin permisos asignados (extensible) |
 
-Permisos del sistema:
+Permisos del sistema (32 en total, agrupados por módulo):
 
 ```
-view dashboard
-manage users
-manage roles
-manage tasks
-view reports
-view youtube
+Dashboard:       view dashboard
+Usuarios:        view users, create users, edit users, delete users
+Roles:           view roles, create roles, edit roles, delete roles
+Planificación:   view planning, create planning, edit planning, delete planning, export planning
+Tareas extra:    view extra tasks, create extra tasks, edit extra tasks, delete extra tasks
+Ideas:           view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
+Historial:       view task history
+Reportes:        view reports, download reports
+YouTube:         view youtube
+Empresa:         edit company
+Canales:         create channels, edit channels, delete channels
+AI:              view ai, view ai history, download ai
 ```
 
 ### CRUD de usuarios
@@ -85,6 +112,7 @@ view youtube
 - Validación vía Form Requests
 - Capa de servicio (`UserService`)
 - Policy basada en permisos (`UserPolicy`)
+- Solo Super Admin puede editar/eliminar a otros Super Admins (bloqueado en Policy y en UI)
 
 ### Roles y permisos
 - CRUD de roles
@@ -95,6 +123,7 @@ view youtube
 - Layout con sidebar dinámico según permisos
 - Topbar con perfil y logout
 - Flash messages y toasts
+- Modal centrado de error 403 para respuestas Inertia (con backdrop, icono, botón "Entendido")
 - Modal de confirmación para eliminaciones
 - Componentes reutilizables (formularios, botones, paginación, modales)
 - Soporte modo claro / oscuro (Tailwind `dark:`)
@@ -262,7 +291,7 @@ resources/js/
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **Import Python** — comando `import:python-data` migra datos desde SQLite (tasks.db) a Laravel, con detección de duplicados
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos`. Envío directo al planificador desde el generador y el historial.
-- **Permisos por ruta** — `manage tasks` para planificación, tareas extra, ideas, historial de tareas y settings; `view reports` para reportes e historial; `view youtube` para sección YouTube; AI Generator accesible para cualquier usuario autenticado
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (32 permisos en 10 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 
 ---
 
@@ -350,6 +379,9 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 - [x] Historial de generaciones AI (descarga TXT, envío a planificador, cargar en editor)
 
 ### Pendiente
+- [x] Permisos granulares (32 permisos en 10 grupos, reemplazando `manage users`, `manage tasks`, `view ai`)
+- [x] Modal de error 403 con redirect a página anterior (Inertia)
+- [x] Protección Super Admin: solo otro Super Admin puede editar/eliminar su cuenta
 - [ ] Tests de autorización y CRUD
 - [ ] Multi-tenancy y suscripciones
 

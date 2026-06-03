@@ -1,6 +1,11 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePage } from '@inertiajs/vue3'
 import { FileDown, Clock } from 'lucide-vue-next'
+
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 
 defineProps({
     histories: Array,
@@ -55,7 +60,7 @@ const scopeLabel = (scope) => {
                                 </td>
                                 <td class="py-4 text-sm text-gray-700 dark:text-gray-300">{{ item.filename }}</td>
                                 <td class="py-4 text-right">
-                                    <a :href="`/report-history/${item.id}/download`"
+                                    <a v-if="can('download reports')" :href="`/report-history/${item.id}/download`"
                                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition">
                                         <FileDown class="w-3 h-3" />
                                         Descargar

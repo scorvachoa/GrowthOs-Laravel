@@ -1,11 +1,16 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { router, Link } from '@inertiajs/vue3'
+import { router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
 import { Users, Plus, Pencil, Trash2, Shield, Mail, CalendarDays } from 'lucide-vue-next'
+
+const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
+const isSuperAdmin = page.props.auth?.user?.roles?.includes('Super Admin')
 
 const props = defineProps({
     users: {
@@ -65,7 +70,7 @@ const roleColor = (role) => {
                 </div>
                 <div class="flex gap-3">
                     <SearchInput v-model="search" />
-                    <Link href="/users/create">
+                    <Link v-if="can('create users')" href="/users/create">
                         <PrimaryButton class="inline-flex items-center gap-2">
                             <Plus class="w-4 h-4 mr-1.5" /> Nuevo usuario
                         </PrimaryButton>
@@ -117,11 +122,13 @@ const roleColor = (role) => {
                             </td>
                             <td class="py-3.5 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
-                                    <Link :href="`/users/${user.id}/edit`"
+                                    <Link v-if="can('edit users') && (user.role !== 'Super Admin' || isSuperAdmin)"
+                                        :href="`/users/${user.id}/edit`"
                                         class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition">
                                         <Pencil class="w-4 h-4" />
                                     </Link>
-                                    <button @click="openDeleteModal(user)"
+                                    <button v-if="can('delete users') && (user.role !== 'Super Admin' || isSuperAdmin)"
+                                        @click="openDeleteModal(user)"
                                         class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition">
                                         <Trash2 class="w-4 h-4" />
                                     </button>

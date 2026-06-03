@@ -23,35 +23,42 @@ export default [
         title: 'AI Generator',
         icon: Sparkles,
         route: '/ai',
-        permission: null,
+        permission: 'generate ai',
     },
 
     {
         title: 'Users',
         icon: Users,
         route: '/users',
-        permission: 'manage users',
+        permission: 'view users',
     },
 
     {
         title: 'Roles',
         icon: Shield,
         route: '/roles',
-        permission: 'manage roles',
+        permission: 'view roles',
     },
 
     {
         title: 'Planificacion',
         icon: CalendarDays,
         route: '/planning',
-        permission: 'manage tasks',
+        permission: 'view planning',
     },
 
     {
         title: 'Tareas',
         icon: ClipboardList,
         route: '/task-history',
-        permission: 'manage tasks',
+        permission: 'view tasks',
+    },
+
+    {
+        title: 'Ideas',
+        icon: Lightbulb,
+        route: '/ideas',
+        permission: 'view ideas',
     },
 
     {
@@ -69,16 +76,9 @@ export default [
     },
 
     {
-        title: 'Ideas',
-        icon: Lightbulb,
-        route: '/ideas',
-        permission: 'manage tasks',
-    },
-
-    {
         title: 'Empresa',
         icon: Settings,
         route: '/settings',
-        permission: 'manage tasks',
+        permission: 'view empresa',
     },
 ]

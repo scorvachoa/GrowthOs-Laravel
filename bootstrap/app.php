@@ -19,5 +19,16 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->header('X-Inertia')) {
+                $status = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpException
+                    ? $e->getStatusCode()
+                    : ($e instanceof \Illuminate\Auth\Access\AuthorizationException ? 403 : null);
+
+                if ($status === 403) {
+                    $back = $request->header('X-Inertia-Previous-URL') ?: url()->previous();
+                    return redirect($back)->with('error', 'No tienes permisos para realizar esta acción.');
+                }
+            }
+        });
     })->create();

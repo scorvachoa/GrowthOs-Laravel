@@ -37,14 +37,7 @@ watch(
     }
 )
 
-watch(
-    () => page.props.flash?.error,
-    (message) => {
-        if (message) {
-            addToast(message, 'error')
-        }
-    }
-)
+/* Error toasts are handled by ErrorModal.vue */
 
 watch(
     () => page.props.flash?.info,

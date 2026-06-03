@@ -1,8 +1,8 @@
 <script setup>
 import Sidebar from '@/Components/Navigation/Sidebar.vue'
-/*import Topbar from '@/Components/Layout/Topbar.vue'*/
 import FlashMessage from '@/Components/UI/FlashMessage.vue'
 import ToastContainer from '@/Components/Notifications/ToastContainer.vue'
+import ErrorModal from '@/Components/UI/ErrorModal.vue'
 import Topbar from '@/Components/Navigation/Topbar.vue'
 </script>
 
@@ -17,6 +17,7 @@ import Topbar from '@/Components/Navigation/Topbar.vue'
                 <main class="p-6">
                     <FlashMessage />
                     <ToastContainer />
+                    <ErrorModal />
                     <slot />
                 </main>
             </div>

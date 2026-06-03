@@ -6,6 +6,8 @@ import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 import { Building2, Youtube, Plus, Trash2, Pencil, X, Check, ExternalLink, Upload } from 'lucide-vue-next'
 
 const page = usePage()
+const permissions = page.props.auth?.user?.permissions ?? []
+const can = (perm) => permissions.includes(perm)
 
 const props = defineProps({
     organization: Object,
@@ -152,7 +154,7 @@ function deleteChannel(channel) {
                             </div>
                         </div>
 
-                        <PrimaryButton type="submit">Guardar empresa</PrimaryButton>
+                        <PrimaryButton v-if="can('edit empresa')" type="submit">Guardar empresa</PrimaryButton>
                     </form>
                 </div>
 
@@ -189,7 +191,7 @@ function deleteChannel(channel) {
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                         </div>
                         <div class="flex justify-end">
-                            <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition flex items-center gap-1.5">
+                            <button v-if="can('create empresa')" type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition flex items-center gap-1.5">
                                 <Plus class="w-4 h-4" /> Añadir canal
                             </button>
                         </div>
@@ -234,11 +236,11 @@ function deleteChannel(channel) {
                                     </td>
                                     <td class="py-3 px-3 text-right">
                                         <div class="flex items-center justify-end gap-1">
-                                            <button @click="startEdit(channel)"
+                                            <button v-if="can('edit empresa')" @click="startEdit(channel)"
                                                 class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition">
                                                 <Pencil class="w-4 h-4" />
                                             </button>
-                                            <button @click="deleteChannel(channel)"
+                                            <button v-if="can('delete empresa')" @click="deleteChannel(channel)"
                                                 class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition">
                                                 <Trash2 class="w-4 h-4" />
                                             </button>

@@ -16,11 +16,45 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $permissions = [
             'view dashboard',
-            'manage users',
-            'manage roles',
-            'manage tasks',
+
+            'view users',
+            'create users',
+            'edit users',
+            'delete users',
+
+            'view roles',
+            'create roles',
+            'edit roles',
+            'delete roles',
+
+            'view planning',
+            'create planning',
+            'edit planning',
+            'delete planning',
+            'export planning',
+
+            'view tasks',
+
+            'view ideas',
+            'create ideas',
+            'edit ideas',
+            'delete ideas',
+            'import ideas',
+            'export ideas',
+
             'view reports',
+            'download reports',
+
             'view youtube',
+
+            'generate ai',
+            'view ai history',
+            'download ai',
+
+            'view empresa',
+            'create empresa',
+            'edit empresa',
+            'delete empresa',
         ];
 
         foreach ($permissions as $permission) {
@@ -38,5 +72,20 @@ class RolesAndPermissionsSeeder extends Seeder
         $employee = Role::firstOrCreate([
             'name' => 'Employee',
         ]);
+
+        $oldPermissions = [
+            'manage users',
+            'manage tasks',
+            'manage roles',
+            'view ai',
+            'view video tasks',
+        ];
+
+        foreach ($oldPermissions as $old) {
+            if (Permission::where('name', $old)->exists()) {
+                $superAdmin->revokePermissionTo($old);
+                Permission::where('name', $old)->delete();
+            }
+        }
     }
 }
