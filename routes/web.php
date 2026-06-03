@@ -17,14 +17,10 @@ use App\Http\Controllers\ExtraTaskController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\IdeaController;
 use App\Http\Controllers\TaskHistoryController;
+use App\Http\Controllers\AIController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('login');
 });
 
 Route::middleware('auth')->group(function () {
@@ -45,6 +41,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/channels/{channel}/delete', [SettingsController::class, 'destroyChannel'])->name('settings.channels.destroy');
 
     Route::get('/youtube', [YoutubeController::class, 'index'])->middleware('can:view youtube')->name('youtube.index');
+
+    Route::get('/ai', [AIController::class, 'index'])->name('ai.index');
+    Route::get('/ai/history', [AIController::class, 'history'])->name('ai.history');
+    Route::get('/ai/history/{id}', [AIController::class, 'show'])->name('ai.show');
+    Route::delete('/ai/history/{id}', [AIController::class, 'destroy'])->name('ai.destroy');
+    Route::get('/ai/history/{id}/download', [AIController::class, 'downloadTxt'])->name('ai.download');
+    Route::post('/ai/create-task', [AIController::class, 'createTask'])->name('ai.create-task');
+    Route::post('/ai/generate', [AIController::class, 'generateScript'])->name('ai.generate');
+    Route::post('/ai/audio', [AIController::class, 'generateAudio'])->name('ai.audio');
+    Route::post('/ai/copy', [AIController::class, 'generateCopy'])->name('ai.copy');
+    Route::post('/ai/phrases', [AIController::class, 'generatePhrases'])->name('ai.phrases');
+    Route::post('/ai/copy-phrases', [AIController::class, 'generateCopyPhrases'])->name('ai.copy-phrases');
 
     Route::middleware('can:manage tasks')->group(function () {
         Route::get('/planning', [PlanningController::class, 'index'])->name('planning.index');

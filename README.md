@@ -49,6 +49,8 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 | Reportes PDF (Dashboard / Planning) | `/dashboard`, `/planning` | `view reports` |
 | Historial de reportes | `/report-history` | `view reports` |
 | Empresa (nombre, logo, color, canales) | `/settings` | `manage tasks` |
+| AI Generator (guiones, copy, frases, audio) | `/ai` | Usuario autenticado |
+| Historial de generaciones AI | `/ai/history` | Usuario autenticado |
 | Perfil | `/profile` | Usuario autenticado |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -200,12 +202,15 @@ Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
 app/
 ├── Http/
 │   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory,
-│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory
+│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory, AI
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
-├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea
+├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea, GeneratedVideo
 ├── Policies/                # UserPolicy
-├── Services/                # PlanningCalendarService, DashboardService, UserService, IdeaService
+├── Services/
+│   ├── AI/                  # GeminiService, ElevenLabsService, AIContentService, Prompts,
+│   │                        # ScriptCleaner, CopyParser, PhraseCleaner
+│   ├── PlanningCalendarService, DashboardService, UserService, IdeaService, YouTubeService
 └── Support/                 # WorkBlocks, VideoTaskStatuses (enums planos con constantes)
 
 database/
@@ -217,6 +222,7 @@ resources/views/pdf/         # report.blade.php (template PDF con logo, color em
 
 resources/js/
 ├── Components/
+│   ├── AI/                  # UseTaskModal (envío al planificador desde AI Generator)
 │   ├── ExportPdfModal.vue   # Modal reutilizable para exportar PDF (Dashboard + Planning)
 │   ├── Forms/               # TextInput, SearchInput
 │   ├── Modals/              # Modal, ConfirmDelete
@@ -228,6 +234,7 @@ resources/js/
 ├── Layouts/
 │   └── AppLayout.vue        # Layout principal autenticado
 └── Pages/
+    ├── AI/                  # Index (generador 4 columnas) + History (historial con descarga TXT y envío a planificador)
     ├── Auth/
     ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento + Exportar PDF
     ├── Ideas/               # Index (tabs por canal, búsqueda, sort, CRUD, import/export txt)
@@ -254,7 +261,8 @@ resources/js/
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **Import Python** — comando `import:python-data` migra datos desde SQLite (tasks.db) a Laravel, con detección de duplicados
-- **Permisos por ruta** — `manage tasks` para planificación, tareas extra, ideas, historial de tareas y settings; `view reports` para reportes e historial; `view youtube` para sección YouTube
+- **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos`. Envío directo al planificador desde el generador y el historial.
+- **Permisos por ruta** — `manage tasks` para planificación, tareas extra, ideas, historial de tareas y settings; `view reports` para reportes e historial; `view youtube` para sección YouTube; AI Generator accesible para cualquier usuario autenticado
 
 ---
 
@@ -304,6 +312,10 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 | `ADMIN_PASSWORD` | Contraseña del usuario admin al ejecutar seeders |
 | `VITE_APP_NAME` | Nombre mostrado en el frontend |
 | `YOUTUBE_API_KEY` | API Key de YouTube Data API v3 para estadisticas de canales |
+| `GEMINI_API_KEY` | API Key de Google Gemini (o `GEMINI_KEY_1`, `GEMINI_KEY_2`... para rotación) |
+| `ELEVENLABS_API_KEY` | API Key de ElevenLabs para generación de audio MP3 |
+| `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
+| `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
 | `IMPORT_SOURCE_PATH` | Ruta al archivo SQLite del proyecto Python (`database/tasks.db`) para migrar datos |
 
 ---
@@ -334,6 +346,8 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 - [x] VideoTaskForm: auto-selección del primer bloque libre
 - [x] Show: layout 3 columnas (guion, copy, video) + YouTube/TikTok embed
 - [x] PDF mejorado: line-height 1.6, escalado proporcional, footer, color en links
+- [x] AI Generator con Gemini 2.5 Flash (guion, copy, frases, audio ElevenLabs)
+- [x] Historial de generaciones AI (descarga TXT, envío a planificador, cargar en editor)
 
 ### Pendiente
 - [ ] Tests de autorización y CRUD

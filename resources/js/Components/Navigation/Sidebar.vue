@@ -16,7 +16,7 @@ const items = computed(() => {
         : Object.values(permissions)
 
     return navigation.filter(item =>
-        permissionList.includes(item.permission)
+        !item.permission || permissionList.includes(item.permission)
     )
 })
 </script>

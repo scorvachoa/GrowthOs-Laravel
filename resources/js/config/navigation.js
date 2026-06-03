@@ -8,6 +8,7 @@ import {
     Youtube,
     Lightbulb,
     ClipboardList,
+    Sparkles,
 } from 'lucide-vue-next'
 
 export default [
@@ -16,6 +17,13 @@ export default [
         icon: LayoutDashboard,
         route: '/dashboard',
         permission: 'view dashboard',
+    },
+
+    {
+        title: 'AI Generator',
+        icon: Sparkles,
+        route: '/ai',
+        permission: null,
     },
 
     {
