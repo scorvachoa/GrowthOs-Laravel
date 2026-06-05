@@ -14,6 +14,11 @@ const props = defineProps({
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
+const workingDays = computed(() => page.props.auth?.user?.settings?.working_days ?? [1,2,3,4,5])
+
+function isNonWorkingDay(dayOfWeek) {
+    return !workingDays.value.includes(dayOfWeek)
+}
 const currentYear = ref(props.calendar.year)
 const currentMonth = ref(props.calendar.month)
 const currentWeekStart = ref(props.calendar.week_start)
@@ -38,6 +43,27 @@ const extraForm = ref({
     title: '',
     status: 'pending',
     location: 'oficina',
+})
+
+function parseDate(str) {
+    const [y, m, d] = str.split('-').map(Number)
+    return new Date(y, m - 1, d)
+}
+
+function parseTimeRange(range) {
+    if (!range) return { start: '08:00', end: '09:00' }
+    const parts = range.split('-')
+    if (parts.length !== 2) return { start: '08:00', end: '09:00' }
+    return { start: parts[0], end: parts[1] }
+}
+
+const timeStart = ref('08:00')
+const timeEnd = ref('09:00')
+
+watch([timeStart, timeEnd], ([s, e]) => {
+    if (s && e) {
+        extraForm.value.time_range = `${s}-${e}`
+    }
 })
 
 const statusColors = {
@@ -79,56 +105,60 @@ const calendarDays = computed(() => {
     for (let d = 1; d <= daysInMonth.value; d++) {
         const dateObj = new Date(currentYear.value, currentMonth.value - 1, d)
         const dateStr = formatDate(dateObj)
-        const isSunday = dateObj.getDay() === 0
+        const dayOfWeek = dateObj.getDay()
         const isToday = dateStr === snapshot.value.today
         const isHoliday = snapshot.value.holidays_map?.[dateStr]
         const blocks = snapshot.value.blocks_map?.[dateStr] || {}
         const tasks = snapshot.value.tasks_detail_map?.[dateStr] || []
         const count = snapshot.value.tasks_count?.[dateStr] || 0
+        const hasExtraTasks = !!snapshot.value.has_extra_tasks_map?.[dateStr]
         days.push({
             day: d,
             date: dateStr,
-            isSunday,
+            isNonWorkingDay: isNonWorkingDay(dayOfWeek),
             isToday,
             isHoliday,
             holidayName: isHoliday || null,
             blocks,
             tasks,
             count,
+            hasExtraTasks,
         })
     }
     return days
 })
 
 const weekDays = computed(() => {
-    const start = new Date(currentWeekStart.value)
+    const start = parseDate(currentWeekStart.value)
     const days = []
     for (let i = 0; i < 7; i++) {
         const d = new Date(start)
         d.setDate(start.getDate() + i)
         const dateStr = formatDate(d)
-        const isSunday = d.getDay() === 0
+        const dayOfWeek = d.getDay()
         const isToday = dateStr === snapshot.value.today
         const isHoliday = snapshot.value.holidays_map?.[dateStr]
         const blocks = snapshot.value.week_blocks_map?.[dateStr] || {}
         const tasks = snapshot.value.week_tasks_detail_map?.[dateStr] || []
+        const extraTasks = snapshot.value.week_extra_tasks_detail_map?.[dateStr] || []
         days.push({
             day: d.getDate(),
             date: dateStr,
             weekday: d.toLocaleString('es', { weekday: 'short' }),
-            isSunday,
+            isNonWorkingDay: isNonWorkingDay(dayOfWeek),
             isToday,
             isHoliday,
             holidayName: isHoliday || null,
             blocks,
             tasks,
+            extraTasks,
         })
     }
     return days
 })
 
 const weekName = computed(() => {
-    const start = new Date(currentWeekStart.value)
+    const start = parseDate(currentWeekStart.value)
     const end = new Date(start)
     end.setDate(start.getDate() + 6)
     const opts = { day: 'numeric', month: 'long' }
@@ -202,7 +232,7 @@ function nextMonth() {
 }
 
 function prevWeek() {
-    const d = new Date(currentWeekStart.value)
+    const d = parseDate(currentWeekStart.value)
     d.setDate(d.getDate() - 7)
     currentWeekStart.value = formatDate(d)
     if (d.getMonth() + 1 !== currentMonth.value || d.getFullYear() !== currentYear.value) {
@@ -210,10 +240,11 @@ function prevWeek() {
         currentMonth.value = d.getMonth() + 1
     }
     updateUrl()
+    fetchSnapshot()
 }
 
 function nextWeek() {
-    const d = new Date(currentWeekStart.value)
+    const d = parseDate(currentWeekStart.value)
     d.setDate(d.getDate() + 7)
     currentWeekStart.value = formatDate(d)
     if (d.getMonth() + 1 !== currentMonth.value || d.getFullYear() !== currentYear.value) {
@@ -221,6 +252,7 @@ function nextWeek() {
         currentMonth.value = d.getMonth() + 1
     }
     updateUrl()
+    fetchSnapshot()
 }
 
 function setView(mode) {
@@ -229,11 +261,11 @@ function setView(mode) {
 }
 
 function updateUrl() {
-    const params = { year: currentYear.value, month: currentMonth.value, view: viewMode.value }
+    const params = new URLSearchParams({ year: currentYear.value, month: currentMonth.value, view: viewMode.value })
     if (viewMode.value === 'week') {
-        params.week_start = currentWeekStart.value
+        params.set('week_start', currentWeekStart.value)
     }
-    router.get('/planning', params, { preserveState: true, replace: true })
+    window.history.replaceState({}, '', `/planning?${params}`)
 }
 
 watch([currentYear, currentMonth], () => {
@@ -312,6 +344,9 @@ function openExtraModal(task = null) {
             status: task.status,
             location: task.location,
         }
+        const parsed = parseTimeRange(task.time_range)
+        timeStart.value = parsed.start
+        timeEnd.value = parsed.end
     } else {
         editingExtra.value = null
         extraForm.value = {
@@ -321,6 +356,8 @@ function openExtraModal(task = null) {
             status: 'pending',
             location: 'oficina',
         }
+        timeStart.value = '09:00'
+        timeEnd.value = '10:00'
     }
     showExtraModal.value = true
 }
@@ -342,7 +379,8 @@ async function saveExtraTask() {
 
     try {
         if (editingExtra.value) {
-            await axios.patch(`/extra-tasks/${editingExtra.value.id}`, payload)
+            const id = String(editingExtra.value.id).replace(/^e/, '')
+            await axios.patch(`/extra-tasks/${id}`, payload)
         } else {
             await axios.post('/extra-tasks', payload)
         }
@@ -362,7 +400,8 @@ function confirmDeleteExtra(task) {
 async function executeExtraDelete() {
     if (!extraDeleteTarget.value) return
     try {
-        await axios.delete(`/extra-tasks/${extraDeleteTarget.value.id}`)
+        const id = String(extraDeleteTarget.value.id).replace(/^e/, '')
+        await axios.delete(`/extra-tasks/${id}`)
         showExtraDeleteModal.value = false
         extraDeleteTarget.value = null
         if (selectedDate.value) fetchDayTasks(selectedDate.value)
@@ -372,13 +411,94 @@ async function executeExtraDelete() {
     }
 }
 
-function blockCellColor(count) {
-    if (count === 0) return ''
-    if (count >= 1) return 'bg-indigo-500'
-    return ''
+const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miecoles', 'Jueves', 'Viernes', 'Sabado']
+
+const hours = computed(() => {
+    const settings = page.props.auth?.user?.settings || {}
+    const startHour = parseInt(settings.default_work_start?.split(':')[0] || '9')
+    const endHour = parseInt(settings.default_work_end?.split(':')[0] || '18')
+    const h = []
+    for (let i = startHour; i < endHour; i++) {
+        h.push(i)
+    }
+    return h
+})
+
+function taskStartHour(task) {
+    return parseInt(task.time_range?.split('-')[0]?.split(':')[0]) || 0
 }
 
-const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
+function taskEndHour(task) {
+    return parseInt(task.time_range?.split('-')[1]?.split(':')[0]) || 0
+}
+
+function isTaskStart(task, hour) {
+    return taskStartHour(task) === hour
+}
+
+function blockForHour(hour) {
+    const blocks = snapshot.value.work_blocks || []
+    return blocks.find(b => {
+        const [s, e] = b.split('-').map(p => parseInt(p.split(':')[0]))
+        return hour >= s && hour < e
+    }) || blocks[0] || '09:00-11:00'
+}
+
+function isHourOccupied(day, hour) {
+    return day.tasks?.some(t => isTaskStart(t, hour)) ?? false
+}
+
+const weekTaskPlacements = computed(() => {
+    const placements = []
+    const hList = hours.value
+    const byDayHour = {}
+    weekDays.value.forEach((day, dayIdx) => {
+        const col = dayIdx + 2
+        const key = day.date
+        byDayHour[key] = {}
+        day.tasks.forEach(task => {
+            const startH = taskStartHour(task)
+            const endH = taskEndHour(task)
+            const startRow = hList.indexOf(startH)
+            if (startRow === -1) return
+            const duration = Math.max(1, endH - startH)
+            if (!byDayHour[key][startH]) byDayHour[key][startH] = []
+            byDayHour[key][startH].push({ ...task, _type: 'video', _col: col, _row: `${startRow + 2} / span ${duration}`, _duration: duration })
+        })
+        day.extraTasks.forEach(task => {
+            const startH = taskStartHour(task)
+            const endH = taskEndHour(task)
+            const startRow = hList.indexOf(startH)
+            if (startRow === -1) return
+            const duration = Math.max(1, endH - startH)
+            if (!byDayHour[key][startH]) byDayHour[key][startH] = []
+            byDayHour[key][startH].push({ ...task, _type: 'extra', _col: col, _row: `${startRow + 2} / span ${duration}`, _duration: duration })
+        })
+    })
+    for (const dayKey of Object.keys(byDayHour)) {
+        for (const startH of Object.keys(byDayHour[dayKey])) {
+            const group = byDayHour[dayKey][startH]
+            if (group.length === 1) {
+                placements.push(group[0])
+            } else {
+                // side-by-side within the column and within the span area
+                // use a sub-grid: for N tasks, each takes 1fr width
+                // but since we're in a CSS grid, we use horizontal offset
+                // The column is 1fr, so we divide it into N parts
+                // gridColumn: col / span 1 doesn't allow sub-columns,
+                // so we'll use absolute positioning inset
+                group.forEach((p, i) => {
+                    placements.push({
+                        ...p,
+                        _offset: i,
+                        _total: group.length,
+                    })
+                })
+            }
+        }
+    }
+    return placements
+})
 </script>
 
 <template>
@@ -441,16 +561,16 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     class="min-h-[130px] border-r border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                                 </div>
                                 <div v-else
-                                    @click="!day.isSunday && openDay(day.date)"
+                                    @click="!day.isNonWorkingDay && openDay(day.date)"
                                     class="min-h-[130px] border-r border-b border-gray-200 dark:border-gray-700 p-2 cursor-pointer transition relative group"
                                     :class="[
-                                        day.isSunday ? 'bg-gray-50 dark:bg-gray-800/50 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                                        day.isNonWorkingDay ? 'bg-gray-50 dark:bg-gray-800/50 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
                                         day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : '',
                                     ]">
                                     <div class="flex items-start justify-between mb-1">
                                         <span class="text-sm font-bold"
                                             :class="[
-                                                day.isSunday ? 'text-red-400' : day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300',
+                                                day.isNonWorkingDay ? 'text-red-400' : day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300',
                                             ]">
                                             {{ day.day }}
                                         </span>
@@ -458,19 +578,17 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     <div v-if="day.holidayName" class="text-[10px] text-red-500 font-medium leading-tight mb-1">
                                         {{ day.holidayName }}
                                     </div>
-                                    <div class="space-y-0.5">
-                                        <div v-for="(block, bIdx) in snapshot.work_blocks || []" :key="bIdx">
-                                            <div v-if="day.blocks?.[block] > 0"
-                                                class="h-2 rounded-full"
-                                                :class="blockCellColor(day.blocks[block])">
-                                            </div>
+                                    <div class="flex flex-col gap-[2px] mt-1">
+                                        <div v-for="(task, tIdx) in day.tasks" :key="tIdx"
+                                            class="h-1.5 rounded-sm bg-indigo-500"
+                                            :title="task.time_range + ' - ' + task.title">
+                                        </div>
+                                        <div v-if="day.hasExtraTasks"
+                                            class="h-1.5 rounded-sm bg-amber-400"
+                                            title="Tareas extra">
                                         </div>
                                     </div>
-                                    <div v-if="day.count > 0"
-                                        class="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                                        {{ day.count }} tarea{{ day.count !== 1 ? 's' : '' }}
-                                    </div>
-                                    <button v-if="can('create planning') && !day.isSunday && !allBlocksFull(day, snapshot.work_blocks)"
+                                    <button v-if="can('create planning') && !day.isNonWorkingDay && !allBlocksFull(day, snapshot.work_blocks)"
                                         @click.stop="createTask(day.date, '09:00-11:00')"
                                         class="absolute top-1 right-1 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                                         <Plus class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -481,51 +599,63 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                     </div>
 
                     <div v-if="viewMode === 'week'">
-                        <div class="grid grid-cols-[100px_repeat(7,1fr)] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                            <div class="border-r border-b border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50"></div>
-                            <div v-for="day in weekDays" :key="day.date"
-                                class="border-r border-b border-gray-200 dark:border-gray-700 p-2 text-center"
-                                :class="day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-gray-50 dark:bg-gray-800/50'">
-                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ day.weekday }}</div>
-                                <div class="text-lg font-bold"
-                                    :class="day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'">
-                                    {{ day.day }}
-                                </div>
-                                <div v-if="day.holidayName" class="text-[10px] text-red-500 font-medium">{{ day.holidayName }}</div>
-                            </div>
-                            <template v-for="block in snapshot.work_blocks || []" :key="block">
-                                <div class="border-r border-b border-gray-200 dark:border-gray-700 p-2 text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center justify-center bg-gray-50 dark:bg-gray-800/50">
-                                    {{ block }}
-                                </div>
-                                <div v-for="day in weekDays" :key="day.date + block"
-                                    @click="!day.isSunday && openDay(day.date)"
-                                    class="border-r border-b border-gray-200 dark:border-gray-700 p-1 min-h-[60px] cursor-pointer group relative"
-                                    :class="day.isSunday ? 'bg-gray-50 dark:bg-gray-800/50 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'">
-                                    <template v-for="task in day.tasks" :key="task.id">
-                                        <div v-if="task.time_range === block"
-                                            @click.stop="viewTask(task.id)"
-                                            class="text-xs rounded px-1.5 py-0.5 mb-0.5 line-clamp-2 leading-tight text-white cursor-pointer"
-                                            :class="statusColors[task.status] || 'bg-gray-500'"
-                                            :title="task.title + ' (' + (statusLabels[task.status] || task.status) + ')'">
-                                            {{ task.title }}
-                                        </div>
-                                    </template>
-                                    <button v-if="can('create planning') && !day.isSunday && !isBlockOccupied(day, block)"
-                                        @click.stop="createTask(day.date, block)"
-                                        class="absolute bottom-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
-                                        <Plus class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                                    </button>
+                        <div class="grid grid-cols-[80px_repeat(7,1fr)] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                            <div :style="{ gridColumn: 1, gridRow: 1 }" class="border-r border-b border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50"></div>
+                            <template v-for="(day, dIdx) in weekDays" :key="day.date">
+                                <div :style="{ gridColumn: dIdx + 2, gridRow: 1 }"
+                                    class="border-r border-b border-gray-200 dark:border-gray-700 p-2 text-center min-w-0"
+                                    :class="day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-gray-50 dark:bg-gray-800/50'">
+                                    <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ day.weekday }}</div>
+                                    <div class="text-lg font-bold"
+                                        :class="day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'">
+                                        {{ day.day }}
+                                    </div>
+                                    <div v-if="day.holidayName" class="text-[10px] text-red-500 font-medium">{{ day.holidayName }}</div>
                                 </div>
                             </template>
+                            <template v-for="(hour, hIdx) in hours" :key="'h' + hour">
+                                <div :style="{ gridColumn: 1, gridRow: hIdx + 2 }"
+                                    class="border-r border-b border-gray-200 dark:border-gray-700 p-1 text-xs font-medium text-gray-500 dark:text-gray-400 flex items-start justify-center pt-2 bg-gray-50 dark:bg-gray-800/50">
+                                    {{ String(hour).padStart(2, '0') }}:00
+                                </div>
+                                <template v-for="(day, dIdx) in weekDays" :key="day.date + 'h' + hour">
+                                    <div :style="{ gridColumn: dIdx + 2, gridRow: hIdx + 2 }"
+                                        @click="!day.isNonWorkingDay && openDay(day.date)"
+                                        class="border-r border-b border-gray-200 dark:border-gray-700 p-0.5 cursor-pointer group relative min-w-0 min-h-[28px]"
+                                        :class="day.isNonWorkingDay ? 'bg-gray-50 dark:bg-gray-800/50 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'">
+                                        <button v-if="can('create planning') && !day.isNonWorkingDay && !isHourOccupied(day, hour)"
+                                            @click.stop="createTask(day.date, blockForHour(hour))"
+                                            class="absolute top-0 right-0 p-px rounded opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition z-20">
+                                            <Plus class="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+                                        </button>
+                                    </div>
+                                </template>
+                            </template>
+                            <div v-for="p in weekTaskPlacements" :key="p.id"
+                                :style="{
+                                    gridColumn: p._col,
+                                    gridRow: p._row,
+                                    ...(p._offset !== undefined
+                                        ? { position: 'relative', width: `calc(100% / ${p._total})`, left: `calc(100% / ${p._total} * ${p._offset})` }
+                                        : {}),
+                                }"
+                                @click.stop="p._type === 'video' ? viewTask(p.id) : openExtraModal(p)"
+                                class="z-10 rounded-sm px-1 py-0.5 m-[3px] text-[10px] leading-[14px] cursor-pointer overflow-hidden break-words"
+                                :class="p._type === 'video'
+                                    ? (statusColors[p.status] || 'bg-gray-500') + ' text-white'
+                                    : (p.location === 'fuera'
+                                        ? 'bg-orange-50 dark:bg-orange-900/20 border border-dashed border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300'
+                                        : 'bg-teal-50 dark:bg-teal-900/20 border border-dashed border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300')"
+                                :title="(p._type === 'extra' ? '[Extra] ' : '') + p.title + ' (' + p.time_range + ', ' + (statusLabels[p.status] || p.status) + ')'">
+                                {{ p.title }}
+                            </div>
                         </div>
                     </div>
                 </template>
 
                 <div class="flex items-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Bloque ocupado</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Pendiente</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Guion listo</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Publicado</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-indigo-500"></span> Tarea de video</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-400"></span> Tarea extra</span>
                 </div>
             </div>
         </div>
@@ -627,9 +757,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                     <span class="text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ml-2"
                                         :class="{
                                             'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': task.status === 'pending',
-                                            'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': task.status === 'completado',
-                                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': task.status === 'published',
-                                            'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200': task.status === 'grabando',
+                                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': task.status === 'completado',
                                         }">
                                         {{ task.status }}
                                     </span>
@@ -680,8 +808,13 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                             </div>
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Rango horario</label>
-                                <input v-model="extraForm.time_range" type="text" placeholder="09:00-10:00" required
-                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <div class="flex items-center gap-2">
+                                    <input v-model="timeStart" type="time" required
+                                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
+                                    <span class="text-gray-400 font-medium">a</span>
+                                    <input v-model="timeEnd" type="time" required
+                                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
+                                </div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -690,9 +823,7 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                 <select v-model="extraForm.status"
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="pending">Pendiente</option>
-                                    <option value="grabando">Grabando</option>
                                     <option value="completado">Completado</option>
-                                    <option value="published">Publicado</option>
                                 </select>
                             </div>
                             <div>
@@ -704,15 +835,21 @@ const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
                                 </select>
                             </div>
                         </div>
-                        <div class="flex justify-end gap-3 pt-2">
-                            <button type="button" @click="closeExtraModal"
-                                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
-                                Cancelar
+                        <div class="flex justify-between gap-3 pt-2">
+                            <button v-if="editingExtra && can('delete planning')" type="button" @click="confirmDeleteExtra(editingExtra)"
+                                class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white flex items-center gap-1">
+                                <Trash2 class="w-3.5 h-3.5" /> Eliminar
                             </button>
-                            <button type="submit"
-                                class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
-                                {{ editingExtra ? 'Actualizar' : 'Crear' }}
-                            </button>
+                            <div class="flex gap-3 ml-auto">
+                                <button type="button" @click="closeExtraModal"
+                                    class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">
+                                    {{ editingExtra ? 'Actualizar' : 'Crear' }}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

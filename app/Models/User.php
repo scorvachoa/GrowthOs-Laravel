@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Arr;
 
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -43,6 +44,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+
+
     /**
      * Get the attributes that should be cast.
      *
@@ -53,7 +56,33 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'settings' => 'array',
         ];
+    }
+
+    public static function defaultSettings(): array
+    {
+        return [
+            'use_blocks' => true,
+            'block_hours' => 2,
+            'show_youtube_chart' => true,
+            'default_work_start' => '09:00',
+            'default_work_end' => '18:00',
+            'lunch_start' => '13:00',
+            'lunch_end' => '14:00',
+            'working_days' => [1, 2, 3, 4, 5],
+            'max_tasks_per_block' => 1,
+            'default_report_scope' => 'monthly',
+            'dashboard_default_view' => 'month',
+            'youtube_max_recent_videos' => 10,
+            'app_locale' => 'es',
+            'timezone' => 'America/Lima',
+        ];
+    }
+
+    public function getMergedSettingsAttribute(): array
+    {
+        return array_merge(static::defaultSettings(), $this->settings ?? []);
     }
 
     public function getActivitylogOptions(): LogOptions

@@ -55,6 +55,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'create empresa',
             'edit empresa',
             'delete empresa',
+
+            'view configuracion',
+            'edit configuracion',
         ];
 
         foreach ($permissions as $permission) {

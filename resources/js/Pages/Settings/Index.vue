@@ -1,114 +1,83 @@
 <script setup>
-import { ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Building2, Youtube, Plus, Trash2, Pencil, X, Check, ExternalLink, Upload } from 'lucide-vue-next'
+import { ToggleLeft, Clock, Eye, BarChart3, Monitor } from 'lucide-vue-next'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
 
 const props = defineProps({
-    organization: Object,
-    channels: Array,
+    settings: Object,
+    workBlocks: Array,
 })
 
-const orgForm = ref({
-    name: props.organization?.name || '',
-    primary_color: props.organization?.primary_color || '#4f46e5',
-    logo: null,
-    remove_logo: false,
+const days = [
+    { value: 0, label: 'Dom' },
+    { value: 1, label: 'Lun' },
+    { value: 2, label: 'Mar' },
+    { value: 3, label: 'Mie' },
+    { value: 4, label: 'Jue' },
+    { value: 5, label: 'Vie' },
+    { value: 6, label: 'Sab' },
+]
+
+const form = reactive({
+    use_blocks: props.settings.use_blocks,
+    block_hours: props.settings.block_hours,
+    show_youtube_chart: props.settings.show_youtube_chart,
+    default_work_start: props.settings.default_work_start,
+    default_work_end: props.settings.default_work_end,
+    working_days: [...(props.settings.working_days || [])],
+    max_tasks_per_block: props.settings.max_tasks_per_block,
+    default_report_scope: props.settings.default_report_scope,
+    dashboard_default_view: props.settings.dashboard_default_view,
+    youtube_max_recent_videos: props.settings.youtube_max_recent_videos,
 })
 
-const newChannel = ref({
-    name: '',
-    color: '#4f46e5',
-    youtube_channel_id: '',
-    channel_url: '',
+const processing = ref(false)
+
+const previewBlocks = computed(() => {
+    if (!form.use_blocks) return []
+    const s = form.default_work_start
+    const e = form.default_work_end
+    const h = form.block_hours
+    const startHour = parseInt(s.split(':')[0])
+    const endHour = parseInt(e.split(':')[0])
+    const blocks = []
+    for (let m = startHour; m + h <= endHour; m += h) {
+        blocks.push(`${String(m).padStart(2, '0')}:00-${String(m + h).padStart(2, '0')}:00`)
+    }
+    return blocks
 })
 
-const editingId = ref(null)
-const editForm = ref({})
-
-const logoPreview = ref(props.organization?.logo_url || null)
-
-function handleLogoUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    orgForm.value.logo = file
-    orgForm.value.remove_logo = false
-    const reader = new FileReader()
-    reader.onload = (ev) => { logoPreview.value = ev.target?.result }
-    reader.readAsDataURL(file)
-}
-
-function removeLogo() {
-    orgForm.value.remove_logo = true
-    orgForm.value.logo = null
-    logoPreview.value = null
-}
-
-function submitCompany() {
-    const form = new FormData()
-    form.append('name', orgForm.value.name)
-    form.append('primary_color', orgForm.value.primary_color)
-    if (orgForm.value.logo) {
-        form.append('logo', orgForm.value.logo)
+function toggleWorkingDay(day) {
+    const idx = form.working_days.indexOf(day)
+    if (idx === -1) {
+        form.working_days = [...form.working_days, day]
+    } else {
+        form.working_days = form.working_days.filter(d => d !== day)
     }
-    if (orgForm.value.remove_logo) {
-        form.append('remove_logo', '1')
-    }
-    router.post('/settings/company', form, {
+}
+
+function submit() {
+    processing.value = true
+    router.put('/settings', { ...form }, {
         preserveScroll: true,
-        onSuccess: () => {
-            orgForm.value.remove_logo = false
-        },
+        preserveState: false,
+        onFinish: () => { processing.value = false },
     })
-}
-
-function addChannel() {
-    router.post('/settings/channels', newChannel.value, {
-        preserveScroll: true,
-        onSuccess: () => {
-            newChannel.value = { name: '', color: '#4f46e5', youtube_channel_id: '', channel_url: '' }
-        },
-    })
-}
-
-function startEdit(channel) {
-    editingId.value = channel.id
-    editForm.value = { ...channel }
-}
-
-function cancelEdit() {
-    editingId.value = null
-    editForm.value = {}
-}
-
-function saveEdit() {
-    router.post(`/settings/channels/${editingId.value}`, editForm.value, {
-        preserveScroll: true,
-        onSuccess: () => {
-            editingId.value = null
-            editForm.value = {}
-        },
-    })
-}
-
-function deleteChannel(channel) {
-    if (confirm(`Eliminar el canal "${channel.name}"?`)) {
-        router.post(`/settings/channels/${channel.id}/delete`, { preserveScroll: true })
-    }
 }
 </script>
 
 <template>
     <AppLayout>
-        <div class="max-w-5xl mx-auto space-y-8">
+        <div class="max-w-4xl mx-auto space-y-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuración</h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-1">Administra tu empresa y canales</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuracion</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">Preferencias personales</p>
             </div>
 
             <div v-if="page.props.flash?.success"
@@ -116,185 +85,179 @@ function deleteChannel(channel) {
                 {{ page.props.flash.success }}
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+            <form @submit.prevent="submit" class="space-y-8">
+                <!-- Horario laboral -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
-                            <Building2 class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                            <Clock class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Empresa</h2>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Horario laboral</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Define el horario base para la planificacion</p>
+                        </div>
                     </div>
 
-                    <form @submit.prevent="submitCompany" class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                            <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de la empresa</label>
-                            <input v-model="orgForm.name" type="text" required
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inicio jornada</label>
+                            <input type="time" v-model="form.default_work_start"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin jornada</label>
+                            <input type="time" v-model="form.default_work_end"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias laborables</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="d in days" :key="d.value" type="button"
+                                @click="toggleWorkingDay(d.value)"
+                                :class="[
+                                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                                    form.working_days.includes(d.value)
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                ]">
+                                {{ d.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
+                        <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                                    <ToggleLeft class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900 dark:text-white">Horario por bloques</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Al desactivar, el bloque horario sera un campo de texto libre</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="form.use_blocks" class="sr-only peer" />
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            </label>
                         </div>
 
-                        <div>
-                            <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Logo de empresa</label>
-                            <div v-if="logoPreview" class="flex items-center gap-4 mb-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                                <img :src="logoPreview" alt="Logo" class="w-12 h-12 object-contain rounded-lg bg-white" />
-                                <span class="text-sm text-gray-500">Logo actual</span>
-                                <button type="button" @click="removeLogo" class="ml-auto text-xs px-2 py-1 rounded-lg bg-red-600 text-white">Eliminar</button>
+                        <div v-if="form.use_blocks">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duracion del bloque (horas)</label>
+                            <select v-model="form.block_hours"
+                                class="w-full max-w-xs rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="1">1 hora</option>
+                                <option :value="2">2 horas</option>
+                                <option :value="3">3 horas</option>
+                                <option :value="4">4 horas</option>
+                            </select>
+                        </div>
+
+                        <div v-if="form.use_blocks && previewBlocks.length > 0" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center gap-2 mb-3">
+                                <Eye class="w-4 h-4 text-gray-400" />
+                                <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Vista previa de bloques</span>
                             </div>
-                            <label class="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                <Upload class="w-4 h-4 text-gray-500" />
-                                <span class="text-sm text-gray-500">Seleccionar imagen (PNG, JPG, WEBP, max 2MB)</span>
-                                <input type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="handleLogoUpload" />
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="block in previewBlocks" :key="block"
+                                    class="px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-mono">
+                                    {{ block }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div v-if="!form.use_blocks" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
+                            Con el horario libre, podras escribir cualquier rango horario al crear o editar tareas.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YouTube -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
+                            <BarChart3 class="w-5 h-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">YouTube</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Configuracion de la pagina de YouTube</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
+                                    <BarChart3 class="w-5 h-5 text-red-600 dark:text-red-400" />
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900 dark:text-white">Grafico de rendimiento</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Muestra el grafico de lineas de vistas</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="form.show_youtube_chart" class="sr-only peer" />
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                             </label>
                         </div>
 
                         <div>
-                            <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Color principal</label>
-                            <div class="flex items-center gap-3">
-                                <input v-model="orgForm.primary_color" type="color" class="w-12 h-10 rounded-xl border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
-                                <span class="text-sm text-gray-500">{{ orgForm.primary_color }}</span>
-                            </div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Maximos videos recientes</label>
+                            <select v-model="form.youtube_max_recent_videos"
+                                class="w-full max-w-xs rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="5">5 videos</option>
+                                <option :value="10">10 videos</option>
+                                <option :value="15">15 videos</option>
+                                <option :value="20">20 videos</option>
+                                <option :value="30">30 videos</option>
+                                <option :value="50">50 videos</option>
+                            </select>
                         </div>
-
-                        <PrimaryButton v-if="can('edit empresa')" type="submit">Guardar empresa</PrimaryButton>
-                    </form>
+                    </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <!-- Dashboard y Reportes -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">
-                            <Youtube class="w-5 h-5 text-red-600 dark:text-red-400" />
+                        <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                            <Monitor class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Agregar canal</h2>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Dashboard y Reportes</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Vistas predeterminadas</p>
+                        </div>
                     </div>
 
-                    <form @submit.prevent="addChannel" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block mb-1 text-xs font-medium text-gray-500">Nombre del canal</label>
-                            <input v-model="newChannel.name" type="text" placeholder="Canal principal" required
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                        </div>
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-gray-500">Color</label>
-                            <div class="flex items-center gap-2">
-                                <input v-model="newChannel.color" type="color" class="w-10 h-9 rounded-lg border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
-                                <input v-model="newChannel.color" type="text" placeholder="#4f46e5"
-                                    class="flex-1 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                            </div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vista del Dashboard</label>
+                            <select v-model="form.dashboard_default_view"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="week">Semanal</option>
+                                <option value="month">Mensual</option>
+                                <option value="year">Anual</option>
+                            </select>
                         </div>
                         <div>
-                            <label class="block mb-1 text-xs font-medium text-gray-500">ID del canal de YouTube</label>
-                            <input v-model="newChannel.youtube_channel_id" type="text" placeholder="UC..."
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alcance de reportes</label>
+                            <select v-model="form.default_report_scope"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="daily">Diario</option>
+                                <option value="weekly">Semanal</option>
+                                <option value="monthly">Mensual</option>
+                            </select>
                         </div>
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-gray-500">URL del canal</label>
-                            <input v-model="newChannel.channel_url" type="url" placeholder="https://youtube.com/@canal"
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                        </div>
-                        <div class="flex justify-end">
-                            <button v-if="can('create empresa')" type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition flex items-center gap-1.5">
-                                <Plus class="w-4 h-4" /> Añadir canal
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div v-if="channels.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">
-                        <Youtube class="w-5 h-5 text-red-600 dark:text-red-400" />
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">Canales agregados</h2>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b border-gray-200 dark:border-gray-700">
-                                <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px] w-10"></th>
-                                <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Nombre</th>
-                                <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">ID YouTube</th>
-                                <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">URL</th>
-                                <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="channel in channels" :key="channel.id">
-                                <tr v-if="editingId !== channel.id"
-                                    class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                                    <td class="py-3 px-3">
-                                        <span class="block w-4 h-8 rounded-full" :style="{ backgroundColor: channel.color }"></span>
-                                    </td>
-                                    <td class="py-3 px-3 font-medium text-gray-900 dark:text-white">{{ channel.name }}</td>
-                                    <td class="py-3 px-3 text-gray-500 font-mono text-xs">{{ channel.youtube_channel_id || '—' }}</td>
-                                    <td class="py-3 px-3">
-                                        <a v-if="channel.channel_url" :href="channel.channel_url" target="_blank"
-                                            class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:underline">
-                                            <ExternalLink class="w-3 h-3" /> Abrir
-                                        </a>
-                                        <span v-else class="text-gray-400 text-xs">—</span>
-                                    </td>
-                                    <td class="py-3 px-3 text-right">
-                                        <div class="flex items-center justify-end gap-1">
-                                            <button v-if="can('edit empresa')" @click="startEdit(channel)"
-                                                class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition">
-                                                <Pencil class="w-4 h-4" />
-                                            </button>
-                                            <button v-if="can('delete empresa')" @click="deleteChannel(channel)"
-                                                class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition">
-                                                <Trash2 class="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr v-else class="bg-gray-50 dark:bg-gray-900">
-                                    <td colspan="5" class="py-4 px-4">
-                                        <div class="flex items-center gap-4 mb-3">
-                                            <span class="w-4 h-8 rounded-full" :style="{ backgroundColor: editForm.color }"></span>
-                                            <span class="text-sm font-semibold text-gray-900 dark:text-white">Editando: {{ editForm.name }}</span>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                                            <div>
-                                                <label class="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">Nombre</label>
-                                                <input v-model="editForm.name" type="text" required
-                                                    class="w-full text-sm rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                            </div>
-                                            <div>
-                                                <label class="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">Color</label>
-                                                <div class="flex items-center gap-2">
-                                                    <input v-model="editForm.color" type="color" class="w-9 h-8 rounded-lg border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
-                                                    <input v-model="editForm.color" type="text"
-                                                        class="flex-1 text-sm rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">ID YouTube</label>
-                                                <input v-model="editForm.youtube_channel_id" type="text" placeholder="UC..."
-                                                    class="w-full text-sm rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                            </div>
-                                            <div>
-                                                <label class="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">URL</label>
-                                                <input v-model="editForm.channel_url" type="url" placeholder="https://..."
-                                                    class="w-full text-sm rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-end gap-2">
-                                            <button @click="cancelEdit"
-                                                class="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium transition flex items-center gap-1">
-                                                <X class="w-3 h-3" /> Cancelar
-                                            </button>
-                                            <button @click="saveEdit"
-                                                class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition flex items-center gap-1">
-                                                <Check class="w-3 h-3" /> Guardar
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                <div class="flex justify-end">
+                    <PrimaryButton v-if="can('edit configuracion')" type="submit" :disabled="processing">
+                        Guardar configuracion
+                    </PrimaryButton>
                 </div>
-            </div>
+            </form>
         </div>
     </AppLayout>
 </template>

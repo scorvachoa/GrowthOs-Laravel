@@ -11,6 +11,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskReportController;
 use App\Http\Controllers\ReportHistoryController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\YoutubeController;
 use App\Http\Controllers\VideoTaskController;
 use App\Http\Controllers\ExtraTaskController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\IdeaController;
 use App\Http\Controllers\TaskHistoryController;
 use App\Http\Controllers\AIController;
+use App\Http\Controllers\UserSettingsController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -84,12 +86,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/report-history', [ReportHistoryController::class, 'index'])->middleware('can:view reports')->name('report-history.index');
     Route::get('/report-history/{report_history}/download', [ReportHistoryController::class, 'download'])->middleware('can:download reports')->name('report-history.download');
 
-    // Settings / Empresa
-    Route::get('/settings', [SettingsController::class, 'index'])->middleware('can:view empresa')->name('settings.index');
-    Route::post('/settings/company', [SettingsController::class, 'updateCompany'])->middleware('can:edit empresa')->name('settings.company');
-    Route::post('/settings/channels', [SettingsController::class, 'storeChannel'])->middleware('can:create empresa')->name('settings.channels.store');
-    Route::post('/settings/channels/{channel}', [SettingsController::class, 'updateChannel'])->middleware('can:edit empresa')->name('settings.channels.update');
-    Route::post('/settings/channels/{channel}/delete', [SettingsController::class, 'destroyChannel'])->middleware('can:delete empresa')->name('settings.channels.destroy');
+    // Company (antiguo Settings)
+    Route::get('/company', [CompanyController::class, 'index'])->middleware('can:view empresa')->name('company.index');
+    Route::post('/company/update', [CompanyController::class, 'updateCompany'])->middleware('can:edit empresa');
+    Route::post('/company/channels', [CompanyController::class, 'storeChannel'])->middleware('can:create empresa');
+    Route::post('/company/channels/{channel}', [CompanyController::class, 'updateChannel'])->middleware('can:edit empresa');
+    Route::post('/company/channels/{channel}/delete', [CompanyController::class, 'destroyChannel'])->middleware('can:delete empresa');
+
+    // User Settings (per-user preferences)
+    Route::get('/settings', [UserSettingsController::class, 'index'])->middleware('can:view configuracion')->name('settings.index');
+    Route::put('/settings', [UserSettingsController::class, 'update'])->middleware('can:edit configuracion')->name('settings.update');
 
     // YouTube
     Route::get('/youtube', [YoutubeController::class, 'index'])->middleware('can:view youtube')->name('youtube.index');

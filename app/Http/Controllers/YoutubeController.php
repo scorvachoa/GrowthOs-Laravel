@@ -6,6 +6,7 @@ use App\Models\Channel;
 use App\Models\VideoTask;
 use App\Services\YouTubeService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -17,7 +18,9 @@ class YoutubeController extends Controller
 
     public function index()
     {
-        $channels = Channel::query()->orderBy('name')->get()->map(function ($c) {
+        $maxVideos = Auth::user()->merged_settings['youtube_max_recent_videos'] ?? 10;
+
+        $channels = Channel::query()->orderBy('name')->get()->map(function ($c) use ($maxVideos) {
             $data = [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -39,7 +42,7 @@ class YoutubeController extends Controller
                     $data['country'] = $stats['country'];
                 }
 
-                $data['videos'] = $this->youtube->recentVideos($c->youtube_channel_id);
+                $data['videos'] = $this->youtube->recentVideos($c->youtube_channel_id, $maxVideos);
             }
 
             return $data;

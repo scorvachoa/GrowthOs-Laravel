@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 
+const page = usePage()
+const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
+
 const props = defineProps({
     form: Object,
-    workBlocks: Array,
     statuses: Array,
     channels: Array,
     submitLabel: { type: String, default: 'Guardar' },
@@ -15,11 +18,31 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
+const useBlocks = computed(() => userSettings.value.use_blocks ?? true)
+
+const MORNING_END = 13
+const AFTERNOON_START = 14
+
+const workBlocks = computed(() => {
+    if (!useBlocks.value) return []
+    const h = userSettings.value.block_hours ?? 2
+    const startHour = parseInt(userSettings.value.default_work_start?.split(':')[0] || '9')
+    const endHour = parseInt(userSettings.value.default_work_end?.split(':')[0] || '18')
+    const blocks = []
+    for (let m = startHour; m + h <= Math.min(endHour, MORNING_END); m += h) {
+        blocks.push(`${String(m).padStart(2, '0')}:00-${String(m + h).padStart(2, '0')}:00`)
+    }
+    for (let m = Math.max(startHour, AFTERNOON_START); m + h <= endHour; m += h) {
+        blocks.push(`${String(m).padStart(2, '0')}:00-${String(m + h).padStart(2, '0')}:00`)
+    }
+    return blocks
+})
+
 const occupiedBlocks = ref([])
 const loadingBlocks = ref(false)
 
 watch(() => props.form.task_date, async (date) => {
-    if (!date) {
+    if (!date || !useBlocks.value) {
         occupiedBlocks.value = []
         return
     }
@@ -32,7 +55,7 @@ watch(() => props.form.task_date, async (date) => {
         const res = await axios.get('/planning/occupied-blocks', { params })
         occupiedBlocks.value = res.data.occupied || []
         if (!props.form.time_range) {
-            const free = props.workBlocks?.find(b => !occupiedBlocks.value.includes(b))
+            const free = workBlocks.value?.find(b => !occupiedBlocks.value.includes(b))
             if (free) props.form.time_range = free
         }
     } catch {
@@ -52,6 +75,23 @@ const embedUrl = computed(() => {
     return null
 })
 
+function parseTimeRange(range) {
+    if (!range) return { start: '08:00', end: '09:00' }
+    const parts = range.split('-')
+    if (parts.length !== 2) return { start: '08:00', end: '09:00' }
+    return { start: parts[0], end: parts[1] }
+}
+
+const parsed = parseTimeRange(props.form.time_range)
+const timeStart = ref(parsed.start)
+const timeEnd = ref(parsed.end)
+
+watch([timeStart, timeEnd], ([s, e]) => {
+    if (s && e) {
+        props.form.time_range = `${s}-${e}`
+    }
+}, { immediate: true })
+
 function blockDisabled(block) {
     return occupiedBlocks.value.includes(block) && props.form.time_range !== block
 }
@@ -65,10 +105,10 @@ function blockDisabled(block) {
                     <TextInput v-model="form.task_date" label="Fecha" type="date" :error="form.errors.task_date" />
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Bloque horario
+                            {{ useBlocks ? 'Bloque horario' : 'Horario inicio / fin' }}
                             <span v-if="loadingBlocks" class="text-xs text-gray-400 ml-1">Verificando...</span>
                         </label>
-                        <select v-model="form.time_range"
+                        <select v-if="useBlocks" v-model="form.time_range"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             <option v-for="block in workBlocks" :key="block" :value="block"
                                 :disabled="blockDisabled(block)"
@@ -77,6 +117,13 @@ function blockDisabled(block) {
                                 <span v-if="blockDisabled(block)">(ocupado)</span>
                             </option>
                         </select>
+                        <div v-else class="flex items-center gap-2">
+                            <input v-model="timeStart" type="time"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
+                            <span class="text-gray-400 font-medium">a</span>
+                            <input v-model="timeEnd" type="time"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
+                        </div>
                         <div v-if="form.errors.time_range" class="mt-1 text-sm text-red-500">{{ form.errors.time_range }}</div>
                     </div>
                 </div>

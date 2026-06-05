@@ -7,6 +7,7 @@ use App\Services\PlanningCalendarService;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class PlanningController extends Controller
@@ -14,6 +15,12 @@ class PlanningController extends Controller
     public function __construct(
         private PlanningCalendarService $calendar,
     ) {}
+
+    private function userWorkBlocks(): array
+    {
+        $settings = Auth::user()->merged_settings;
+        return WorkBlocks::fromSettings($settings);
+    }
 
     public function index(Request $request)
     {
@@ -45,7 +52,7 @@ class PlanningController extends Controller
         }
 
         return Inertia::render('Planning/Index', [
-            'calendar' => $this->calendar->snapshot($year, $month, $weekStart),
+            'calendar' => $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks()),
             'initial_view' => $view,
         ]);
     }
@@ -70,7 +77,7 @@ class PlanningController extends Controller
         }
 
         return response()->json(
-            $this->calendar->snapshot($year, $month, $weekStart)
+            $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks())
         );
     }
 
@@ -101,7 +108,7 @@ class PlanningController extends Controller
 
         $occupied = $query->pluck('time_range')->toArray();
 
-        $allBlocks = WorkBlocks::ALL;
+        $allBlocks = $this->userWorkBlocks();
 
         return response()->json([
             'occupied' => $occupied,

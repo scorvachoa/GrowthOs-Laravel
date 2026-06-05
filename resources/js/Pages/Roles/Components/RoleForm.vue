@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload } from 'lucide-vue-next'
+import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings } from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -24,6 +24,7 @@ const groups = computed(() => {
         'view youtube': Youtube,
         'generate ai': Sparkles,
         'view empresa': Building2,
+        'view configuracion': Settings,
     }
 
     const groupMap = {
@@ -58,9 +59,12 @@ const groups = computed(() => {
         'create empresa': 'Empresa',
         'edit empresa': 'Empresa',
         'delete empresa': 'Empresa',
+
+        'view configuracion': 'Configuracion',
+        'edit configuracion': 'Configuracion',
     }
 
-    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'AI Generator', 'Empresa']
+    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'AI Generator', 'Empresa', 'Configuracion']
     const grouped = {}
 
     for (const p of props.permissions || []) {

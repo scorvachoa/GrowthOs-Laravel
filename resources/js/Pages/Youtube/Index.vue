@@ -1,8 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
 import { Youtube, Film, BarChart3, ExternalLink, Users, Eye, Video, Globe, AlertCircle, ChevronRight, MessageCircle, LayoutGrid, List } from 'lucide-vue-next'
+
+const page = usePage()
+const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
 
 const props = defineProps({
     channels: Array,
@@ -42,6 +46,106 @@ const statusColor = (status) => {
 }
 
 const statusKeys = computed(() => Object.keys(props.stats.statuses || {}))
+
+const chartVideos = computed(() => {
+    const videos = activeChannel.value?.videos
+    if (!videos?.length) return []
+    return [...videos]
+        .filter(v => v.view_count !== undefined)
+        .sort((a, b) => new Date(a.published_at) - new Date(b.published_at))
+})
+
+const CHART_W = 600, CHART_H = 220
+const PAD = { left: 50, top: 16, right: 20, bottom: 16 }
+
+const chartData = computed(() => {
+    const sorted = chartVideos.value
+    if (sorted.length < 2) return []
+    const maxViews = Math.max(...sorted.map(v => v.view_count || 0), 1)
+    const cw = CHART_W - PAD.left - PAD.right
+    const ch = CHART_H - PAD.top - PAD.bottom
+    return sorted.map((v, i) => ({
+        x: PAD.left + (i / (sorted.length - 1)) * cw,
+        y: PAD.top + ch - ((v.view_count || 0) / maxViews) * ch,
+        video: v,
+    }))
+})
+
+function smoothPath(points) {
+    if (points.length < 2) return ''
+    let d = `M ${points[0].x},${points[0].y}`
+    for (let i = 1; i < points.length; i++) {
+        const p0 = points[i - 1], p1 = points[i]
+        const prev = points[i - 2] || p0
+        const next = points[i + 1] || p1
+        const cp1x = p0.x + (p1.x - prev.x) / 6
+        const cp1y = p0.y + (p1.y - prev.y) / 6
+        const cp2x = p1.x - (next.x - p0.x) / 6
+        const cp2y = p1.y - (next.y - p0.y) / 6
+        d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p1.x},${p1.y}`
+    }
+    return d
+}
+
+const linePath = computed(() => smoothPath(chartData.value))
+
+const areaPath = computed(() => {
+    const d = chartData.value
+    if (d.length < 2) return ''
+    const bottom = CHART_H - PAD.bottom
+    let path = smoothPath(d)
+    path += ` L ${d[d.length - 1].x},${bottom} L ${d[0].x},${bottom} Z`
+    return path
+})
+
+const yTicks = computed(() => {
+    const sorted = chartVideos.value
+    if (!sorted.length) return [0]
+    const maxViews = Math.max(...sorted.map(v => v.view_count || 0), 1)
+    const nice = Math.ceil(maxViews / 500) * 500 || 500
+    return Array.from({ length: 5 }, (_, i) => Math.round((nice / 4) * i))
+})
+
+const tooltip = ref({ show: false, x: 0, y: 0, data: null })
+
+const hoveredIndex = ref(-1)
+
+function onChartMouseMove(e) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mx = ((e.clientX - rect.left) / rect.width) * CHART_W
+    const points = chartData.value
+    if (!points.length) return
+    let nearest = 0, minDist = Infinity
+    for (let i = 0; i < points.length; i++) {
+        const dist = Math.abs(points[i].x - mx)
+        if (dist < minDist) { minDist = dist; nearest = i }
+    }
+    hoveredIndex.value = nearest
+    const p = points[nearest]
+    tooltip.value = {
+        show: true,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        data: p.video,
+    }
+}
+
+function onChartMouseLeave() {
+    tooltip.value.show = false
+    hoveredIndex.value = -1
+}
+
+const formatDate = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
+}
+
+const formatDateFull = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return d.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })
+}
 
 const formatNumber = (n) => {
     if (!n && n !== 0) return '—'
@@ -146,6 +250,84 @@ const formatNumber = (n) => {
 
                         <div v-else-if="activeChannel.youtube_channel_id" class="mb-8 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-center text-sm text-gray-500">
                             ID del canal: {{ activeChannel.youtube_channel_id }}
+                        </div>
+
+                        <div v-if="userSettings.show_youtube_chart && chartData.length > 1" class="mb-8 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                            <div class="flex items-center gap-3 mb-5">
+                                <div class="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-md shadow-red-200 dark:shadow-red-900/30">
+                                    <BarChart3 class="w-4 h-4 text-white" />
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-white text-sm">Rendimiento de videos</h3>
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Vistas por video en orden cronologico</p>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <svg viewBox="0 0 600 220" class="w-full h-auto select-none" preserveAspectRatio="xMidYMid meet"
+                                    @mousemove="onChartMouseMove" @mouseleave="onChartMouseLeave">
+                                    <defs>
+                                        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#ef4444" stop-opacity="0.3" />
+                                            <stop offset="100%" stop-color="#ef4444" stop-opacity="0.02" />
+                                        </linearGradient>
+                                        <filter id="lineGlow">
+                                            <feGaussianBlur stdDeviation="2" result="blur"/>
+                                            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                        </filter>
+                                    </defs>
+
+                                    <line v-for="(tick, i) in yTicks" :key="'g'+i"
+                                        :x1="PAD.left" :x2="CHART_W - PAD.right"
+                                        :y1="PAD.top + ((CHART_H - PAD.top - PAD.bottom) / 4) * (4 - i)"
+                                        :y2="PAD.top + ((CHART_H - PAD.top - PAD.bottom) / 4) * (4 - i)"
+                                        stroke="#f1f5f9" stroke-width="1"
+                                        class="dark:stroke-gray-800" />
+
+                                    <text v-for="(tick, i) in yTicks" :key="'t'+i"
+                                        :x="PAD.left - 4" :y="PAD.top + ((CHART_H - PAD.top - PAD.bottom) / 4) * (4 - i) + 4"
+                                        text-anchor="end" class="fill-gray-400 dark:fill-gray-600 text-[10px] font-medium">
+                                        {{ formatNumber(tick) }}
+                                    </text>
+
+                                    <path :d="areaPath" fill="url(#areaGrad)" class="transition-all duration-300" />
+
+                                    <path :d="linePath" fill="none" stroke="#ef4444" stroke-width="2.5"
+                                        stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)" class="transition-all duration-300" />
+
+                                    <circle v-for="(p, i) in chartData" :key="i"
+                                        :cx="p.x" :cy="p.y"
+                                        :r="hoveredIndex === i ? 6 : 3.5"
+                                        class="fill-red-500 stroke-white dark:stroke-gray-900 transition-all duration-200"
+                                        stroke-width="2.5"
+                                        :class="hoveredIndex === i ? 'drop-shadow-md' : ''" />
+
+                                    <rect x="0" y="0" :width="CHART_W" :height="CHART_H" fill="transparent"
+                                        @mousemove="onChartMouseMove" @mouseleave="onChartMouseLeave" />
+                                </svg>
+
+                                <transition name="fade">
+                                    <div v-if="tooltip.show && tooltip.data"
+                                        class="absolute pointer-events-none z-10 -translate-x-1/2 -translate-y-full -mt-2"
+                                        :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+                                        <div class="bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl border border-gray-700/50 backdrop-blur-sm px-3 py-2.5 min-w-[180px]">
+                                            <p class="text-xs font-medium leading-tight line-clamp-2">{{ tooltip.data.title }}</p>
+                                            <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-300">
+                                                <span class="flex items-center gap-1"><Eye class="w-3 h-3" /> {{ formatNumber(tooltip.data.view_count) }}</span>
+                                                <span class="flex items-center gap-1"><MessageCircle class="w-3 h-3" /> {{ formatNumber(tooltip.data.comment_count) }}</span>
+                                            </div>
+                                            <p class="text-[10px] text-gray-500 mt-1">{{ formatDateFull(tooltip.data.published_at) }}</p>
+                                        </div>
+                                    </div>
+                                </transition>
+                            </div>
+
+                            <div class="flex items-center gap-4 mt-3 text-[11px] text-gray-400 dark:text-gray-500">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="w-3 h-0.5 bg-red-500 rounded-full"></span> Vistas
+                                </span>
+                                <span>Pasa el mouse sobre los puntos para ver detalles</span>
+                            </div>
                         </div>
 
                         <div class="flex items-center gap-4 mb-6">
@@ -301,3 +483,13 @@ const formatNumber = (n) => {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.fade-enter-from, .fade-leave-to {
+    opacity: 0;
+    transform: translateY(4px);
+}
+</style>

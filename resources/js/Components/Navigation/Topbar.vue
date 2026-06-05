@@ -14,7 +14,7 @@ const logout = () => {
 </script>
 
 <template>
-    <header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between">
+    <header class="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between">
 
         <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">

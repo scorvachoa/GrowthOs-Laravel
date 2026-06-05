@@ -5,7 +5,6 @@ import { useForm, Link } from '@inertiajs/vue3'
 
 const props = defineProps({
     prefilled: Object,
-    work_blocks: Array,
     statuses: Array,
     channels: Array,
 })
@@ -34,7 +33,7 @@ const submit = () => {
                 <Link href="/planning" class="text-indigo-600 hover:text-indigo-700">Volver al calendario</Link>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                <VideoTaskForm :form="form" :work-blocks="work_blocks" :statuses="statuses" :channels="channels" submit-label="Crear Tarea" @submit="submit" />
+                <VideoTaskForm :form="form" :statuses="statuses" :channels="channels" submit-label="Crear Tarea" @submit="submit" />
             </div>
         </div>
     </AppLayout>

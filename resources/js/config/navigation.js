@@ -9,6 +9,7 @@ import {
     Lightbulb,
     ClipboardList,
     Sparkles,
+    Building2,
 } from 'lucide-vue-next'
 
 export default [
@@ -76,9 +77,16 @@ export default [
     },
 
     {
-        title: 'Empresa',
+        title: 'Configuracion',
         icon: Settings,
         route: '/settings',
+        permission: 'view configuracion',
+    },
+
+    {
+        title: 'Empresa',
+        icon: Building2,
+        route: '/company',
         permission: 'view empresa',
     },
 ]

@@ -2,102 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Channel;
-use App\Models\Organization;
+use App\Models\AppSetting;
+use App\Support\WorkBlocks;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
     public function index()
     {
-        $org = Organization::query()->first();
-        $channels = Channel::query()->orderBy('name')->get()->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'color' => $c->color,
-            'youtube_channel_id' => $c->youtube_channel_id,
-            'channel_url' => $c->channel_url,
-        ]);
+        $settings = AppSetting::query()->first();
 
         return Inertia::render('Settings/Index', [
-            'organization' => $org ? [
-                'id' => $org->id,
-                'name' => $org->name,
-                'logo_path' => $org->logo_path,
-                'primary_color' => $org->primary_color,
-                'logo_url' => $org->logo_path ? Storage::url($org->logo_path) : null,
-            ] : null,
-            'channels' => $channels,
+            'settings' => $settings ? [
+                'use_blocks' => $settings->use_blocks,
+                'block_hours' => $settings->block_hours,
+                'show_youtube_chart' => $settings->show_youtube_chart,
+            ] : [
+                'use_blocks' => true,
+                'block_hours' => 2,
+                'show_youtube_chart' => true,
+            ],
+            'preview_blocks' => WorkBlocks::generate($settings?->block_hours ?? 2),
         ]);
     }
 
-    public function updateCompany(Request $request)
+    public function update(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'primary_color' => ['required', 'string', 'max:20'],
+            'use_blocks' => ['boolean'],
+            'block_hours' => ['required', 'integer', 'in:1,2,3,4'],
+            'show_youtube_chart' => ['boolean'],
         ]);
 
-        $org = Organization::query()->first();
-        if (!$org) {
-            return redirect()->back()->with('error', 'No existe la empresa');
-        }
-        $org->name = $validated['name'];
-        $org->primary_color = $validated['primary_color'];
-
-        if ($request->hasFile('logo')) {
-            $request->validate(['logo' => ['image', 'mimes:jpeg,png,webp', 'max:2048']]);
-            $path = $request->file('logo')->store('logos', 'public');
-            $org->logo_path = $path;
+        $settings = AppSetting::query()->first();
+        if (!$settings) {
+            $settings = AppSetting::query()->create($validated);
+        } else {
+            $settings->update($validated);
         }
 
-        if ($request->boolean('remove_logo')) {
-            if ($org->logo_path) {
-                Storage::disk('public')->delete($org->logo_path);
-            }
-            $org->logo_path = null;
-        }
-
-        $org->save();
-
-        return redirect()->back()->with('success', 'Empresa actualizada');
-    }
-
-    public function storeChannel(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120', 'unique:channels,name'],
-            'color' => ['required', 'string', 'max:20'],
-            'youtube_channel_id' => ['nullable', 'string', 'max:120'],
-            'channel_url' => ['nullable', 'url', 'max:500'],
-        ]);
-
-        Channel::create($validated);
-
-        return redirect()->back()->with('success', 'Canal creado');
-    }
-
-    public function updateChannel(Request $request, Channel $channel)
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120', Rule::unique('channels', 'name')->ignore($channel->id)],
-            'color' => ['required', 'string', 'max:20'],
-            'youtube_channel_id' => ['nullable', 'string', 'max:120'],
-            'channel_url' => ['nullable', 'url', 'max:500'],
-        ]);
-
-        $channel->update($validated);
-
-        return redirect()->back()->with('success', 'Canal actualizado');
-    }
-
-    public function destroyChannel(Channel $channel)
-    {
-        $channel->delete();
-
-        return redirect()->back()->with('success', 'Canal eliminado');
+        return redirect()->back()->with('success', 'Configuracion actualizada');
     }
 }

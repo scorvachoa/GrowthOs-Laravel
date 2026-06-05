@@ -8,11 +8,19 @@ const props = defineProps({
     month: { type: Number, default: () => new Date().getMonth() + 1 },
     weekStart: { type: String, default: '' },
     day: { type: String, default: '' },
+    defaultScope: { type: String, default: 'monthly' },
 })
+
+const scopeMap = {
+    daily: 'dia',
+    weekly: 'semanal',
+    monthly: 'mensual',
+    year: 'anual',
+}
 
 const emit = defineEmits(['close'])
 
-const scope = ref('mensual')
+const scope = ref(scopeMap[props.defaultScope] || 'mensual')
 const reportYear = ref(props.year)
 const reportMonth = ref(props.month)
 const reportWeekStart = ref(props.weekStart)

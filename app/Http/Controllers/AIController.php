@@ -27,7 +27,7 @@ class AIController extends Controller
     {
         return [
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
-            'work_blocks' => WorkBlocks::all(),
+            'work_blocks' => WorkBlocks::fromSettings(request()->user()->merged_settings ?? []),
             'statuses' => VideoTaskStatuses::options(),
         ];
     }
@@ -139,15 +139,30 @@ class AIController extends Controller
 
     public function createTask(Request $request)
     {
-        $validated = $request->validate([
+        $settings = Auth::user()->merged_settings;
+        $blockHours = $settings['block_hours'] ?? 2;
+        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
+        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
+        $useBlocks = $settings['use_blocks'] ?? true;
+        $workingDays = $settings['working_days'] ?? [1,2,3,4,5];
+
+        $rules = [
             'generated_video_id' => ['required', 'integer', 'exists:generated_videos,id'],
             'task_date' => ['required', 'date'],
-            'time_range' => ['required', Rule::in(WorkBlocks::ALL)],
             'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
             'channel_id' => ['nullable', 'integer', 'exists:channels,id'],
-        ]);
+        ];
 
-        $this->assertNotSunday($validated['task_date']);
+        if ($useBlocks) {
+            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $rules['time_range'] = ['required', Rule::in($blocks)];
+        } else {
+            $rules['time_range'] = ['required', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $this->assertWorkingDay($validated['task_date'], $workingDays);
         $this->assertSlotAvailable($validated['task_date'], $validated['time_range']);
 
         $video = GeneratedVideo::findOrFail($validated['generated_video_id']);
@@ -395,11 +410,12 @@ class AIController extends Controller
         return mb_substr($base, 0, 50) ?: 'guion-audio';
     }
 
-    private function assertNotSunday(string $date): void
+    private function assertWorkingDay(string $date, array $workingDays): void
     {
-        if (Carbon::parse($date)->isSunday()) {
+        $dayOfWeek = Carbon::parse($date)->dayOfWeekIso % 7;
+        if (!in_array($dayOfWeek, $workingDays)) {
             throw ValidationException::withMessages([
-                'task_date' => 'No se permiten tareas en domingo.',
+                'task_date' => 'La fecha seleccionada no es un dia laborable.',
             ]);
         }
     }

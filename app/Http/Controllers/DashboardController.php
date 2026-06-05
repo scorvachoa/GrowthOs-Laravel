@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Services\DashboardService;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -13,10 +14,13 @@ class DashboardController extends Controller
 
     public function index()
     {
+        $settings = Auth::user()->merged_settings;
+        $scope = $settings['dashboard_default_view'] ?? 'week';
+
         return Inertia::render(
             'Dashboard/Index',
             [
-                'stats' => $this->dashboardService->stats(),
+                'stats' => $this->dashboardService->stats($scope),
             ]
         );
     }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ExtraTask;
 use App\Models\VideoTask;
 use App\Support\VideoTaskStatuses;
 use App\Support\WorkBlocks;
@@ -14,8 +15,9 @@ class PlanningCalendarService
         private PeruHolidayService $holidays,
     ) {}
 
-    public function snapshot(int $year, int $month, ?Carbon $weekStart = null): array
+    public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null): array
     {
+        $workBlocks ??= WorkBlocks::all();
         $weekStart = $weekStart ?? Carbon::today()->startOfWeek(Carbon::MONDAY);
 
         $monthStart = Carbon::create($year, $month, 1)->startOfDay();
@@ -35,11 +37,23 @@ class PlanningCalendarService
 
         foreach ($monthTasks as $dayKey => $dayTasks) {
             $tasksCount[$dayKey] = $dayTasks->count();
-            $blocksMap[$dayKey] = $this->buildBlockCounts($dayTasks);
+            $blocksMap[$dayKey] = $this->buildBlockCounts($dayTasks, $workBlocks);
             $tasksDetailMap[$dayKey] = $dayTasks
                 ->map(fn (VideoTask $task) => $this->serializeSummary($task))
                 ->values()
                 ->all();
+        }
+
+        $monthExtraTasks = ExtraTask::query()
+            ->where('task_date', '>=', $monthStart)
+            ->where('task_date', '<', $monthEnd)
+            ->get()
+            ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
+
+        $hasExtraTasksMap = [];
+
+        foreach ($monthExtraTasks as $dayKey => $dayExtraTasks) {
+            $hasExtraTasksMap[$dayKey] = true;
         }
 
         $weekEnd = $weekStart->copy()->addDays(7);
@@ -55,7 +69,7 @@ class PlanningCalendarService
 
         for ($offset = 0; $offset < 7; $offset++) {
             $iso = $weekStart->copy()->addDays($offset)->format('Y-m-d');
-            $weekBlockMap[$iso] = WorkBlocks::emptyCounts();
+            $weekBlockMap[$iso] = WorkBlocks::emptyCounts($workBlocks);
             $weekTasksDetailMap[$iso] = [];
         }
 
@@ -70,6 +84,35 @@ class PlanningCalendarService
             $weekTasksDetailMap[$iso][] = $this->serializeSummary($task);
         }
 
+        $weekExtraTasks = ExtraTask::query()
+            ->where('task_date', '>=', $weekStart)
+            ->where('task_date', '<', $weekEnd)
+            ->orderBy('task_date')
+            ->orderBy('time_range')
+            ->get();
+
+        $weekExtraTasksDetailMap = [];
+
+        for ($offset = 0; $offset < 7; $offset++) {
+            $iso = $weekStart->copy()->addDays($offset)->format('Y-m-d');
+            $weekExtraTasksDetailMap[$iso] = [];
+        }
+
+        foreach ($weekExtraTasks as $task) {
+            $iso = $task->task_date->format('Y-m-d');
+            if (isset($weekExtraTasksDetailMap[$iso])) {
+                $weekExtraTasksDetailMap[$iso][] = [
+                    'id' => 'e' . $task->id,
+                    'task_date' => $task->task_date->format('Y-m-d'),
+                    'time_range' => $task->time_range,
+                    'title' => $task->title,
+                    'status' => $task->status,
+                    'location' => $task->location,
+                    'is_extra' => true,
+                ];
+            }
+        }
+
         return [
             'year' => $year,
             'month' => $month,
@@ -79,9 +122,11 @@ class PlanningCalendarService
             'blocks_map' => $blocksMap,
             'week_blocks_map' => $weekBlockMap,
             'tasks_detail_map' => $tasksDetailMap,
+            'has_extra_tasks_map' => $hasExtraTasksMap,
             'week_tasks_detail_map' => $weekTasksDetailMap,
+            'week_extra_tasks_detail_map' => $weekExtraTasksDetailMap,
             'holidays_map' => $this->holidays->forYear($year),
-            'work_blocks' => WorkBlocks::all(),
+            'work_blocks' => $workBlocks,
             'statuses' => VideoTaskStatuses::options(),
         ];
     }
@@ -97,9 +142,9 @@ class PlanningCalendarService
             ->all();
     }
 
-    private function buildBlockCounts(Collection $dayTasks): array
+    private function buildBlockCounts(Collection $dayTasks, array $workBlocks): array
     {
-        $counts = WorkBlocks::emptyCounts();
+        $counts = WorkBlocks::emptyCounts($workBlocks);
 
         foreach ($dayTasks as $task) {
             if (isset($counts[$task->time_range])) {

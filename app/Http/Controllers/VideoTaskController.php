@@ -8,6 +8,7 @@ use App\Support\VideoTaskStatuses;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -16,6 +17,8 @@ class VideoTaskController extends Controller
 {
     public function create(Request $request)
     {
+        $settings = Auth::user()->merged_settings;
+
         return Inertia::render('VideoTasks/Create', [
             'prefilled' => [
                 'task_date' => $request->string('fecha', now()->format('Y-m-d')),
@@ -23,7 +26,6 @@ class VideoTaskController extends Controller
                     ? $this->resolveBlock($request->string('bloque')->toString())
                     : '',
             ],
-            'work_blocks' => WorkBlocks::all(),
             'statuses' => VideoTaskStatuses::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
@@ -57,10 +59,10 @@ class VideoTaskController extends Controller
 
     public function edit(VideoTask $videoTask)
     {
+        $settings = Auth::user()->merged_settings;
         $videoTask->load('channel');
         return Inertia::render('VideoTasks/Edit', [
             'task' => $this->serializeTask($videoTask),
-            'work_blocks' => WorkBlocks::all(),
             'statuses' => VideoTaskStatuses::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
@@ -116,17 +118,35 @@ class VideoTaskController extends Controller
 
     public function move(Request $request, VideoTask $videoTask)
     {
-        $validated = $request->validate([
-            'task_date' => ['required', 'date'],
-            'time_range' => ['required', Rule::in(WorkBlocks::ALL)],
-        ]);
+        $settings = Auth::user()->merged_settings;
+        $useBlocks = $settings['use_blocks'];
+        $blockHours = $settings['block_hours'];
+        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
+        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
+        $workingDays = $settings['working_days'] ?? [1,2,3,4,5];
 
-        $this->assertNotSunday($validated['task_date']);
-        $this->assertSlotAvailable(
-            $validated['task_date'],
-            $validated['time_range'],
-            $videoTask->id
-        );
+        $rules = [
+            'task_date' => ['required', 'date'],
+        ];
+
+        if ($useBlocks) {
+            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $rules['time_range'] = ['required', Rule::in($blocks)];
+        } else {
+            $rules['time_range'] = ['required', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $this->assertWorkingDay($validated['task_date'], $workingDays);
+
+        if ($useBlocks) {
+            $this->assertSlotAvailable(
+                $validated['task_date'],
+                $validated['time_range'],
+                $videoTask->id
+            );
+        }
 
         $videoTask->update($validated);
 
@@ -138,32 +158,51 @@ class VideoTaskController extends Controller
 
     private function validateTask(Request $request, ?int $exceptId = null): array
     {
-        $validated = $request->validate([
+        $settings = Auth::user()->merged_settings;
+        $useBlocks = $settings['use_blocks'];
+        $blockHours = $settings['block_hours'];
+        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
+        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
+        $workingDays = $settings['working_days'] ?? [1,2,3,4,5];
+
+        $rules = [
             'task_date' => ['required', 'date'],
-            'time_range' => ['required', Rule::in(WorkBlocks::ALL)],
             'title' => ['required', 'string', 'max:255'],
             'script' => ['nullable', 'string'],
             'copy' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
             'channel_id' => ['nullable', 'exists:channels,id'],
             'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
-        ]);
+        ];
 
-        $this->assertNotSunday($validated['task_date']);
-        $this->assertSlotAvailable(
-            $validated['task_date'],
-            $validated['time_range'],
-            $exceptId
-        );
+        if ($useBlocks) {
+            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $rules['time_range'] = ['required', Rule::in($blocks)];
+        } else {
+            $rules['time_range'] = ['required', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $this->assertWorkingDay($validated['task_date'], $workingDays);
+
+        if ($useBlocks) {
+            $this->assertSlotAvailable(
+                $validated['task_date'],
+                $validated['time_range'],
+                $exceptId
+            );
+        }
 
         return $validated;
     }
 
-    private function assertNotSunday(string $date): void
+    private function assertWorkingDay(string $date, array $workingDays): void
     {
-        if (Carbon::parse($date)->isSunday()) {
+        $dayOfWeek = Carbon::parse($date)->dayOfWeekIso % 7;
+        if (!in_array($dayOfWeek, $workingDays)) {
             throw ValidationException::withMessages([
-                'task_date' => 'No se permiten tareas en domingo.',
+                'task_date' => 'La fecha seleccionada no es un dia laborable.',
             ]);
         }
     }
@@ -188,9 +227,10 @@ class VideoTaskController extends Controller
 
     private function resolveBlock(string $block): string
     {
-        return WorkBlocks::isValid($block)
+        $valid = WorkBlocks::fromSettings(Auth::user()->merged_settings);
+        return in_array($block, $valid, true)
             ? $block
-            : WorkBlocks::ALL[0];
+            : ($valid[0] ?? WorkBlocks::ALL[0]);
     }
 
     private function serializeTask(VideoTask $task): array

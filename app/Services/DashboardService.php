@@ -11,11 +11,15 @@ use Spatie\Activitylog\Models\Activity;
 
 class DashboardService
 {
-    public function stats(): array
+    public function stats(string $scope = 'week'): array
     {
         $today = Carbon::today();
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $weekEnd = $today->copy()->endOfWeek(Carbon::SUNDAY);
+        $monthStart = $today->copy()->startOfMonth();
+        $monthEnd = $today->copy()->endOfMonth();
+        $yearStart = $today->copy()->startOfYear();
+        $yearEnd = $today->copy()->endOfYear();
 
         $totalVideoTasks = VideoTask::query()->count();
         $totalExtraTasks = ExtraTask::query()->count();
@@ -57,14 +61,24 @@ class DashboardService
                 'location' => $t->location,
             ]);
 
-        $weekTasks = VideoTask::query()
-            ->where('task_date', '>=', $weekStart)
-            ->where('task_date', '<=', $weekEnd)
-            ->get();
+        match ($scope) {
+            'year' => $periodTasks = VideoTask::query()
+                ->where('task_date', '>=', $yearStart)
+                ->where('task_date', '<=', $yearEnd)
+                ->get(),
+            'month' => $periodTasks = VideoTask::query()
+                ->where('task_date', '>=', $monthStart)
+                ->where('task_date', '<=', $monthEnd)
+                ->get(),
+            default => $periodTasks = VideoTask::query()
+                ->where('task_date', '>=', $weekStart)
+                ->where('task_date', '<=', $weekEnd)
+                ->get(),
+        };
 
-        $weekTotal = $weekTasks->count();
-        $weekCompleted = $weekTasks->where('status', 'published')->count();
-        $weeklyCompletion = $weekTotal > 0 ? round(($weekCompleted / $weekTotal) * 100) : 0;
+        $periodTotal = $periodTasks->count();
+        $periodCompleted = $periodTasks->where('status', 'published')->count();
+        $periodCompletion = $periodTotal > 0 ? round(($periodCompleted / $periodTotal) * 100) : 0;
 
         $publishedYesterday = VideoTask::query()
             ->whereDate('task_date', $today->copy()->subDay())
@@ -88,7 +102,12 @@ class DashboardService
             'today_extra' => $todayExtra,
             'today_tasks_count' => $todayTasks->count(),
             'today_extra_count' => $todayExtra->count(),
-            'weekly_completion' => $weeklyCompletion,
+            'period_completion' => $periodCompletion,
+            'period_label' => match ($scope) {
+                'year' => 'Anual',
+                'month' => 'Mensual',
+                default => 'Semanal',
+            },
             'published_yesterday' => $publishedYesterday,
             'status_labels' => $labels,
         ];

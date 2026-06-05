@@ -1,14 +1,18 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { router, Link } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import { ListChecks, ClockAlert, CheckCircle2, TrendingUp, ExternalLink, Eye, FileDown } from 'lucide-vue-next'
 
+const page = usePage()
+
 const props = defineProps({
     stats: Object,
 })
+
+const defaultReportScope = computed(() => page.props.auth?.user?.settings?.default_report_scope ?? 'monthly')
 
 const statusColor = (status) => {
     const colors = {
@@ -103,7 +107,7 @@ const showPdfModal = ref(false)
                             <TrendingUp class="w-5 h-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Rendimiento semanal</h2>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Rendimiento {{ stats.period_label?.toLowerCase() }}</h2>
                             <p class="text-sm text-gray-500">Completadas vs totales</p>
                         </div>
                     </div>
@@ -113,12 +117,12 @@ const showPdfModal = ref(false)
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e5e7eb" stroke-width="3"
                                     class="dark:stroke-gray-700" />
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#4f46e5" stroke-width="3"
-                                    stroke-dasharray="100" stroke-dashoffset="calc(100 - {{ stats.weekly_completion }})"
-                                    :stroke-dashoffset="100 - stats.weekly_completion"
+                                    stroke-dasharray="100" stroke-dashoffset="calc(100 - {{ stats.period_completion }})"
+                                    :stroke-dashoffset="100 - stats.period_completion"
                                     stroke-linecap="round" />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
-                                <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.weekly_completion }}%</span>
+                                <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.period_completion }}%</span>
                             </div>
                         </div>
                     </div>
@@ -168,6 +172,6 @@ const showPdfModal = ref(false)
                 </div>
             </div>
         </div>
-        <ExportPdfModal :show="showPdfModal" @close="showPdfModal = false" />
+        <ExportPdfModal :show="showPdfModal" :default-scope="defaultReportScope" @close="showPdfModal = false" />
     </AppLayout>
 </template>

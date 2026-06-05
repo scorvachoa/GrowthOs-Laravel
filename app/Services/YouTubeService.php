@@ -67,6 +67,31 @@ class YouTubeService
         });
     }
 
+    public function uploadsPlaylistId(string $channelId): ?string
+    {
+        $cacheKey = "youtube_uploads_playlist_{$channelId}";
+
+        return Cache::remember($cacheKey, 86400, function () use ($channelId) {
+            try {
+                $response = $this->youtube->channels->listChannels('contentDetails', [
+                    'id' => $channelId,
+                ]);
+
+                if (empty($response->getItems())) {
+                    return null;
+                }
+
+                return $response->getItems()[0]
+                    ->getContentDetails()
+                    ->getRelatedPlaylists()
+                    ->getUploads();
+            } catch (\Exception $e) {
+                Log::warning("YouTube API error getting uploads playlist for {$channelId}: {$e->getMessage()}");
+                return null;
+            }
+        });
+    }
+
     public function recentVideos(string $channelId, int $max = 10): array
     {
         if (!$this->available()) {
@@ -77,18 +102,22 @@ class YouTubeService
 
         return Cache::remember($cacheKey, 1800, function () use ($channelId, $max) {
             try {
-                $search = $this->youtube->search->listSearch('snippet', [
-                    'channelId' => $channelId,
-                    'order' => 'date',
+                $playlistId = $this->uploadsPlaylistId($channelId);
+
+                if (!$playlistId) {
+                    return [];
+                }
+
+                $playlistItems = $this->youtube->playlistItems->listPlaylistItems('snippet', [
+                    'playlistId' => $playlistId,
                     'maxResults' => $max,
-                    'type' => 'video',
                 ]);
 
                 $videoIds = [];
-                $items = $search->getItems();
+                $items = $playlistItems->getItems();
 
                 foreach ($items as $item) {
-                    $videoIds[] = $item->getId()->getVideoId();
+                    $videoIds[] = $item->getSnippet()->getResourceId()->getVideoId();
                 }
 
                 $statsMap = [];
@@ -108,8 +137,8 @@ class YouTubeService
 
                 $videos = [];
                 foreach ($items as $item) {
-                    $videoId = $item->getId()->getVideoId();
                     $snippet = $item->getSnippet();
+                    $videoId = $snippet->getResourceId()->getVideoId();
                     $stats = $statsMap[$videoId] ?? null;
                     $videos[] = [
                         'id' => $videoId,
