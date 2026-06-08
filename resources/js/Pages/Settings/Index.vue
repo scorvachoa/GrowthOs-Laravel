@@ -80,10 +80,7 @@ function submit() {
                 <p class="text-gray-500 dark:text-gray-400 mt-1">Preferencias personales</p>
             </div>
 
-            <div v-if="page.props.flash?.success"
-                class="p-4 rounded-xl bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-sm">
-                {{ page.props.flash.success }}
-            </div>
+
 
             <form @submit.prevent="submit" class="space-y-8">
                 <!-- Horario laboral -->

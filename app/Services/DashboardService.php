@@ -7,12 +7,17 @@ use App\Models\User;
 use App\Models\VideoTask;
 use App\Support\VideoTaskStatuses;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\Models\Activity;
 
 class DashboardService
 {
-    public function stats(string $scope = 'week'): array
+    public function stats(string $scope = 'week', ?User $authUser = null): array
     {
+        $authUser ??= Auth::user();
+        $orgId = $authUser?->activeOrganizationId();
+
+        $userBase = fn () => User::where('organization_id', $orgId);
         $today = Carbon::today();
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $weekEnd = $today->copy()->endOfWeek(Carbon::SUNDAY);
@@ -24,13 +29,15 @@ class DashboardService
         $totalVideoTasks = VideoTask::query()->count();
         $totalExtraTasks = ExtraTask::query()->count();
 
-        $inProgress = VideoTask::query()
-            ->whereIn('status', ['pending', 'script_ready', 'editing', 'review'])
-            ->count();
+        $statusCounts = VideoTask::query()
+            ->selectRaw("status, count(*) as total")
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
-        $completed = VideoTask::query()
-            ->where('status', 'published')
-            ->count();
+        $labels = VideoTaskStatuses::labels();
+        $inProgressStatuses = ['pending', 'script_ready', 'editing', 'review'];
+        $inProgress = $statusCounts->only($inProgressStatuses)->sum();
+        $completed = $statusCounts->get('published', 0);
 
         $overdue = VideoTask::query()
             ->whereNotIn('status', ['published', 'cancelled'])
@@ -38,7 +45,8 @@ class DashboardService
             ->count();
 
         $todayTasks = VideoTask::query()
-            ->whereDate('task_date', $today)
+            ->where('task_date', '>=', $today)
+            ->where('task_date', '<', $today->copy()->addDay())
             ->orderBy('time_range')
             ->get()
             ->map(fn ($t) => [
@@ -46,11 +54,12 @@ class DashboardService
                 'title' => $t->title,
                 'time_range' => $t->time_range,
                 'status' => $t->status,
-                'status_label' => VideoTaskStatuses::labels()[$t->status] ?? $t->status,
+                'status_label' => $labels[$t->status] ?? $t->status,
             ]);
 
         $todayExtra = ExtraTask::query()
-            ->whereDate('task_date', $today)
+            ->where('task_date', '>=', $today)
+            ->where('task_date', '<', $today->copy()->addDay())
             ->orderBy('time_range')
             ->get()
             ->map(fn ($t) => [
@@ -61,18 +70,18 @@ class DashboardService
                 'location' => $t->location,
             ]);
 
-        match ($scope) {
-            'year' => $periodTasks = VideoTask::query()
+        $periodTasks = match ($scope) {
+            'year' => VideoTask::query()
                 ->where('task_date', '>=', $yearStart)
-                ->where('task_date', '<=', $yearEnd)
+                ->where('task_date', '<', $yearEnd->copy()->addDay())
                 ->get(),
-            'month' => $periodTasks = VideoTask::query()
+            'month' => VideoTask::query()
                 ->where('task_date', '>=', $monthStart)
-                ->where('task_date', '<=', $monthEnd)
+                ->where('task_date', '<', $monthEnd->copy()->addDay())
                 ->get(),
-            default => $periodTasks = VideoTask::query()
+            default => VideoTask::query()
                 ->where('task_date', '>=', $weekStart)
-                ->where('task_date', '<=', $weekEnd)
+                ->where('task_date', '<', $weekEnd->copy()->addDay())
                 ->get(),
         };
 
@@ -81,17 +90,33 @@ class DashboardService
         $periodCompletion = $periodTotal > 0 ? round(($periodCompleted / $periodTotal) * 100) : 0;
 
         $publishedYesterday = VideoTask::query()
-            ->whereDate('task_date', $today->copy()->subDay())
+            ->where('task_date', '>=', $today->copy()->subDay())
+            ->where('task_date', '<', $today)
             ->where('status', 'published')
             ->count();
 
-        $labels = VideoTaskStatuses::labels();
-
         return [
-            'total_users' => User::count(),
-            'new_users' => User::query()->whereDate('created_at', $today)->count(),
-            'recent_users' => User::query()->latest()->take(5)->get(['id', 'name', 'email', 'created_at']),
-            'recent_activity' => Activity::query()->latest()->take(10)->get(),
+            'total_users' => $userBase()->count(),
+            'new_users' => $userBase()
+                ->where('created_at', '>=', $today)
+                ->where('created_at', '<', $today->copy()->addDay())
+                ->count(),
+            'recent_users' => $userBase()
+                ->with('roles')
+                ->latest()
+                ->take(5)
+                ->get(['id', 'name', 'email', 'created_at']),
+            'recent_activity' => Activity::query()
+                ->with('causer')
+                ->latest()
+                ->take(10)
+                ->get()
+                ->map(fn ($a) => [
+                    'id' => $a->id,
+                    'description' => $a->description,
+                    'causer' => $a->causer ? ['name' => $a->causer->name] : null,
+                    'created_at' => $a->created_at?->diffForHumans(),
+                ]),
 
             'total_video_tasks' => $totalVideoTasks,
             'total_extra_tasks' => $totalExtraTasks,
@@ -110,6 +135,7 @@ class DashboardService
             },
             'published_yesterday' => $publishedYesterday,
             'status_labels' => $labels,
+            'status_counts' => $statusCounts,
         ];
     }
 }

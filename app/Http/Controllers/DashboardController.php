@@ -20,7 +20,7 @@ class DashboardController extends Controller
         return Inertia::render(
             'Dashboard/Index',
             [
-                'stats' => $this->dashboardService->stats($scope),
+                'stats' => $this->dashboardService->stats($scope, Auth::user()),
             ]
         );
     }

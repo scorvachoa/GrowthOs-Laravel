@@ -1,13 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
 import UseTaskModal from '@/Components/AI/UseTaskModal.vue'
-import { ChevronLeft, ChevronRight, Sparkles, FileText, CopyCheck, Quote, Eye, Trash2, Download, CalendarPlus } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Sparkles, FileText, CopyCheck, Quote, Eye, Trash2, Download, CalendarPlus, Search, CalendarCheck } from 'lucide-vue-next'
 import axios from 'axios'
 
 const props = defineProps({
@@ -15,7 +16,26 @@ const props = defineProps({
     channels: Array,
     work_blocks: Array,
     statuses: Array,
+    filters: Object,
 })
+
+const search = ref(props.filters?.search || '')
+const hasScript = ref(props.filters?.has_script === '1')
+const hasCopy = ref(props.filters?.has_copy === '1')
+const hasPhrases = ref(props.filters?.has_phrases === '1')
+const usedFilter = ref(props.filters?.used_in_planner || '')
+
+function applyFilters() {
+    router.get('/ai/history', {
+        search: search.value || '',
+        has_script: hasScript.value ? '1' : '',
+        has_copy: hasCopy.value ? '1' : '',
+        has_phrases: hasPhrases.value ? '1' : '',
+        used_in_planner: usedFilter.value,
+    }, { preserveState: true, replace: true })
+}
+
+watch(search, () => applyFilters())
 
 const modalVideoId = ref(null)
 const modalIdea = ref('')
@@ -31,13 +51,22 @@ function downloadTxt(id) {
     window.open(`/ai/history/${id}/download`, '_blank')
 }
 
-async function deleteVideo(id) {
-    if (!confirm('¿Eliminar este registro del historial?')) return
+const deleteTargetId = ref(null)
+const showDeleteModal = computed(() => deleteTargetId.value !== null)
+
+function deleteVideo(id) {
+    deleteTargetId.value = id
+}
+
+async function executeDelete() {
+    if (!deleteTargetId.value) return
     try {
-        await axios.delete(`/ai/history/${id}`)
+        await axios.delete(`/ai/history/${deleteTargetId.value}`)
         router.reload({ preserveState: true })
+        deleteTargetId.value = null
     } catch {
         alert('Error al eliminar')
+        deleteTargetId.value = null
     }
 }
 
@@ -63,27 +92,69 @@ const formatDate = (dateStr) => {
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="relative flex-1 max-w-md">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input v-model="search" type="text" placeholder="Buscar por idea..."
+                            class="w-full pl-10 pr-4 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm">
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer select-none transition"
+                            :class="hasScript ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300' : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
+                            <input type="checkbox" v-model="hasScript" @change="applyFilters" class="sr-only">
+                            <FileText class="w-3.5 h-3.5" />
+                            Guion
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer select-none transition"
+                            :class="hasCopy ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300' : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
+                            <input type="checkbox" v-model="hasCopy" @change="applyFilters" class="sr-only">
+                            <CopyCheck class="w-3.5 h-3.5" />
+                            Copy
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer select-none transition"
+                            :class="hasPhrases ? 'bg-purple-50 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300' : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
+                            <input type="checkbox" v-model="hasPhrases" @change="applyFilters" class="sr-only">
+                            <Quote class="w-3.5 h-3.5" />
+                            Frases
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer select-none transition"
+                            :class="usedFilter === '1' ? 'bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300' : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
+                            <input type="checkbox" :checked="usedFilter === '1'" @change="usedFilter = usedFilter === '1' ? '' : '1'; applyFilters()" class="sr-only">
+                            <CalendarCheck class="w-3.5 h-3.5" />
+                            Usado
+                        </label>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm table-fixed">
                         <thead>
-                            <tr class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">ID</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Idea</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Guion</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Contenido</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Creado</th>
-                                <th class="text-right px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Acción</th>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[60px]">ID</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Idea</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[250px]">Guion</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Contenido</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Creado</th>
+                                <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[180px]">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="v in videos.data" :key="v.id"
-                                class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
-                                <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ v.id }}</td>
-                                <td class="px-4 py-3 text-gray-900 dark:text-white font-medium max-w-xs truncate">{{ v.idea }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-sm truncate text-xs">
+                                class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
+                                :class="v.used_in_planner ? 'bg-emerald-50/40 dark:bg-emerald-900/10' : ''">
+                                <td class="px-4 py-4 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ v.id }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white font-medium max-w-xs truncate">
+                                    <div class="flex items-center gap-2">
+                                        <span class="truncate">{{ v.idea }}</span>
+                                        <span v-if="v.used_in_planner"
+                                            class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                            <CalendarCheck class="w-2.5 h-2.5" /> usado
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 max-w-sm truncate text-xs">
                                     {{ v.script_preview || '—' }}
                                 </td>
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     <div class="flex items-center gap-2">
                                         <span v-if="v.has_script" title="Tiene guion"
                                             class="w-6 h-6 flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
@@ -101,10 +172,10 @@ const formatDate = (dateStr) => {
                                             class="text-xs text-gray-400">—</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                <td class="px-4 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                     {{ formatDate(v.created_at) }}
                                 </td>
-                                <td class="px-4 py-3 text-right">
+                                <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-1">
                                         <button v-if="can('download ai')" @click="downloadTxt(v.id)"
                                             class="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-500 hover:text-blue-600 transition"
@@ -163,6 +234,14 @@ const formatDate = (dateStr) => {
                 </div>
             </div>
         </div>
+
+        <ConfirmDeleteModal
+            :show="showDeleteModal"
+            title="Eliminar historial"
+            message="¿Eliminar este registro del historial?"
+            @close="deleteTargetId = null"
+            @confirm="executeDelete"
+        />
 
         <UseTaskModal
             :show="showModal"

@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
+import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import { Copy, Check, ExternalLink } from 'lucide-vue-next'
 
 const page = usePage()
@@ -153,24 +154,13 @@ const embedUrl = computed(() => {
                 </button>
             </div>
 
-            <transition name="fade">
-                <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
-                        <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Confirmar eliminacion</h2>
-                        <p class="text-gray-600 dark:text-gray-300 mb-6">Esta accion no se puede deshacer.</p>
-                        <div class="flex justify-end gap-3">
-                            <button @click="showDeleteModal = false"
-                                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm">
-                                Cancelar
-                            </button>
-                            <button @click="confirmDelete"
-                                class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm">
-                                Eliminar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </transition>
+            <ConfirmDeleteModal
+                :show="showDeleteModal"
+                title="Eliminar tarea"
+                message="¿Eliminar esta tarea de planificacion?"
+                @close="showDeleteModal = false"
+                @confirm="confirmDelete"
+            />
         </div>
     </AppLayout>
 </template>

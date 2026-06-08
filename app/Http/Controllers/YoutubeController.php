@@ -66,10 +66,11 @@ class YoutubeController extends Controller
                 'updated_at' => $t->updated_at->diffForHumans(),
             ]);
 
+        $monthStart = Carbon::now()->startOfMonth();
         $publishedThisMonth = VideoTask::query()
             ->where('status', 'published')
-            ->whereMonth('task_date', Carbon::now()->month)
-            ->whereYear('task_date', Carbon::now()->year)
+            ->where('task_date', '>=', $monthStart)
+            ->where('task_date', '<', $monthStart->copy()->addMonth())
             ->count();
 
         return Inertia::render('Youtube/Index', [

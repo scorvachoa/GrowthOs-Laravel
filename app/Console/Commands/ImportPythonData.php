@@ -28,21 +28,24 @@ class ImportPythonData extends Command
         $db = new PDO("sqlite:{$path}");
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $defaultUserId = User::query()->where('email', 'admin@growthos.com')->value('id') ?? User::query()->first()?->id;
-        if (!$defaultUserId) {
+        $defaultUser = User::query()->where('email', 'admin@growthos.com')->first() ?? User::query()->first();
+        if (!$defaultUser) {
             $this->error('No users found in database. Run db:seed first.');
             return Command::FAILURE;
         }
 
-        $this->importChannels($db);
-        $this->importVideoTasks($db, $defaultUserId);
-        $this->importExtraTasks($db, $defaultUserId);
-        $this->importIdeas($db);
+        $defaultUserId = $defaultUser->id;
+        $defaultOrgId = $defaultUser->organization_id;
+
+        $this->importChannels($db, $defaultOrgId);
+        $this->importVideoTasks($db, $defaultUserId, $defaultOrgId);
+        $this->importExtraTasks($db, $defaultUserId, $defaultOrgId);
+        $this->importIdeas($db, $defaultOrgId);
 
         return Command::SUCCESS;
     }
 
-    protected function importChannels(PDO $db): void
+    protected function importChannels(PDO $db, int $orgId): void
     {
         $this->info('Importing channels...');
 
@@ -57,6 +60,7 @@ class ImportPythonData extends Command
             }
 
             Channel::query()->create([
+                'organization_id' => $orgId,
                 'name' => $row['name'],
                 'color' => $row['color'] ?: '#4f46e5',
                 'youtube_channel_id' => $row['youtube_channel_id'] ?: null,
@@ -68,7 +72,7 @@ class ImportPythonData extends Command
         $this->info("  Imported {$count} channels");
     }
 
-    protected function importVideoTasks(PDO $db, int $userId): void
+    protected function importVideoTasks(PDO $db, int $userId, int $orgId): void
     {
         $this->info('Importing video tasks...');
 
@@ -109,6 +113,7 @@ class ImportPythonData extends Command
             }
 
             VideoTask::query()->create([
+                'organization_id' => $orgId,
                 'task_date' => $row['fecha'],
                 'time_range' => $row['bloque'],
                 'title' => $row['idea_video'],
@@ -128,7 +133,7 @@ class ImportPythonData extends Command
         $this->info("  Imported {$count} video tasks");
     }
 
-    protected function importExtraTasks(PDO $db, int $userId): void
+    protected function importExtraTasks(PDO $db, int $userId, int $orgId): void
     {
         $this->info('Importing extra tasks...');
 
@@ -155,6 +160,7 @@ class ImportPythonData extends Command
             $status = $statusMap[$row['status']] ?? 'pending';
 
             ExtraTask::query()->create([
+                'organization_id' => $orgId,
                 'task_date' => $row['fecha'],
                 'time_range' => $row['hora'],
                 'title' => $row['titulo'],
@@ -170,7 +176,7 @@ class ImportPythonData extends Command
         $this->info("  Imported {$count} extra tasks");
     }
 
-    protected function importIdeas(PDO $db): void
+    protected function importIdeas(PDO $db, int $orgId): void
     {
         $this->info('Importing ideas...');
 
@@ -206,6 +212,7 @@ class ImportPythonData extends Command
             }
 
             Idea::query()->create([
+                'organization_id' => $orgId,
                 'channel_id' => $channelId,
                 'content' => $row['content'],
                 'is_used' => (bool) $row['is_used'],

@@ -28,12 +28,20 @@ class UserPolicy
             return false;
         }
 
+        if (!$user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
+            return false;
+        }
+
         return $user->can('edit users');
     }
 
     public function delete(User $user, User $model): bool
     {
         if ($model->hasRole('Super Admin') && !$user->hasRole('Super Admin')) {
+            return false;
+        }
+
+        if (!$user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
             return false;
         }
 

@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOrganization;
+use App\Traits\OwnedByUser;
 use Illuminate\Database\Eloquent\Model;
 
 class GeneratedVideo extends Model
 {
+    use BelongsToOrganization, OwnedByUser;
+
     protected $fillable = [
+        'status',
         'idea',
         'script',
         'copy_title',
@@ -15,5 +20,6 @@ class GeneratedVideo extends Model
         'copy_hashtags',
         'copy_tags',
         'video_phrases',
+        'used_in_planner',
     ];
 }

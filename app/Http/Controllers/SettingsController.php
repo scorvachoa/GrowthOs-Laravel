@@ -42,6 +42,6 @@ class SettingsController extends Controller
             $settings->update($validated);
         }
 
-        return redirect()->back()->with('success', 'Configuracion actualizada');
+        return redirect()->back()->with('warning', 'Configuracion actualizada');
     }
 }

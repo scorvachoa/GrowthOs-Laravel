@@ -34,6 +34,14 @@ class User extends Authenticatable
         return $this->belongsTo(Organization::class);
     }
 
+    public function activeOrganizationId(): ?int
+    {
+        if ($this->hasRole('Super Admin')) {
+            return session('active_company_id', $this->organization_id);
+        }
+        return $this->organization_id;
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

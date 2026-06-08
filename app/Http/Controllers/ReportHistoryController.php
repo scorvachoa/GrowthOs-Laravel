@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ReportHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ReportHistoryController extends Controller
@@ -20,6 +21,7 @@ class ReportHistoryController extends Controller
                 'scope' => $item->scope,
                 'filename' => $item->filename,
                 'filters' => $item->filters_json,
+                'has_file' => $item->fileExists(),
                 'created_at' => $item->created_at->format('Y-m-d H:i'),
             ]);
 
@@ -30,16 +32,28 @@ class ReportHistoryController extends Controller
 
     public function download(ReportHistory $reportHistory)
     {
-        $filters = $reportHistory->filters_json ?? [];
+        $filePath = 'reports/' . $reportHistory->filename;
 
-        $query = http_build_query([
-            'scope' => $filters['scope'] ?? $reportHistory->scope,
-            'year' => $filters['year'] ?? '',
-            'month' => $filters['month'] ?? '',
-            'week_start' => $filters['week_start'] ?? '',
-            'day' => $filters['day'] ?? '',
-        ]);
+        if (!Storage::disk('public')->exists($filePath)) {
+            return redirect()
+                ->route('report-history.index')
+                ->with('error', 'El archivo PDF ya no está disponible. Genera un nuevo reporte.');
+        }
 
-        return redirect("/task-reports/pdf?{$query}");
+        return Storage::disk('public')->download($filePath, $reportHistory->filename);
+    }
+
+    public function destroy(ReportHistory $reportHistory)
+    {
+        $filePath = 'reports/' . $reportHistory->filename;
+        if (Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
+        }
+
+        $reportHistory->delete();
+
+        return redirect()
+            ->route('report-history.index')
+            ->with('error', 'Reporte eliminado correctamente.');
     }
 }

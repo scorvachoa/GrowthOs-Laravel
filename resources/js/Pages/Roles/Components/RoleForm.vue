@@ -1,8 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings } from 'lucide-vue-next'
+import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings, Search, SearchX } from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -11,6 +11,17 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['submit'])
+
+const permissionSearch = ref('')
+
+const filteredGroups = computed(() => {
+    const q = permissionSearch.value.toLowerCase().trim()
+    if (!q) return groups.value
+    return groups.value.map(g => ({
+        ...g,
+        permissions: g.permissions.filter(p => p.name.toLowerCase().includes(q)),
+    })).filter(g => g.permissions.length > 0)
+})
 
 const groups = computed(() => {
     const iconMap = {
@@ -80,6 +91,40 @@ const groups = computed(() => {
     }))
 })
 
+const actionColor = (name) => {
+    if (name.startsWith('delete')) return 'red'
+    if (name.startsWith('create')) return 'amber'
+    if (name.startsWith('edit')) return 'blue'
+    if (name.startsWith('view')) return 'teal'
+    if (name.startsWith('export') || name.startsWith('download') || name.startsWith('import')) return 'purple'
+    return 'gray'
+}
+
+const colorClass = (name, selected) => {
+    const action = actionColor(name)
+    const colors = {
+        red: selected
+            ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        amber: selected
+            ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        blue: selected
+            ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        teal: selected
+            ? 'bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        purple: selected
+            ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        gray: selected
+            ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+    }
+    return colors[action] || colors.gray
+}
+
 const togglePermission = (permission) => {
     const exists = (props.form.permissions || []).includes(permission)
     if (exists) {
@@ -131,8 +176,22 @@ const toggleGroup = (perms) => {
                 </button>
             </div>
 
-            <div class="space-y-4">
-                <div v-for="group in groups" :key="group.name"
+            <div class="relative mb-4">
+                <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input v-model="permissionSearch" type="text" placeholder="Buscar permisos..."
+                    class="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
+                <button v-if="permissionSearch" @click="permissionSearch = ''" type="button"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <SearchX class="w-4 h-4" />
+                </button>
+            </div>
+
+            <div v-if="filteredGroups.length === 0 && permissionSearch" class="text-center py-8 text-gray-400 dark:text-gray-500">
+                <SearchX class="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p class="text-sm">No se encontraron permisos para "{{ permissionSearch }}"</p>
+            </div>
+            <div v-else class="space-y-4">
+                <div v-for="group in filteredGroups" :key="group.name"
                     class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                     <div class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                         <div class="flex items-center gap-2">
@@ -145,20 +204,14 @@ const toggleGroup = (perms) => {
                             {{ groupAllSelected(group.permissions) ? 'Deseleccionar' : 'Seleccionar' }}
                         </button>
                     </div>
-                    <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <label v-for="permission in group.permissions" :key="permission.id"
-                            class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl cursor-pointer border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition"
-                            :class="{ 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20': form.permissions?.includes(permission.name) }">
-                            <input type="checkbox" :checked="form.permissions?.includes(permission.name)"
-                                @change="togglePermission(permission.name)" class="sr-only" />
-                            <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition flex-shrink-0"
-                                :class="form.permissions?.includes(permission.name)
-                                    ? 'bg-indigo-600 border-indigo-600'
-                                    : 'border-gray-300 dark:border-gray-600'">
-                                <ShieldCheck v-if="form.permissions?.includes(permission.name)" class="w-3.5 h-3.5 text-white" />
-                            </div>
-                            <span class="text-sm text-gray-700 dark:text-gray-300">{{ permission.name }}</span>
-                        </label>
+                    <div class="p-3 flex flex-wrap gap-2">
+                        <button type="button" v-for="permission in group.permissions" :key="permission.id"
+                            @click="togglePermission(permission.name)"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition"
+                            :class="colorClass(permission.name, form.permissions?.includes(permission.name))">
+                            <ShieldCheck v-if="form.permissions?.includes(permission.name)" class="w-3 h-3" />
+                            {{ permission.name }}
+                        </button>
                     </div>
                 </div>
             </div>

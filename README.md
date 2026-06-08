@@ -72,6 +72,7 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 | AI Generator | `/ai` | `view ai` |
 | AI Historial (ver) | `/ai/history` | `view ai history` |
 | AI Historial (descargar) | — | `download ai` |
+| AI Historial (filtrar usadas en planner) | — | `view ai history` |
 | Perfil | `/profile` | Usuario autenticado |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -127,6 +128,7 @@ AI:              view ai, view ai history, download ai
 - Modal de confirmación para eliminaciones
 - Componentes reutilizables (formularios, botones, paginación, modales)
 - Soporte modo claro / oscuro (Tailwind `dark:`)
+- Dark theme en Welcome, Login, Register y Forgot Password con diseño glassmorphism
 - Vista cards / lista toggleable en sección de videos recientes
 - Auto-selección del primer bloque horario libre al crear tarea
 - Botón "+" se oculta cuando el bloque o día están completos
@@ -290,7 +292,7 @@ resources/js/
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **Import Python** — comando `import:python-data` migra datos desde SQLite (tasks.db) a Laravel, con detección de duplicados
-- **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos`. Envío directo al planificador desde el generador y el historial.
+- **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
 - **Permisos granulares** — cada acción CRUD tiene su propio permiso (32 permisos en 10 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 
 ---
@@ -346,6 +348,7 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 | `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
 | `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
 | `IMPORT_SOURCE_PATH` | Ruta al archivo SQLite del proyecto Python (`database/tasks.db`) para migrar datos |
+| `APP_TIMEZONE` | Zona horaria de la aplicación (`America/Lima`) |
 
 ---
 
@@ -376,7 +379,8 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 - [x] Show: layout 3 columnas (guion, copy, video) + YouTube/TikTok embed
 - [x] PDF mejorado: line-height 1.6, escalado proporcional, footer, color en links
 - [x] AI Generator con Gemini 2.5 Flash (guion, copy, frases, audio ElevenLabs)
-- [x] Historial de generaciones AI (descarga TXT, envío a planificador, cargar en editor)
+- [x] Historial de generaciones AI (descarga TXT, envío a planificador, cargar en editor, filtro usado en planner)
+- [x] Dark theme en Welcome, Login, Register y Forgot Password
 
 ### Pendiente
 - [x] Permisos granulares (32 permisos en 10 grupos, reemplazando `manage users`, `manage tasks`, `view ai`)

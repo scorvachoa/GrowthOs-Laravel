@@ -33,6 +33,7 @@ const loadingScript = ref(false)
 const loadingCopy = ref(false)
 const loadingPhrases = ref(false)
 const loadingAudio = ref(false)
+const loadingHistory = ref(false)
 
 const toast = ref({ show: false, message: '' })
 let toastTimer = null
@@ -44,6 +45,7 @@ function showToast(message) {
 }
 
 async function loadVideo(id) {
+    loadingHistory.value = true
     try {
         const res = await axios.get(`/ai/history/${id}`)
         const data = res.data
@@ -58,8 +60,10 @@ async function loadVideo(id) {
         phrases.value = data.video_phrases || ''
         showToast('Registro cargado desde el historial.')
         window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch {
-        showToast('Error al cargar el registro.')
+    } catch (e) {
+        showToast('No se pudo cargar el video del historial.')
+    } finally {
+        loadingHistory.value = false
     }
 }
 
@@ -124,6 +128,10 @@ async function generateScript() {
     } finally {
         loadingScript.value = false
     }
+}
+
+function skeletonLines(count) {
+    return Array.from({ length: count }, (_, i) => i)
 }
 
 async function generateCopyAction() {
@@ -267,7 +275,6 @@ async function copyText(text, emptyMessage, successMessage) {
             <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
                 <!-- Columna 1: Idea -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                    <h2 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Columna 1</h2>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Idea</h3>
                     <textarea
                         v-model="idea"
@@ -286,7 +293,6 @@ async function copyText(text, emptyMessage, successMessage) {
 
                 <!-- Columna 2: Guion -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                    <h2 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Columna 2</h2>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Guion de voz</h3>
                     <div class="flex flex-wrap gap-2 mb-3">
                         <button
@@ -304,7 +310,12 @@ async function copyText(text, emptyMessage, successMessage) {
                             class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition"
                         >{{ loadingAudio ? 'Generando...' : 'Descargar audio' }}</button>
                     </div>
-                    <textarea
+                    <div v-if="loadingHistory" class="space-y-3 animate-pulse">
+                        <div v-for="i in skeletonLines(6)" :key="i"
+                            class="h-4 bg-gray-200 dark:bg-gray-700 rounded" :style="{ width: (70 + Math.random() * 30) + '%' }">
+                        </div>
+                    </div>
+                    <textarea v-else
                         v-model="script"
                         placeholder="Aquí aparecerá el guion editable para narrar con voz IA..."
                         class="w-full min-h-[200px] resize-y rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-3 text-sm text-gray-900 dark:text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
@@ -316,7 +327,6 @@ async function copyText(text, emptyMessage, successMessage) {
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                     <div class="flex items-center justify-between mb-3">
                         <div>
-                            <h2 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Columna 3</h2>
                             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Copy</h3>
                         </div>
                         <button
@@ -333,36 +343,42 @@ async function copyText(text, emptyMessage, successMessage) {
                             class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                         >Copiar título</button>
                     </div>
-                    <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 mb-3">
-                        <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Título</strong><br>{{ copyTitle || 'El título aparecerá aquí.' }}</pre>
+                    <div v-if="loadingHistory" class="space-y-3 animate-pulse">
+                        <div v-for="i in skeletonLines(4)" :key="i"
+                            class="h-4 bg-gray-200 dark:bg-gray-700 rounded" :style="{ width: (60 + Math.random() * 30) + '%' }">
+                        </div>
                     </div>
+                    <template v-else>
+                        <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 mb-3">
+                            <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Título</strong><br>{{ copyTitle || 'El título aparecerá aquí.' }}</pre>
+                        </div>
 
-                    <div class="mb-3">
-                        <button
-                            @click="copyText(copyDescriptionText, 'Todavía no hay descripción para copiar.', 'Descripción copiada.')"
-                            class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                        >Copiar descripción</button>
-                    </div>
-                    <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 mb-3">
-                        <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Descripción · CTA · Hashtags</strong><br>{{ copyDescriptionText || 'La descripción aparecerá aquí.' }}</pre>
-                    </div>
+                        <div class="mb-3">
+                            <button
+                                @click="copyText(copyDescriptionText, 'Todavía no hay descripción para copiar.', 'Descripción copiada.')"
+                                class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                            >Copiar descripción</button>
+                        </div>
+                        <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 mb-3">
+                            <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Descripción · CTA · Hashtags</strong><br>{{ copyDescriptionText || 'La descripción aparecerá aquí.' }}</pre>
+                        </div>
 
-                    <div class="mb-3">
-                        <button
-                            @click="copyText(copyTags, 'Todavía no hay tags para copiar.', 'Tags copiados.')"
-                            class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                        >Copiar tags</button>
-                    </div>
-                    <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
-                        <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Tags SEO</strong><br>{{ copyTags || 'Los tags SEO aparecerán aquí.' }}</pre>
-                    </div>
+                        <div class="mb-3">
+                            <button
+                                @click="copyText(copyTags, 'Todavía no hay tags para copiar.', 'Tags copiados.')"
+                                class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                            >Copiar tags</button>
+                        </div>
+                        <div class="p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+                            <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans"><strong>Tags SEO</strong><br>{{ copyTags || 'Los tags SEO aparecerán aquí.' }}</pre>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Columna 4: Frases -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                     <div class="flex items-center justify-between mb-3">
                         <div>
-                            <h2 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Columna 4</h2>
                             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Frases video</h3>
                         </div>
                         <button
@@ -373,15 +389,22 @@ async function copyText(text, emptyMessage, successMessage) {
                     </div>
                     <p v-if="loadingPhrases" class="text-sm text-indigo-500 mb-2">Generando frases con Gemini...</p>
 
-                    <div class="mb-3">
-                        <button
-                            @click="copyText(phrases, 'Todavía no hay frases para copiar.', 'Frases copiadas.')"
-                            class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                        >Copiar frases</button>
+                    <div v-if="loadingHistory" class="space-y-3 animate-pulse">
+                        <div v-for="i in skeletonLines(6)" :key="i"
+                            class="h-4 bg-gray-200 dark:bg-gray-700 rounded" :style="{ width: (50 + Math.random() * 40) + '%' }">
+                        </div>
                     </div>
-                    <div class="w-full min-h-[200px] overflow-y-auto rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 p-3">
-                        <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans">{{ phrases || 'Aquí aparecerán frases clave, frases grandes y hooks visuales para edición.' }}</pre>
-                    </div>
+                    <template v-else>
+                        <div class="mb-3">
+                            <button
+                                @click="copyText(phrases, 'Todavía no hay frases para copiar.', 'Frases copiadas.')"
+                                class="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                            >Copiar frases</button>
+                        </div>
+                        <div class="w-full min-h-[200px] overflow-y-auto rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 p-3">
+                            <pre class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans">{{ phrases || 'Aquí aparecerán frases clave, frases grandes y hooks visuales para edición.' }}</pre>
+                        </div>
+                    </template>
                 </div>
             </div>
 

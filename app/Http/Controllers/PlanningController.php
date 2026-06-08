@@ -99,8 +99,10 @@ class PlanningController extends Controller
             'except_task_id' => ['nullable', 'exists:video_tasks,id'],
         ]);
 
+        $date = $request->string('date');
         $query = VideoTask::query()
-            ->whereDate('task_date', $request->string('date'));
+            ->where('task_date', '>=', $date)
+            ->where('task_date', '<', Carbon::parse($date)->addDay());
 
         if ($request->filled('except_task_id')) {
             $query->where('id', '!=', $request->integer('except_task_id'));

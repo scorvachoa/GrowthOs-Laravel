@@ -111,10 +111,16 @@ class GeminiService
         }
 
         if (empty($keys)) {
-            // Check for single GEMINI_API_KEY
+            // Check GEMINI_API_KEY (supports comma-separated multiple keys)
             $singleKey = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
             if ($singleKey && trim($singleKey) !== '') {
-                $keys[] = ['index' => 0, 'value' => trim($singleKey)];
+                $parts = explode(',', $singleKey);
+                foreach ($parts as $i => $part) {
+                    $trimmed = trim($part);
+                    if ($trimmed !== '') {
+                        $keys[] = ['index' => $i, 'value' => $trimmed];
+                    }
+                }
             }
         }
 

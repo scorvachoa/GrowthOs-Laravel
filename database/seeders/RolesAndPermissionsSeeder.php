@@ -44,6 +44,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
             'view reports',
             'download reports',
+            'delete reports',
 
             'view youtube',
 
@@ -72,9 +73,18 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $superAdmin->givePermissionTo($permissions);
 
+        $defaultOrgId = \DB::table('organizations')->value('id');
+
         $employee = Role::firstOrCreate([
             'name' => 'Employee',
-        ]);
+        ], ['organization_id' => $defaultOrgId]);
+
+        $admin = Role::firstOrCreate([
+            'name' => 'Admin',
+        ], ['organization_id' => $defaultOrgId]);
+
+        $adminPermissions = array_values(array_filter($permissions, fn ($p) => !str_ends_with($p, 'roles')));
+        $admin->givePermissionTo($adminPermissions);
 
         $oldPermissions = [
             'manage users',

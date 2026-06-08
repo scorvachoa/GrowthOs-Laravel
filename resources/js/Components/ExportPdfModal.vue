@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { FileDown, X } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -23,8 +23,26 @@ const emit = defineEmits(['close'])
 const scope = ref(scopeMap[props.defaultScope] || 'mensual')
 const reportYear = ref(props.year)
 const reportMonth = ref(props.month)
-const reportWeekStart = ref(props.weekStart)
-const reportDay = ref(props.day)
+const reportWeekStart = ref(props.weekStart || getCurrentMonday())
+const reportDay = ref(props.day || formatDateLocal(new Date()))
+
+function formatDateLocal(d) {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+}
+
+function getCurrentMonday() {
+    const now = new Date()
+    const day = now.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - diff)
+    return formatDateLocal(monday)
+}
+
+const downloading = ref(false)
 
 const scopeOptions = [
     { value: 'anual', label: 'Anual' },
@@ -38,12 +56,15 @@ watch(() => props.show, (v) => {
         scope.value = 'mensual'
         reportYear.value = props.year
         reportMonth.value = props.month
-        reportWeekStart.value = props.weekStart
-        reportDay.value = props.day
+        reportWeekStart.value = props.weekStart || getCurrentMonday()
+        reportDay.value = props.day || formatDateLocal(new Date())
     }
 })
 
 function exportPdf() {
+    if (downloading.value) return
+    downloading.value = true
+
     const params = new URLSearchParams({ scope: scope.value })
     if (scope.value === 'anual' || scope.value === 'mensual') {
         params.append('year', reportYear.value)
@@ -57,8 +78,8 @@ function exportPdf() {
     if (scope.value === 'dia') {
         params.append('day', reportDay.value)
     }
-    window.open(`/task-reports/pdf?${params.toString()}`, '_blank')
-    emit('close')
+    window.location.href = `/task-reports/pdf?${params.toString()}`
+    setTimeout(() => { downloading.value = false; emit('close') }, 500)
 }
 </script>
 
@@ -111,10 +132,10 @@ function exportPdf() {
                             class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
                             Cancelar
                         </button>
-                        <button @click="exportPdf"
-                            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2">
+                        <button @click="exportPdf" :disabled="downloading"
+                            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <FileDown class="w-4 h-4" />
-                            Descargar PDF
+                            {{ downloading ? 'Descargando...' : 'Descargar PDF' }}
                         </button>
                     </div>
                 </div>

@@ -88,11 +88,15 @@ class IdeaController extends Controller
     {
         $request->validate(['channel_id' => ['required', 'integer', 'exists:channels,id']]);
 
-        $text = $this->ideaService->exportUnused((int) $request->query('channel_id'));
+        $channelId = (int) $request->query('channel_id');
+        $channel = Channel::findOrFail($channelId);
+        $sanitized = preg_replace('/[\\\\\/:*?"<>|]/', '_', $channel->name);
+
+        $text = $this->ideaService->exportIdeas($channelId);
 
         return response($text, 200, [
             'Content-Type' => 'text/plain; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="ideas.txt"',
+            'Content-Disposition' => 'attachment; filename="Ideas-' . $sanitized . '-' . date('Y-m-d') . '.txt"',
         ]);
     }
 
@@ -105,7 +109,7 @@ class IdeaController extends Controller
         $idea = \App\Models\Idea::query()->findOrFail($id);
         $this->ideaService->update($idea, $validated);
 
-        return redirect()->back()->with('success', 'Idea actualizada');
+        return redirect()->back()->with('warning', 'Idea actualizada');
     }
 
     public function destroy($id)
@@ -113,7 +117,7 @@ class IdeaController extends Controller
         $idea = \App\Models\Idea::query()->findOrFail($id);
         $this->ideaService->delete($idea);
 
-        return redirect()->back()->with('success', 'Idea eliminada');
+        return redirect()->back()->with('error', 'Idea eliminada');
     }
 
     public function toggleUsed(Request $request, $id)

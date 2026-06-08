@@ -2,25 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GenerateScriptRequest;
+use App\Http\Resources\GeneratedVideoResource;
 use App\Models\Channel;
 use App\Models\GeneratedVideo;
 use App\Models\VideoTask;
 use App\Services\AI\AIContentService;
-use App\Services\AI\ElevenLabsService;
+use App\Services\PlanningCalendarService;
+use App\Services\PlanningValidator;
 use App\Support\VideoTaskStatuses;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class AIController extends Controller
 {
     public function __construct(
-        protected AIContentService $aiContentService,
-        protected ElevenLabsService $elevenLabsService,
+        protected PlanningValidator $planningValidator,
     ) {}
 
     protected function sharedData(): array
@@ -56,18 +56,9 @@ class AIController extends Controller
     public function show(int $id)
     {
         $video = GeneratedVideo::findOrFail($id);
-        return response()->json([
-            'id' => $video->id,
-            'idea' => $video->idea,
-            'script' => $video->script,
-            'copy_title' => $video->copy_title,
-            'copy_description' => $video->copy_description,
-            'copy_cta' => $video->copy_cta,
-            'copy_hashtags' => $video->copy_hashtags,
-            'copy_tags' => $video->copy_tags,
-            'video_phrases' => $video->video_phrases,
-            'created_at' => $video->created_at?->format('Y-m-d H:i'),
-        ]);
+        return response()->json(
+            GeneratedVideoResource::make($video)->resolve()
+        );
     }
 
     public function destroy(int $id)
@@ -77,11 +68,36 @@ class AIController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function history()
+    public function history(Request $request)
     {
-        $videos = GeneratedVideo::query()
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
+        $query = GeneratedVideo::query()
+            ->orderBy('created_at', 'desc');
+
+        if ($search = $request->get('search')) {
+            $query->where('idea', 'like', "%{$search}%");
+        }
+
+        if ($request->get('has_script')) {
+            $query->whereNotNull('script')->where('script', '!=', '');
+        }
+
+        if ($request->get('has_copy')) {
+            $query->where(function ($q) {
+                $q->whereNotNull('copy_title')->where('copy_title', '!=', '');
+            });
+        }
+
+        if ($request->get('has_phrases')) {
+            $query->whereNotNull('video_phrases')->where('video_phrases', '!=', '');
+        }
+
+        if ($request->get('used_in_planner') === '1') {
+            $query->where('used_in_planner', true);
+        } elseif ($request->get('used_in_planner') === '0') {
+            $query->where('used_in_planner', false);
+        }
+
+        $videos = $query->paginate(20)
             ->through(fn ($v) => [
                 'id' => $v->id,
                 'idea' => $v->idea,
@@ -89,11 +105,18 @@ class AIController extends Controller
                 'has_script' => !empty($v->script),
                 'has_copy' => !empty($v->copy_title),
                 'has_phrases' => !empty($v->video_phrases),
+                'used_in_planner' => $v->used_in_planner,
                 'created_at' => $v->created_at?->format('Y-m-d H:i'),
             ]);
 
         return Inertia::render('AI/History', array_merge(
-            ['videos' => $videos],
+            ['videos' => $videos, 'filters' => [
+                'search' => $search,
+                'has_script' => $request->get('has_script'),
+                'has_copy' => $request->get('has_copy'),
+                'has_phrases' => $request->get('has_phrases'),
+                'used_in_planner' => $request->get('used_in_planner'),
+            ]],
             $this->sharedData(),
         ));
     }
@@ -137,14 +160,45 @@ class AIController extends Controller
         ]);
     }
 
+    public function generateScript(GenerateScriptRequest $request, AIContentService $ai)
+    {
+        $idea = trim($request->validated()['idea']);
+
+        $video = GeneratedVideo::create([
+            'idea' => $idea,
+            'status' => 'processing',
+            'script' => '',
+        ]);
+
+        try {
+            $script = $ai->generateScript($idea);
+            $video->update(['script' => $script, 'status' => 'completed']);
+            $video->refresh();
+        } catch (\Throwable $e) {
+            $video->update(['status' => 'failed']);
+            report($e);
+
+            return response()->json([
+                'message' => 'Error al generar el guion. Verifica la conexion con Gemini.',
+            ], 500);
+        }
+
+        return response()->json([
+            'video_id' => $video->id,
+            'idea' => $idea,
+            'script' => $video->script,
+            'status' => $video->status,
+        ], 201);
+    }
+
     public function createTask(Request $request)
     {
-        $settings = Auth::user()->merged_settings;
+        $settings = auth()->user()->merged_settings;
         $blockHours = $settings['block_hours'] ?? 2;
         $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
         $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
         $useBlocks = $settings['use_blocks'] ?? true;
-        $workingDays = $settings['working_days'] ?? [1,2,3,4,5];
+        $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
 
         $rules = [
             'generated_video_id' => ['required', 'integer', 'exists:generated_videos,id'],
@@ -162,10 +216,11 @@ class AIController extends Controller
 
         $validated = $request->validate($rules);
 
-        $this->assertWorkingDay($validated['task_date'], $workingDays);
-        $this->assertSlotAvailable($validated['task_date'], $validated['time_range']);
+        $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
+        $this->planningValidator->assertSlotAvailable($validated['task_date'], $validated['time_range']);
 
         $video = GeneratedVideo::findOrFail($validated['generated_video_id']);
+        $video->update(['used_in_planner' => true]);
 
         $copy = collect([
             'title' => $video->copy_title,
@@ -185,6 +240,7 @@ class AIController extends Controller
             'created_by' => auth()->id(),
             'channel_id' => $validated['channel_id'] ?: null,
         ]);
+        PlanningCalendarService::bustCache();
 
         $date = Carbon::parse($task->task_date);
 
@@ -193,245 +249,5 @@ class AIController extends Controller
             'task_id' => $task->id,
             'redirect' => route('planning.index', ['year' => $date->year, 'month' => $date->month]),
         ], 201);
-    }
-
-    public function generateScript(Request $request)
-    {
-        $validated = $request->validate([
-            'idea' => ['required', 'string', 'min:3', 'max:500'],
-        ]);
-
-        $idea = trim($validated['idea']);
-        $script = $this->aiContentService->generateScript($idea);
-
-        $video = GeneratedVideo::create([
-            'idea' => $idea,
-            'script' => $script,
-            'copy_title' => '',
-            'copy_description' => '',
-            'copy_cta' => '',
-            'copy_hashtags' => '',
-            'copy_tags' => '',
-            'video_phrases' => '',
-        ]);
-
-        return response()->json([
-            'video_id' => $video->id,
-            'idea' => $idea,
-            'script' => $script,
-        ], 201);
-    }
-
-    public function generateAudio(Request $request)
-    {
-        $validated = $request->validate([
-            'script' => ['required', 'string', 'min:10', 'max:5000'],
-            'idea' => ['nullable', 'string', 'max:500'],
-            'video_id' => ['nullable', 'integer', 'exists:generated_videos,id'],
-        ]);
-
-        $idea = trim($validated['idea'] ?? '');
-        $script = trim($validated['script']);
-
-        $video = null;
-        if (!empty($validated['video_id'])) {
-            $video = GeneratedVideo::find($validated['video_id']);
-        }
-
-        if ($video === null) {
-            $video = GeneratedVideo::create([
-                'idea' => $idea ?: 'Guion editado manualmente',
-                'script' => $script,
-            ]);
-        }
-
-        $response = $this->elevenLabsService->generateAudio($script);
-
-        $filename = $this->safeAudioFilename($idea ?: 'guion-audio');
-
-        return response()->streamDownload(function () use ($response) {
-            echo $response->body();
-        }, "{$filename}.mp3", [
-            'Content-Type' => 'audio/mpeg',
-            'Content-Disposition' => "attachment; filename=\"{$filename}.mp3\"",
-        ]);
-    }
-
-    public function generateCopy(Request $request)
-    {
-        $validated = $request->validate([
-            'script' => ['required', 'string', 'min:10', 'max:5000'],
-            'idea' => ['nullable', 'string', 'max:500'],
-            'video_id' => ['nullable', 'integer', 'exists:generated_videos,id'],
-        ]);
-
-        $idea = trim($validated['idea'] ?? '');
-        $script = trim($validated['script']);
-
-        $copy = $this->aiContentService->generateCopy($script);
-
-        $video = null;
-        if (!empty($validated['video_id'])) {
-            $video = GeneratedVideo::find($validated['video_id']);
-        }
-
-        if ($video === null) {
-            $video = GeneratedVideo::create([
-                'idea' => $idea ?: 'Guion editado manualmente',
-                'script' => $script,
-                'copy_title' => $copy['title'],
-                'copy_description' => $copy['description'],
-                'copy_cta' => $copy['cta'],
-                'copy_hashtags' => $copy['hashtags'],
-                'copy_tags' => $copy['tags'],
-            ]);
-        } else {
-            $video->update([
-                'copy_title' => $copy['title'],
-                'copy_description' => $copy['description'],
-                'copy_cta' => $copy['cta'],
-                'copy_hashtags' => $copy['hashtags'],
-                'copy_tags' => $copy['tags'],
-            ]);
-        }
-
-        return response()->json([
-            'video_id' => $video->id,
-            'idea' => $video->idea,
-            'script' => $video->script,
-            'copy' => [
-                'title' => $copy['title'],
-                'description' => $copy['description'],
-                'cta' => $copy['cta'],
-                'hashtags' => $copy['hashtags'],
-                'tags' => $copy['tags'],
-            ],
-        ], 201);
-    }
-
-    public function generatePhrases(Request $request)
-    {
-        $validated = $request->validate([
-            'script' => ['required', 'string', 'min:10', 'max:5000'],
-            'idea' => ['nullable', 'string', 'max:500'],
-            'video_id' => ['nullable', 'integer', 'exists:generated_videos,id'],
-        ]);
-
-        $idea = trim($validated['idea'] ?? '');
-        $script = trim($validated['script']);
-
-        $phrases = $this->aiContentService->generatePhrases($script);
-
-        $video = null;
-        if (!empty($validated['video_id'])) {
-            $video = GeneratedVideo::find($validated['video_id']);
-        }
-
-        if ($video === null) {
-            $video = GeneratedVideo::create([
-                'idea' => $idea ?: 'Guion editado manualmente',
-                'script' => $script,
-                'video_phrases' => $phrases,
-            ]);
-        } else {
-            $video->update([
-                'video_phrases' => $phrases,
-            ]);
-        }
-
-        return response()->json([
-            'video_id' => $video->id,
-            'idea' => $video->idea,
-            'script' => $video->script,
-            'phrases' => $phrases,
-        ], 201);
-    }
-
-    public function generateCopyPhrases(Request $request)
-    {
-        $validated = $request->validate([
-            'script' => ['required', 'string', 'min:10', 'max:5000'],
-            'idea' => ['nullable', 'string', 'max:500'],
-            'video_id' => ['nullable', 'integer', 'exists:generated_videos,id'],
-        ]);
-
-        $idea = trim($validated['idea'] ?? '');
-        $script = trim($validated['script']);
-
-        $copy = $this->aiContentService->generateCopy($script);
-        $phrases = $this->aiContentService->generatePhrases($script);
-
-        $video = null;
-        if (!empty($validated['video_id'])) {
-            $video = GeneratedVideo::find($validated['video_id']);
-        }
-
-        if ($video === null) {
-            $video = GeneratedVideo::create([
-                'idea' => $idea ?: 'Guion editado manualmente',
-                'script' => $script,
-                'copy_title' => $copy['title'],
-                'copy_description' => $copy['description'],
-                'copy_cta' => $copy['cta'],
-                'copy_hashtags' => $copy['hashtags'],
-                'copy_tags' => $copy['tags'],
-                'video_phrases' => $phrases,
-            ]);
-        } else {
-            $video->update([
-                'copy_title' => $copy['title'],
-                'copy_description' => $copy['description'],
-                'copy_cta' => $copy['cta'],
-                'copy_hashtags' => $copy['hashtags'],
-                'copy_tags' => $copy['tags'],
-                'video_phrases' => $phrases,
-            ]);
-        }
-
-        return response()->json([
-            'video_id' => $video->id,
-            'idea' => $video->idea,
-            'script' => $video->script,
-            'copy' => [
-                'title' => $copy['title'],
-                'description' => $copy['description'],
-                'cta' => $copy['cta'],
-                'hashtags' => $copy['hashtags'],
-                'tags' => $copy['tags'],
-            ],
-            'phrases' => $phrases,
-        ], 201);
-    }
-
-    private function safeAudioFilename(string $idea): string
-    {
-        $base = preg_replace('/[^a-zA-Z0-9]+/', '-', trim($idea));
-        $base = strtolower(trim($base, '-'));
-        return mb_substr($base, 0, 50) ?: 'guion-audio';
-    }
-
-    private function assertWorkingDay(string $date, array $workingDays): void
-    {
-        $dayOfWeek = Carbon::parse($date)->dayOfWeekIso % 7;
-        if (!in_array($dayOfWeek, $workingDays)) {
-            throw ValidationException::withMessages([
-                'task_date' => 'La fecha seleccionada no es un dia laborable.',
-            ]);
-        }
-    }
-
-    private function assertSlotAvailable(string $date, string $block, ?int $exceptId = null): void
-    {
-        $exists = VideoTask::query()
-            ->whereDate('task_date', $date)
-            ->where('time_range', $block)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
-            ->exists();
-
-        if ($exists) {
-            throw ValidationException::withMessages([
-                'time_range' => 'Bloque ocupado en la fecha seleccionada.',
-            ]);
-        }
     }
 }

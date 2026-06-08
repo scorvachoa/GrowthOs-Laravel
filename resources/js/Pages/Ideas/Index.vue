@@ -1,12 +1,13 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
-import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown } from 'lucide-vue-next'
+import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown, Check } from 'lucide-vue-next'
 
 const props = defineProps({
     channels: Array,
@@ -19,10 +20,12 @@ const props = defineProps({
 const activeTab = ref(props.selected_channel_id)
 const searchQuery = ref(props.query || '')
 const currentSort = ref(props.sort || 'date_desc')
-const showDrawer = ref(false)
+const showModal = ref(false)
 const newIdeasText = ref('')
 const editingIdea = ref(null)
 const deletingIdea = ref(null)
+const copiedId = ref(null)
+const deleteMessage = computed(() => deletingIdea.value ? `¿Eliminar "${deletingIdea.value.content}"?` : '')
 
 function nav(params) {
     router.get('/ideas', { channel_id: activeTab.value, q: searchQuery.value, sort: currentSort.value, ...params }, { preserveState: true, preserveScroll: true })
@@ -50,7 +53,7 @@ function toggleUsed(idea) {
 function submitIdeas() {
     router.post('/ideas', { channel_id: activeTab.value, content_lines: newIdeasText.value }, {
         preserveState: true, preserveScroll: true,
-        onSuccess: () => { showDrawer.value = false; newIdeasText.value = '' },
+        onSuccess: () => { showModal.value = false; newIdeasText.value = '' },
     })
 }
 
@@ -72,8 +75,10 @@ function executeDelete() {
     })
 }
 
-function copyContent(text) {
-    navigator.clipboard.writeText(text)
+function copyContent(idea) {
+    navigator.clipboard.writeText(idea.content)
+    copiedId.value = idea.id
+    setTimeout(() => { copiedId.value = null }, 1500)
 }
 
 function importTxt(e) {
@@ -108,8 +113,8 @@ const sortOptions = [
 
 <template>
     <AppLayout>
-        <div class="space-y-6">
-            <div class="flex items-center justify-between">
+        <div class="flex flex-col min-h-0 flex-1">
+            <div class="flex items-center justify-between mb-6 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
                         <Lightbulb class="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -129,8 +134,8 @@ const sortOptions = [
             </div>
 
             <template v-else>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
-                    <div class="overflow-x-auto">
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col min-h-0 flex-1 overflow-hidden">
+                    <div class="overflow-x-auto flex-shrink-0">
                         <div class="flex border-b border-gray-200 dark:border-gray-700">
                             <button v-for="channel in channels" :key="channel.id"
                                 @click="switchChannel(channel.id)"
@@ -144,28 +149,30 @@ const sortOptions = [
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-0">
-                        <div class="p-6 border-r border-gray-200 dark:border-gray-700">
-                            <div class="flex gap-2 mb-6">
-                                <div class="relative flex-1">
-                                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input v-model="searchQuery" type="text" placeholder="Buscar idea..."
-                                        class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-amber-500 focus:border-amber-500" />
-                                </div>
-                                <div class="flex rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
-                                    <button v-for="opt in sortOptions" :key="opt.value"
-                                        @click="setSort(opt.value)"
-                                        class="p-2.5 text-xs font-medium transition"
-                                        :class="currentSort === opt.value
-                                            ? 'bg-amber-600 text-white'
-                                            : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-                                        :title="opt.label">
-                                        <component :is="opt.icon" class="w-3.5 h-3.5" />
-                                    </button>
+                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-0 min-h-0 flex-1 overflow-hidden">
+                        <div class="flex flex-col min-h-0 overflow-hidden">
+                            <div class="p-6 pb-0 flex-shrink-0">
+                                <div class="flex gap-2">
+                                    <div class="relative flex-1">
+                                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input v-model="searchQuery" type="text" placeholder="Buscar idea..."
+                                            class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-amber-500 focus:border-amber-500" />
+                                    </div>
+                                    <div class="flex rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                        <button v-for="opt in sortOptions" :key="opt.value"
+                                            @click="setSort(opt.value)"
+                                            class="p-2.5 text-xs font-medium transition"
+                                            :class="currentSort === opt.value
+                                                ? 'bg-amber-600 text-white'
+                                                : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+                                            :title="opt.label">
+                                            <component :is="opt.icon" class="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="space-y-1">
+                            <div class="overflow-y-auto min-h-0 flex-1 px-6 pb-6 space-y-1">
                                 <div v-for="idea in ideas" :key="idea.id"
                                     class="group flex items-start gap-3 p-3 rounded-xl transition relative"
                                     :class="idea.is_used
@@ -175,21 +182,15 @@ const sortOptions = [
                                         <CheckCircle2 v-if="idea.is_used" class="w-5 h-5 text-green-500" />
                                         <Circle v-else class="w-5 h-5 text-gray-300 dark:text-gray-600" />
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm text-gray-900 dark:text-white" :class="{ 'line-through': idea.is_used }">{{ idea.content }}</p>
-                                        <p class="text-xs text-gray-400 mt-0.5">
-                                            {{ idea.created_at }}
-                                            <span v-if="idea.tags" class="ml-2">· {{ idea.tags }}</span>
-                                            <span class="ml-2" :class="idea.is_used ? 'text-green-500' : 'text-amber-500'">
-                                                · {{ idea.is_used ? 'usada' : 'pendiente' }}
-                                            </span>
-                                        </p>
-                                    </div>
                                     <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
-                                        <button @click="copyContent(idea.content)"
-                                            class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 transition"
+                                        <button @click="copyContent(idea)"
+                                            class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition relative"
+                                            :class="copiedId === idea.id ? 'text-green-500' : 'text-gray-400 hover:text-indigo-600'"
                                             title="Copiar">
-                                            <Copy class="w-3.5 h-3.5" />
+                                            <transition name="pop" mode="out-in">
+                                                <Check v-if="copiedId === idea.id" key="check" class="w-3.5 h-3.5" />
+                                                <Copy v-else key="copy" class="w-3.5 h-3.5" />
+                                            </transition>
                                         </button>
                                         <button v-if="can('edit ideas')" @click="startEdit(idea)"
                                             class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-amber-600 transition"
@@ -202,6 +203,16 @@ const sortOptions = [
                                             <Trash2 class="w-3.5 h-3.5" />
                                         </button>
                                     </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-gray-900 dark:text-white" :class="{ 'line-through': idea.is_used }">{{ idea.content }}</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">
+                                            {{ idea.created_at }}
+                                            <span v-if="idea.tags" class="ml-2">· {{ idea.tags }}</span>
+                                            <span class="ml-2" :class="idea.is_used ? 'text-green-500' : 'text-amber-500'">
+                                                · {{ idea.is_used ? 'usada' : 'pendiente' }}
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
                                 <div v-if="ideas.length === 0"
                                     class="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
@@ -211,8 +222,8 @@ const sortOptions = [
                             </div>
                         </div>
 
-                        <div class="p-6 space-y-4">
-                            <button v-if="can('create ideas')" @click="showDrawer = true"
+                        <div class="p-6 space-y-4 border-l border-gray-200 dark:border-gray-700 flex-shrink-0 self-start sticky top-6">
+                            <button v-if="can('create ideas')" @click="showModal = true"
                                 class="w-full px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center justify-center gap-2">
                                 <Plus class="w-4 h-4" /> Crear ideas
                             </button>
@@ -236,12 +247,11 @@ const sortOptions = [
         </div>
 
         <transition name="fade">
-            <div v-if="showDrawer" class="fixed inset-0 z-50 flex justify-end">
-                <div class="absolute inset-0 bg-black/50" @click="showDrawer = false"></div>
-                <div class="relative w-full max-w-md bg-white dark:bg-gray-800 shadow-xl p-6 overflow-y-auto">
+            <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showModal = false">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Crear ideas</h3>
-                        <button @click="showDrawer = false" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                        <button @click="showModal = false" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                             <X class="w-5 h-5" />
                         </button>
                     </div>
@@ -287,37 +297,25 @@ const sortOptions = [
             </div>
         </transition>
 
-        <transition name="fade">
-            <div v-if="deletingIdea" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="deletingIdea = null">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">
-                            <Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar idea</h3>
-                            <p class="text-sm text-gray-500">Esta accion no se puede deshacer</p>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">¿Eliminar esta idea?</p>
-                    <blockquote class="italic text-sm text-gray-500 dark:text-gray-400 border-l-4 border-gray-300 dark:border-gray-600 pl-3 mb-6">{{ deletingIdea.content }}</blockquote>
-                    <div class="flex justify-end gap-3">
-                        <button @click="deletingIdea = null"
-                            class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
-                            Cancelar
-                        </button>
-                        <button @click="executeDelete"
-                            class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white flex items-center gap-2">
-                            <Trash2 class="w-4 h-4" /> Eliminar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </transition>
+        <ConfirmDeleteModal
+            :show="deletingIdea !== null"
+            title="Eliminar idea"
+            :message="deleteMessage"
+            @close="deletingIdea = null"
+            @confirm="executeDelete"
+        />
     </AppLayout>
 </template>
 
 <style scoped>
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.pop-enter-active { animation: pop-in .25s ease-out; }
+.pop-leave-active { animation: pop-in .15s ease-in reverse; }
+@keyframes pop-in {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
 </style>

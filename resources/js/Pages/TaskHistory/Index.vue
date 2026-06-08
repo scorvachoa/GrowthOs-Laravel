@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { Search, X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
     tasks: Object,
@@ -39,72 +39,68 @@ function applyFilters() {
         status: statusFilter.value || '',
     }, { preserveState: true, replace: true })
 }
-
-function clearFilters() {
-    search.value = ''
-    statusFilter.value = ''
-    router.get('/task-history', {}, { preserveState: true, replace: true })
-}
 </script>
 
 <template>
     <AppLayout>
         <div class="max-w-7xl mx-auto space-y-6">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Historial de Tareas</h1>
-
-            <div class="flex flex-col sm:flex-row gap-3">
-                <div class="relative flex-1">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input v-model="search" @input="applyFilters" placeholder="Buscar por titulo..."
-                        class="w-full pl-9 pr-3 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
-                </div>
-                <select v-model="statusFilter" @change="applyFilters"
-                    class="rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
-                    <option value="">Todos los estados</option>
-                    <option v-for="s in statuses" :key="s.value" :value="s.value">{{ s.label }}</option>
-                </select>
-                <button v-if="search || statusFilter" @click="clearFilters"
-                    class="px-3 py-2 rounded-xl text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
-                    <X class="w-4 h-4" /> Limpiar
-                </button>
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Historial de Tareas</h1>
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="relative flex-1 max-w-md">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input v-model="search" @input="applyFilters" placeholder="Buscar por título..."
+                            class="w-full pl-10 pr-4 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm" />
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="s in statuses" :key="s.value"
+                            @click="statusFilter = statusFilter === s.value ? '' : s.value; applyFilters()"
+                            class="px-3 py-1.5 rounded-lg border text-xs font-medium transition"
+                            :class="statusFilter === s.value
+                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-700 dark:text-indigo-300'
+                                : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
+                            {{ s.label }}
+                        </button>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm table-fixed">
                         <thead>
-                            <tr class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Fecha</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Bloque</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Titulo</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Estado</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Canal</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400">Creado por</th>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Fecha</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Bloque</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Título</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[130px]">Estado</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Canal</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[130px]">Creado por</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="task in tasks.data" :key="task.id" @click="router.get(`/task-history/${task.id}`)"
-                                class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer transition">
-                                <td class="px-4 py-3 text-gray-900 dark:text-white whitespace-nowrap">{{ formatDate(task.task_date) }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ task.time_range }}</td>
-                                <td class="px-4 py-3 text-gray-900 dark:text-white font-medium max-w-xs truncate">{{ task.title }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition">
+                                <td class="px-4 py-4 text-gray-900 dark:text-white whitespace-nowrap">{{ formatDate(task.task_date) }}</td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ task.time_range }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white font-medium truncate">{{ task.title }}</td>
+                                <td class="px-4 py-4">
+                                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                                         :class="statusColors[task.status] || 'bg-gray-100 text-gray-800'">
                                         {{ statusLabel(task.status) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3">
-                                    <span v-if="task.channel" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                                        <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: task.channel.color }"></span>
+                                <td class="px-4 py-4">
+                                    <span v-if="task.channel" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: task.channel.color }"></span>
                                         {{ task.channel.name }}
                                     </span>
                                     <span v-else class="text-xs text-gray-400">—</span>
                                 </td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{{ task.created_by || '—' }}</td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-xs truncate">{{ task.created_by || '—' }}</td>
                             </tr>
                             <tr v-if="tasks.data.length === 0">
-                                <td colspan="6" class="px-4 py-12 text-center text-gray-400 dark:text-gray-500 italic">No se encontraron tareas</td>
+                                <td colspan="6" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 italic">No se encontraron tareas</td>
                             </tr>
                         </tbody>
                     </table>

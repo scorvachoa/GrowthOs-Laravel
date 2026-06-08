@@ -8,12 +8,19 @@ use App\Support\VideoTaskStatuses;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class PlanningCalendarService
 {
     public function __construct(
         private PeruHolidayService $holidays,
     ) {}
+
+    public static function bustCache(?int $userId = null): void
+    {
+        Cache::increment('planning_bust_' . ($userId ?? Auth::id()));
+    }
 
     public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null): array
     {
@@ -75,7 +82,7 @@ class PlanningCalendarService
 
         foreach ($weekTasks as $task) {
             $iso = $task->task_date->format('Y-m-d');
-            if (! isset($weekBlockMap[$iso])) {
+            if (!isset($weekBlockMap[$iso])) {
                 continue;
             }
             if (isset($weekBlockMap[$iso][$task->time_range])) {
@@ -134,7 +141,8 @@ class PlanningCalendarService
     public function tasksForDate(string $date): array
     {
         return VideoTask::query()
-            ->whereDate('task_date', $date)
+            ->where('task_date', '>=', $date)
+            ->where('task_date', '<', Carbon::parse($date)->addDay())
             ->orderBy('time_range')
             ->get()
             ->map(fn (VideoTask $task) => $this->serializeDetail($task))

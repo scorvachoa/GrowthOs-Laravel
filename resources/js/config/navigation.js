@@ -10,6 +10,7 @@ import {
     ClipboardList,
     Sparkles,
     Building2,
+    BookOpen,
 } from 'lucide-vue-next'
 
 export default [
@@ -18,27 +19,6 @@ export default [
         icon: LayoutDashboard,
         route: '/dashboard',
         permission: 'view dashboard',
-    },
-
-    {
-        title: 'AI Generator',
-        icon: Sparkles,
-        route: '/ai',
-        permission: 'generate ai',
-    },
-
-    {
-        title: 'Users',
-        icon: Users,
-        route: '/users',
-        permission: 'view users',
-    },
-
-    {
-        title: 'Roles',
-        icon: Shield,
-        route: '/roles',
-        permission: 'view roles',
     },
 
     {
@@ -56,6 +36,20 @@ export default [
     },
 
     {
+        title: 'AI Generator',
+        icon: Sparkles,
+        route: '/ai',
+        permission: 'generate ai',
+    },
+
+    {
+        title: 'YouTube',
+        icon: Youtube,
+        route: '/youtube',
+        permission: 'view youtube',
+    },
+
+    {
         title: 'Ideas',
         icon: Lightbulb,
         route: '/ideas',
@@ -70,10 +64,17 @@ export default [
     },
 
     {
-        title: 'YouTube',
-        icon: Youtube,
-        route: '/youtube',
-        permission: 'view youtube',
+        title: 'Users',
+        icon: Users,
+        route: '/users',
+        permission: 'view users',
+    },
+
+    {
+        title: 'Roles',
+        icon: Shield,
+        route: '/roles',
+        permission: 'view roles',
     },
 
     {
@@ -88,5 +89,11 @@ export default [
         icon: Building2,
         route: '/company',
         permission: 'view empresa',
+    },
+
+    {
+        title: 'Manual',
+        icon: BookOpen,
+        route: '/manual',
     },
 ]

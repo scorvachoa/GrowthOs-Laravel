@@ -18,18 +18,27 @@ use App\Http\Controllers\ExtraTaskController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\IdeaController;
 use App\Http\Controllers\TaskHistoryController;
+use App\Http\Controllers\AI\AudioController;
+use App\Http\Controllers\AI\CopyController;
+use App\Http\Controllers\AI\PhrasesController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\UserSettingsController;
 
 Route::get('/', function () {
-    return redirect()->route('login');
-});
+    return Inertia::render('Welcome', [
+        'canLogin' => true,
+        'canRegister' => true,
+    ]);
+})->name('welcome');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Manual
+    Route::get('/manual', fn () => Inertia::render('Manual'))->name('manual');
 
     // Users
     Route::get('/users', [UserController::class, 'index'])->middleware('can:view users')->name('users.index');
@@ -85,13 +94,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/task-reports/pdf', [TaskReportController::class, 'exportPdf'])->middleware('can:download reports')->name('reports.pdf');
     Route::get('/report-history', [ReportHistoryController::class, 'index'])->middleware('can:view reports')->name('report-history.index');
     Route::get('/report-history/{report_history}/download', [ReportHistoryController::class, 'download'])->middleware('can:download reports')->name('report-history.download');
+    Route::delete('/report-history/{report_history}', [ReportHistoryController::class, 'destroy'])->middleware('can:delete reports')->name('report-history.destroy');
 
-    // Company (antiguo Settings)
+    // Company CRUD
     Route::get('/company', [CompanyController::class, 'index'])->middleware('can:view empresa')->name('company.index');
-    Route::post('/company/update', [CompanyController::class, 'updateCompany'])->middleware('can:edit empresa');
+    Route::get('/company/create', [CompanyController::class, 'create'])->middleware('can:create empresa')->name('company.create');
+    Route::post('/company', [CompanyController::class, 'store'])->middleware('can:create empresa')->name('company.store');
+    Route::get('/company/{company}', [CompanyController::class, 'show'])->middleware('can:view empresa')->name('company.show');
+    Route::get('/company/{company}/edit', [CompanyController::class, 'edit'])->middleware('can:edit empresa')->name('company.edit');
+    Route::put('/company/{company}', [CompanyController::class, 'update'])->middleware('can:edit empresa')->name('company.update');
+    Route::delete('/company/{company}', [CompanyController::class, 'destroy'])->middleware('can:delete empresa')->name('company.destroy');
+
+    // Company switcher (Super Admin only)
+    Route::post('/company/switch', [CompanyController::class, 'switchCompany'])->middleware('can:view empresa');
+
+    // Company channels & invites (keep specific routes before wildcards)
     Route::post('/company/channels', [CompanyController::class, 'storeChannel'])->middleware('can:create empresa');
     Route::post('/company/channels/{channel}', [CompanyController::class, 'updateChannel'])->middleware('can:edit empresa');
     Route::post('/company/channels/{channel}/delete', [CompanyController::class, 'destroyChannel'])->middleware('can:delete empresa');
+    Route::post('/company/generate-invite', [CompanyController::class, 'generateInviteCode'])->middleware('can:edit empresa');
 
     // User Settings (per-user preferences)
     Route::get('/settings', [UserSettingsController::class, 'index'])->middleware('can:view configuracion')->name('settings.index');
@@ -102,11 +123,11 @@ Route::middleware('auth')->group(function () {
 
     // AI Generator
     Route::get('/ai', [AIController::class, 'index'])->middleware('can:generate ai')->name('ai.index');
-    Route::post('/ai/generate', [AIController::class, 'generateScript'])->middleware('can:generate ai')->name('ai.generate');
-    Route::post('/ai/audio', [AIController::class, 'generateAudio'])->middleware('can:generate ai')->name('ai.audio');
-    Route::post('/ai/copy', [AIController::class, 'generateCopy'])->middleware('can:generate ai')->name('ai.copy');
-    Route::post('/ai/phrases', [AIController::class, 'generatePhrases'])->middleware('can:generate ai')->name('ai.phrases');
-    Route::post('/ai/copy-phrases', [AIController::class, 'generateCopyPhrases'])->middleware('can:generate ai')->name('ai.copy-phrases');
+    Route::post('/ai/generate', [AIController::class, 'generateScript'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.generate');
+    Route::post('/ai/audio', [AudioController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.audio');
+    Route::post('/ai/copy', [CopyController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy');
+    Route::post('/ai/phrases', [PhrasesController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.phrases');
+    Route::post('/ai/copy-phrases', [PhrasesController::class, 'generateWithCopy'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy-phrases');
     Route::post('/ai/create-task', [AIController::class, 'createTask'])->middleware('can:generate ai')->name('ai.create-task');
 
     Route::get('/ai/history', [AIController::class, 'history'])->middleware('can:view ai history')->name('ai.history');

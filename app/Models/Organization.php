@@ -10,10 +10,17 @@ class Organization extends Model
         'name',
         'logo_path',
         'primary_color',
+        'admin_invite_code',
+        'invite_code',
     ];
 
     public function users()
     {
         return $this->hasMany(User::class);
+    }
+
+    public function channels()
+    {
+        return $this->hasMany(Channel::class);
     }
 }

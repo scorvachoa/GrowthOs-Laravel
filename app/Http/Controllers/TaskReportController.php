@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExtraTask;
 use App\Models\Organization;
 use App\Models\ReportHistory;
 use App\Models\VideoTask;
-use App\Models\ExtraTask;
 use App\Support\VideoTaskStatuses;
-use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -25,14 +25,22 @@ class TaskReportController extends Controller
             'day' => ['nullable', 'date'],
         ]);
 
+        $user = $request->user();
         $today = Carbon::today();
         $year = (int) ($validated['year'] ?? $today->year);
         $month = (int) ($validated['month'] ?? $today->month);
         $scope = $validated['scope'];
 
-        [$title, $start, $end] = $this->resolveRange($scope, $year, $month, $validated['week_start'] ?? null, $validated['day'] ?? null);
+        [$title, $start, $end] = $this->resolveRange(
+            $scope, $year, $month,
+            $validated['week_start'] ?? null,
+            $validated['day'] ?? null,
+        );
+
+        $orgId = $user->activeOrganizationId();
 
         $tasks = VideoTask::query()
+            ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->orderBy('task_date')
@@ -40,6 +48,7 @@ class TaskReportController extends Controller
             ->get();
 
         $extraTasks = ExtraTask::query()
+            ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->orderBy('task_date')
@@ -74,16 +83,12 @@ class TaskReportController extends Controller
                 ];
             }
 
-            $days[] = [
-                'date' => $dateStr,
-                'tasks' => $items,
-            ];
+            $days[] = ['date' => $dateStr, 'tasks' => $items];
             $current->addDay();
         }
 
         $generatedAt = now()->format('Y-m-d H:i');
-
-        $org = Organization::query()->first();
+        $org = $user->organization ?? Organization::query()->first();
         $company = $org ? [
             'name' => $org->name,
             'primary_color' => $org->primary_color ?: '#4f46e5',
@@ -101,16 +106,19 @@ class TaskReportController extends Controller
         $pdf = Pdf::loadView('pdf.report', compact('title', 'days', 'generatedAt', 'company', 'systemName'));
         $pdf->setPaper('letter');
 
-        $filename = 'reporte_' . $scope . '_' . $start->format('Y-m-d') . '.pdf';
+        $filename = 'reporte_' . $scope . '_' . $start->format('Y-m-d') . '_' . now()->timestamp . '.pdf';
+
+        Storage::disk('public')->put('reports/' . $filename, $pdf->output());
 
         ReportHistory::create([
-            'user_id' => auth()->id(),
+            'organization_id' => $orgId,
+            'user_id' => $user->id,
             'scope' => $scope,
             'filename' => $filename,
             'filters_json' => $validated,
         ]);
 
-        return $pdf->download($filename);
+        return Storage::disk('public')->download('reports/' . $filename, $filename);
     }
 
     private function resolveRange(string $scope, int $year, int $month, ?string $weekStart, ?string $day): array

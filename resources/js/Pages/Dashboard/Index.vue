@@ -4,7 +4,10 @@ import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
-import { ListChecks, ClockAlert, CheckCircle2, TrendingUp, ExternalLink, Eye, FileDown } from 'lucide-vue-next'
+import {
+    ListChecks, TrendingUp, Eye, FileDown,
+    Users, Activity, BarChart3
+} from 'lucide-vue-next'
 
 const page = usePage()
 
@@ -27,9 +30,36 @@ const statusColor = (status) => {
     return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
+const statusBarColor = (status) => {
+    const colors = {
+        pending: 'bg-yellow-500',
+        script_ready: 'bg-blue-500',
+        editing: 'bg-purple-500',
+        review: 'bg-orange-500',
+        scheduled: 'bg-indigo-500',
+        published: 'bg-green-500',
+        cancelled: 'bg-red-500',
+    }
+    return colors[status] || 'bg-gray-500'
+}
+
+const statusLabel = (status) => props.stats.status_labels?.[status] || status
+
 const goToPlanning = () => router.get('/planning')
 const viewTask = (id) => router.get(`/video-tasks/${id}`)
 const showPdfModal = ref(false)
+
+const statusSummary = computed(() => {
+    const keys = ['published', 'scheduled', 'review', 'editing', 'script_ready', 'pending', 'cancelled']
+    return keys.map(k => ({
+        key: k,
+        label: statusLabel(k),
+        count: props.stats.status_counts?.[k] || 0,
+        color: statusBarColor(k),
+    }))
+})
+
+const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + i.count, 0) || 1)
 </script>
 
 <template>
@@ -56,6 +86,7 @@ const showPdfModal = ref(false)
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
@@ -117,9 +148,8 @@ const showPdfModal = ref(false)
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e5e7eb" stroke-width="3"
                                     class="dark:stroke-gray-700" />
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#4f46e5" stroke-width="3"
-                                    stroke-dasharray="100" stroke-dashoffset="calc(100 - {{ stats.period_completion }})"
                                     :stroke-dashoffset="100 - stats.period_completion"
-                                    stroke-linecap="round" />
+                                    stroke-dasharray="100" stroke-linecap="round" />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.period_completion }}%</span>
@@ -141,7 +171,7 @@ const showPdfModal = ref(false)
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
-                            <ClockAlert class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <Users class="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Usuarios</h2>
@@ -167,6 +197,66 @@ const showPdfModal = ref(false)
                                 <p class="text-xs text-gray-500">{{ user.email }}</p>
                             </div>
                             <span class="text-xs text-gray-400">{{ user.created_at }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900">
+                            <BarChart3 class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Tareas por estado</h2>
+                            <p class="text-sm text-gray-500">Distribucion de todas las tareas</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div v-for="s in statusSummary" :key="s.key" class="space-y-1.5">
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-sm" :class="s.color"></span>
+                                    <span class="text-gray-700 dark:text-gray-300">{{ s.label }}</span>
+                                </div>
+                                <span class="font-semibold text-gray-900 dark:text-white">{{ s.count }}</span>
+                            </div>
+                            <div class="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500" :class="s.color"
+                                    :style="{ width: (s.count / totalWithStatus * 100) + '%' }"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 rounded-xl bg-blue-100 dark:bg-blue-900">
+                            <Activity class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Actividad reciente</h2>
+                            <p class="text-sm text-gray-500">Ultimas acciones en el sistema</p>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div v-if="!stats.recent_activity?.length"
+                            class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                            Sin actividad reciente
+                        </div>
+                        <div v-for="log in stats.recent_activity" :key="log.id"
+                            class="flex items-start gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 last:border-0">
+                            <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
+                                {{ log.causer?.name?.charAt(0) || '?' }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-900 dark:text-white">
+                                    <span class="font-medium">{{ log.causer?.name || 'Sistema' }}</span>
+                                    <span class="text-gray-500"> {{ log.description }}</span>
+                                </p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ log.created_at }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>

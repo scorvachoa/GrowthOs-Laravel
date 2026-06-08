@@ -33,14 +33,13 @@ class IdeaService
             return 0;
         }
 
-        $items = [];
+        $count = 0;
         foreach ($lines as $line) {
-            $items[] = ['channel_id' => $channelId, 'content' => $line];
+            Idea::create(['channel_id' => $channelId, 'content' => $line]);
+            $count++;
         }
 
-        Idea::insert($items);
-
-        return count($items);
+        return $count;
     }
 
     public function toggleUsed(Idea $idea, bool $value): void
@@ -58,14 +57,35 @@ class IdeaService
         $idea->delete();
     }
 
-    public function exportUnused(int $channelId): string
+    public function exportIdeas(int $channelId): string
     {
-        return Idea::query()
+        $ideas = Idea::query()
             ->where('channel_id', $channelId)
-            ->where('is_used', false)
             ->orderBy('created_at')
-            ->get()
-            ->pluck('content')
-            ->implode("\n");
+            ->get();
+
+        $unused = $ideas->where('is_used', false);
+        $used = $ideas->where('is_used', true);
+
+        $lines = [];
+
+        if ($unused->isNotEmpty()) {
+            $lines[] = 'Ideas pendientes';
+            foreach ($unused as $idea) {
+                $lines[] = '- ' . $idea->content;
+            }
+        }
+
+        if ($used->isNotEmpty()) {
+            if ($lines) {
+                $lines[] = '';
+            }
+            $lines[] = 'Ideas usadas';
+            foreach ($used as $idea) {
+                $lines[] = '- ' . $idea->content;
+            }
+        }
+
+        return implode("\n", $lines);
     }
 }

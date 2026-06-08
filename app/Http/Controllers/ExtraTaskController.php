@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreExtraTaskRequest;
+use App\Http\Resources\ExtraTaskResource;
 use App\Models\ExtraTask;
+use App\Services\PlanningCalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ExtraTaskController extends Controller
 {
@@ -15,7 +17,8 @@ class ExtraTaskController extends Controller
 
         return response()->json(
             ExtraTask::query()
-                ->whereDate('task_date', $request->string('fecha'))
+                ->where('task_date', '>=', $request->string('fecha'))
+                ->where('task_date', '<', Carbon::parse($request->string('fecha'))->addDay())
                 ->orderBy('time_range')
                 ->get()
                 ->map(fn (ExtraTask $task) => $this->serialize($task))
@@ -24,19 +27,14 @@ class ExtraTaskController extends Controller
         );
     }
 
-    public function store(Request $request)
+    public function store(StoreExtraTaskRequest $request)
     {
-        $validated = $request->validate([
-            'task_date' => ['required', 'date'],
-            'time_range' => ['required', 'string', 'max:32'],
-            'title' => ['required', 'string', 'max:255'],
-            'status' => ['required', 'string', 'max:24'],
-            'location' => ['required', Rule::in(['oficina', 'fuera'])],
-        ]);
+        $validated = $request->validated();
 
         $validated['created_by'] = auth()->id();
 
         $task = ExtraTask::create($validated);
+        PlanningCalendarService::bustCache();
 
         return response()->json([
             'ok' => true,
@@ -44,17 +42,12 @@ class ExtraTaskController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, ExtraTask $extraTask)
+    public function update(StoreExtraTaskRequest $request, ExtraTask $extraTask)
     {
-        $validated = $request->validate([
-            'task_date' => ['required', 'date'],
-            'time_range' => ['required', 'string', 'max:32'],
-            'title' => ['required', 'string', 'max:255'],
-            'status' => ['required', 'string', 'max:24'],
-            'location' => ['required', Rule::in(['oficina', 'fuera'])],
-        ]);
+        $validated = $request->validated();
 
         $extraTask->update($validated);
+        PlanningCalendarService::bustCache();
 
         return response()->json([
             'ok' => true,
@@ -65,19 +58,13 @@ class ExtraTaskController extends Controller
     public function destroy(ExtraTask $extraTask)
     {
         $extraTask->delete();
+        PlanningCalendarService::bustCache();
 
         return response()->json(['ok' => true]);
     }
 
     private function serialize(ExtraTask $task): array
     {
-        return [
-            'id' => $task->id,
-            'task_date' => $task->task_date->format('Y-m-d'),
-            'time_range' => $task->time_range,
-            'title' => $task->title,
-            'status' => $task->status,
-            'location' => $task->location,
-        ];
+        return ExtraTaskResource::make($task)->resolve();
     }
 }
