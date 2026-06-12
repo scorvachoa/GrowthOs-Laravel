@@ -3,6 +3,11 @@ import { ref, provide, onUnmounted } from 'vue'
 import Sidebar from '@/Components/Navigation/Sidebar.vue'
 import FlashMessage from '@/Components/UI/FlashMessage.vue'
 import Topbar from '@/Components/Navigation/Topbar.vue'
+import { useTheme } from '@/Composables/useTheme'
+
+const { isDark, toggleDark } = useTheme()
+provide('isDark', isDark)
+provide('toggleDark', toggleDark)
 
 const sidebarCollapsed = ref(localStorage.getItem('sidebar_collapsed') === 'true')
 const mobileSidebarOpen = ref(false)

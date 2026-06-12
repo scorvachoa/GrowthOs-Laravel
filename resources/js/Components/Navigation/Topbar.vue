@@ -1,7 +1,10 @@
 <script setup>
 import { computed, ref, onUnmounted } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
-import { Menu, LogOut } from 'lucide-vue-next'
+import { Menu, LogOut, Sun, Moon } from 'lucide-vue-next'
+import { useTheme } from '@/Composables/useTheme'
+
+const { isDark, toggleDark } = useTheme()
 
 defineProps({
     sidebarCollapsed: Boolean,
@@ -111,6 +114,13 @@ if (typeof document !== 'undefined') {
         </div>
 
         <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+
+            <button @click="toggleDark"
+                class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                :title="isDark ? 'Modo claro' : 'Modo oscuro'">
+                <Sun v-if="isDark" class="w-5 h-5 text-gray-400" />
+                <Moon v-else class="w-5 h-5 text-gray-500" />
+            </button>
 
             <Link
                 href="/profile"
