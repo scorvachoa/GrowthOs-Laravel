@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,7 +16,7 @@ class VideoTaskResource extends JsonResource
             'time_range' => $this->time_range,
             'title' => $this->title,
             'status' => $this->status,
-            'status_label' => VideoTaskStatuses::labels()[$this->status] ?? $this->status,
+            'status_label' => VideoTaskStatus::labels()[$this->status] ?? $this->status,
             'script' => $this->script,
             'copy' => $this->copy,
             'key_phrases' => $this->key_phrases,

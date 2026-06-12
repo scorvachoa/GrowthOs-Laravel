@@ -100,7 +100,14 @@ function submit() {
                     <div>
                         <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Color principal</label>
                         <div class="flex items-center gap-3">
-                            <input v-model="form.primary_color" type="color" class="w-12 h-10 rounded-xl border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
+                            <div class="relative w-10 h-10">
+                                <div class="w-10 h-10 rounded-full bg-white border border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                    <div class="w-[22px] h-[22px] rounded-full"
+                                        :style="{ backgroundColor: form.primary_color }"></div>
+                                </div>
+                                <input type="color" v-model="form.primary_color"
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            </div>
                             <input v-model="form.primary_color" type="text"
                                 class="w-32 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                         </div>

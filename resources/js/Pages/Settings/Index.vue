@@ -82,9 +82,9 @@ function submit() {
 
 
 
-            <form @submit.prevent="submit" class="space-y-8">
+            <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Horario laboral -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 lg:col-span-2">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
                             <Clock class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -249,7 +249,7 @@ function submit() {
                     </div>
                 </div>
 
-                <div class="flex justify-end">
+                <div class="flex justify-end lg:col-span-2">
                     <PrimaryButton v-if="can('edit configuracion')" type="submit" :disabled="processing">
                         Guardar configuracion
                     </PrimaryButton>

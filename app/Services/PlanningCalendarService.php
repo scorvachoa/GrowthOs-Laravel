@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\ExtraTask;
 use App\Models\VideoTask;
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -30,14 +30,54 @@ class PlanningCalendarService
         $monthStart = Carbon::create($year, $month, 1)->startOfDay();
         $monthEnd = $monthStart->copy()->addMonth();
 
-        $monthTasks = VideoTask::query()
-            ->where('task_date', '>=', $monthStart)
-            ->where('task_date', '<', $monthEnd)
+        $monthTasks = $this->loadMonthTasks($monthStart, $monthEnd);
+        $monthExtraTasks = $this->loadMonthExtraTasks($monthStart, $monthEnd);
+
+        [$tasksCount, $blocksMap, $tasksDetailMap] = $this->buildMonthMaps($monthTasks, $workBlocks);
+        $hasExtraTasksMap = $this->buildExtraTasksMap($monthExtraTasks);
+
+        [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap] = $this->buildWeekMaps($weekStart, $workBlocks);
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'today' => Carbon::today()->format('Y-m-d'),
+            'week_start' => $weekStart->format('Y-m-d'),
+            'tasks_count' => $tasksCount,
+            'blocks_map' => $blocksMap,
+            'week_blocks_map' => $weekBlockMap,
+            'tasks_detail_map' => $tasksDetailMap,
+            'has_extra_tasks_map' => $hasExtraTasksMap,
+            'week_tasks_detail_map' => $weekTasksDetailMap,
+            'week_extra_tasks_detail_map' => $weekExtraTasksDetailMap,
+            'holidays_map' => $this->holidays->forYear($year),
+            'work_blocks' => $workBlocks,
+            'statuses' => VideoTaskStatus::options(),
+        ];
+    }
+
+    private function loadMonthTasks(Carbon $start, Carbon $end): Collection
+    {
+        return VideoTask::query()
+            ->where('task_date', '>=', $start)
+            ->where('task_date', '<', $end)
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get()
             ->groupBy(fn (VideoTask $task) => $task->task_date->format('Y-m-d'));
+    }
 
+    private function loadMonthExtraTasks(Carbon $start, Carbon $end): Collection
+    {
+        return ExtraTask::query()
+            ->where('task_date', '>=', $start)
+            ->where('task_date', '<', $end)
+            ->get()
+            ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
+    }
+
+    private function buildMonthMaps(Collection $monthTasks, array $workBlocks): array
+    {
         $tasksCount = [];
         $blocksMap = [];
         $tasksDetailMap = [];
@@ -51,45 +91,28 @@ class PlanningCalendarService
                 ->all();
         }
 
-        $monthExtraTasks = ExtraTask::query()
-            ->where('task_date', '>=', $monthStart)
-            ->where('task_date', '<', $monthEnd)
-            ->get()
-            ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
+        return [$tasksCount, $blocksMap, $tasksDetailMap];
+    }
 
-        $hasExtraTasksMap = [];
-
-        foreach ($monthExtraTasks as $dayKey => $dayExtraTasks) {
-            $hasExtraTasksMap[$dayKey] = true;
+    private function buildExtraTasksMap(Collection $extraTasks): array
+    {
+        $map = [];
+        foreach ($extraTasks as $dayKey => $_) {
+            $map[$dayKey] = true;
         }
+        return $map;
+    }
 
+    private function buildWeekMaps(Carbon $weekStart, array $workBlocks): array
+    {
         $weekEnd = $weekStart->copy()->addDays(7);
+
         $weekTasks = VideoTask::query()
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get();
-
-        $weekBlockMap = [];
-        $weekTasksDetailMap = [];
-
-        for ($offset = 0; $offset < 7; $offset++) {
-            $iso = $weekStart->copy()->addDays($offset)->format('Y-m-d');
-            $weekBlockMap[$iso] = WorkBlocks::emptyCounts($workBlocks);
-            $weekTasksDetailMap[$iso] = [];
-        }
-
-        foreach ($weekTasks as $task) {
-            $iso = $task->task_date->format('Y-m-d');
-            if (!isset($weekBlockMap[$iso])) {
-                continue;
-            }
-            if (isset($weekBlockMap[$iso][$task->time_range])) {
-                $weekBlockMap[$iso][$task->time_range]++;
-            }
-            $weekTasksDetailMap[$iso][] = $this->serializeSummary($task);
-        }
 
         $weekExtraTasks = ExtraTask::query()
             ->where('task_date', '>=', $weekStart)
@@ -98,11 +121,24 @@ class PlanningCalendarService
             ->orderBy('time_range')
             ->get();
 
+        $weekBlockMap = [];
+        $weekTasksDetailMap = [];
         $weekExtraTasksDetailMap = [];
 
         for ($offset = 0; $offset < 7; $offset++) {
             $iso = $weekStart->copy()->addDays($offset)->format('Y-m-d');
+            $weekBlockMap[$iso] = WorkBlocks::emptyCounts($workBlocks);
+            $weekTasksDetailMap[$iso] = [];
             $weekExtraTasksDetailMap[$iso] = [];
+        }
+
+        foreach ($weekTasks as $task) {
+            $iso = $task->task_date->format('Y-m-d');
+            if (!isset($weekBlockMap[$iso])) continue;
+            if (isset($weekBlockMap[$iso][$task->time_range])) {
+                $weekBlockMap[$iso][$task->time_range]++;
+            }
+            $weekTasksDetailMap[$iso][] = $this->serializeSummary($task);
         }
 
         foreach ($weekExtraTasks as $task) {
@@ -120,22 +156,7 @@ class PlanningCalendarService
             }
         }
 
-        return [
-            'year' => $year,
-            'month' => $month,
-            'today' => Carbon::today()->format('Y-m-d'),
-            'week_start' => $weekStart->format('Y-m-d'),
-            'tasks_count' => $tasksCount,
-            'blocks_map' => $blocksMap,
-            'week_blocks_map' => $weekBlockMap,
-            'tasks_detail_map' => $tasksDetailMap,
-            'has_extra_tasks_map' => $hasExtraTasksMap,
-            'week_tasks_detail_map' => $weekTasksDetailMap,
-            'week_extra_tasks_detail_map' => $weekExtraTasksDetailMap,
-            'holidays_map' => $this->holidays->forYear($year),
-            'work_blocks' => $workBlocks,
-            'statuses' => VideoTaskStatuses::options(),
-        ];
+        return [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap];
     }
 
     public function tasksForDate(string $date): array

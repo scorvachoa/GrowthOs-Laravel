@@ -54,7 +54,8 @@ watch(() => props.form.task_date, async (date) => {
         }
         const res = await axios.get('/planning/occupied-blocks', { params })
         occupiedBlocks.value = res.data.occupied || []
-        if (!props.form.time_range) {
+        const currentOccupied = props.form.time_range && occupiedBlocks.value.includes(props.form.time_range)
+        if (!props.form.time_range || currentOccupied) {
             const free = workBlocks.value?.find(b => !occupiedBlocks.value.includes(b))
             if (free) props.form.time_range = free
         }

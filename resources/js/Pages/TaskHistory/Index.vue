@@ -70,34 +70,34 @@ function applyFilters() {
                     <table class="w-full text-sm table-fixed">
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700">
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Fecha</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Bloque</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px] sm:w-[140px]">Fecha</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell w-[90px]">Bloque</th>
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Título</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[130px]">Estado</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Canal</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[130px]">Creado por</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px] sm:w-[130px]">Estado</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[140px]">Canal</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[130px]">Creado por</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="task in tasks.data" :key="task.id" @click="router.get(`/task-history/${task.id}`)"
                                 class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition">
-                                <td class="px-4 py-4 text-gray-900 dark:text-white whitespace-nowrap">{{ formatDate(task.task_date) }}</td>
-                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ task.time_range }}</td>
-                                <td class="px-4 py-4 text-gray-900 dark:text-white font-medium truncate">{{ task.title }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white whitespace-nowrap text-xs sm:text-sm">{{ formatDate(task.task_date) }}</td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 whitespace-nowrap text-xs hidden sm:table-cell">{{ task.time_range }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white font-medium truncate text-sm">{{ task.title }}</td>
                                 <td class="px-4 py-4">
-                                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                                    <span class="inline-block px-2 py-0.5 sm:px-2.5 rounded-full text-[10px] sm:text-xs font-medium whitespace-nowrap"
                                         :class="statusColors[task.status] || 'bg-gray-100 text-gray-800'">
                                         {{ statusLabel(task.status) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4">
+                                <td class="px-4 py-4 hidden lg:table-cell">
                                     <span v-if="task.channel" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
                                         <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: task.channel.color }"></span>
                                         {{ task.channel.name }}
                                     </span>
                                     <span v-else class="text-xs text-gray-400">—</span>
                                 </td>
-                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-xs truncate">{{ task.created_by || '—' }}</td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-xs truncate hidden lg:table-cell">{{ task.created_by || '—' }}</td>
                             </tr>
                             <tr v-if="tasks.data.length === 0">
                                 <td colspan="6" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 italic">No se encontraron tareas</td>
@@ -106,12 +106,12 @@ function applyFilters() {
                     </table>
                 </div>
 
-                <div v-if="tasks.last_page > 1" class="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-                    <span class="text-xs text-gray-500">
+                <div v-if="tasks.last_page > 1" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                    <span class="text-xs text-gray-500 text-center sm:text-left">
                         Pagina {{ tasks.current_page }} de {{ tasks.last_page }}
                         ({{ tasks.total }} tareas)
                     </span>
-                    <div class="flex gap-1">
+                    <div class="flex gap-1 justify-center">
                         <button :disabled="!tasks.prev_page_url" @click="router.get(tasks.prev_page_url, {}, { preserveState: true, replace: true })"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition">
                             <ChevronLeft class="w-4 h-4 text-gray-600 dark:text-gray-400" />

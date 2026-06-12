@@ -17,9 +17,12 @@ class ReportHistory extends Model
         'filters_json',
     ];
 
-    protected $casts = [
-        'filters_json' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'filters_json' => 'array',
+        ];
+    }
 
     public function user()
     {

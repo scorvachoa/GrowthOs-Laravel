@@ -50,9 +50,7 @@ class RoleController extends Controller
                 'users_count' => $role->users_count,
             ]);
 
-        $companies = $user->hasRole('Super Admin')
-            ? \App\Models\Organization::orderBy('name')->get(['id', 'name'])
-            : null;
+        $companies = \App\Models\Organization::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,

@@ -10,7 +10,7 @@ use App\Models\VideoTask;
 use App\Services\AI\AIContentService;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ class AIController extends Controller
         return [
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
             'work_blocks' => WorkBlocks::fromSettings(request()->user()->merged_settings ?? []),
-            'statuses' => VideoTaskStatuses::options(),
+            'statuses' => VideoTaskStatus::options(),
         ];
     }
 
@@ -203,7 +203,7 @@ class AIController extends Controller
         $rules = [
             'generated_video_id' => ['required', 'integer', 'exists:generated_videos,id'],
             'task_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
+            'status' => ['required', Rule::in(VideoTaskStatus::values())],
             'channel_id' => ['nullable', 'integer', 'exists:channels,id'],
         ];
 

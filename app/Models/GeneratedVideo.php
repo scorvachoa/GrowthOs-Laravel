@@ -21,5 +21,7 @@ class GeneratedVideo extends Model
         'copy_tags',
         'video_phrases',
         'used_in_planner',
+        'organization_id',
+        'user_id',
     ];
 }

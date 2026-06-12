@@ -11,6 +11,16 @@ const emit = defineEmits(['openDay', 'createTask'])
 
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
 
+const statusColors = {
+    pending: 'bg-yellow-500',
+    script_ready: 'bg-blue-500',
+    editing: 'bg-purple-500',
+    review: 'bg-orange-500',
+    scheduled: 'bg-indigo-500',
+    published: 'bg-green-500',
+    cancelled: 'bg-red-500',
+}
+
 function allBlocksFull(day, blocks) {
     return blocks?.every(b => (day.blocks?.[b] || 0) > 0) ?? false
 }
@@ -18,52 +28,84 @@ function allBlocksFull(day, blocks) {
 
 <template>
     <div>
-        <div class="grid grid-cols-7 mb-2">
+        <div class="hidden sm:grid grid-cols-7 gap-1.5 mb-2 px-0.5">
             <div v-for="name in dayNames" :key="name"
-                class="text-center font-semibold text-sm text-gray-500 dark:text-gray-400 py-2">
+                class="text-center font-semibold text-xs text-gray-500 dark:text-gray-400 py-2 uppercase tracking-wider">
                 {{ name }}
             </div>
         </div>
-        <div class="grid grid-cols-7 border-l border-t border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <template v-for="(day, idx) in days" :key="idx">
-                <div v-if="!day"
-                    class="min-h-[130px] border-r border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                </div>
-                <div v-else
-                    @click="!day.isNonWorkingDay && emit('openDay', day.date)"
-                    class="min-h-[130px] border-r border-b border-gray-200 dark:border-gray-700 p-2 cursor-pointer transition relative group"
-                    :class="[
-                        day.isNonWorkingDay ? 'bg-gray-50 dark:bg-gray-800/50 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                        day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : '',
-                    ]">
-                    <div class="flex items-start justify-between mb-1">
-                        <span class="text-sm font-bold"
+        <div class="sm:grid sm:grid-cols-7 gap-1.5">
+            <div v-for="(day, idx) in days" :key="idx"
+                v-memo="[day.day, day.date, day.isOtherMonth, day.isToday, day.isNonWorkingDay, day.tasks.length, day.hasExtraTasks, day.holidayName]"
+                @click="!day.isNonWorkingDay && !day.isOtherMonth && emit('openDay', day.date)"
+                class="sm:min-h-[100px] bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-2.5 cursor-pointer transition-all duration-150 relative group"
+                :class="[
+                    day.isOtherMonth
+                        ? 'border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 cursor-default opacity-60'
+                        : day.isNonWorkingDay
+                            ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-default'
+                            : 'border-gray-200 dark:border-gray-700 hover:shadow-md hover:-translate-y-0.5',
+                    day.isToday && !day.isOtherMonth
+                        ? 'border-indigo-400 dark:border-indigo-500 shadow-indigo-100 dark:shadow-indigo-900/20'
+                        : '',
+                ]">
+                <div class="flex items-start justify-between sm:flex-col sm:gap-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full"
                             :class="[
-                                day.isNonWorkingDay ? 'text-red-400' : day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300',
+                                day.isOtherMonth ? 'text-gray-300 dark:text-gray-600' :
+                                day.isNonWorkingDay ? 'text-red-400' :
+                                day.isToday ? 'text-white bg-indigo-600' : 'text-gray-700 dark:text-gray-300',
                             ]">
                             {{ day.day }}
                         </span>
+                        <span v-if="!day.isOtherMonth && day.tasks.length > 0"
+                            class="text-[10px] font-medium text-indigo-500 dark:text-indigo-400 hidden sm:inline">
+                            {{ day.tasks.length }} tarea{{ day.tasks.length !== 1 ? 's' : '' }}
+                        </span>
                     </div>
-                    <div v-if="day.holidayName" class="text-[10px] text-red-500 font-medium leading-tight mb-1">
-                        {{ day.holidayName }}
-                    </div>
-                    <div class="flex flex-col gap-[2px] mt-1">
-                        <div v-for="(task, tIdx) in day.tasks" :key="tIdx"
-                            class="h-1.5 rounded-sm bg-indigo-500"
-                            :title="task.time_range + ' - ' + task.title">
+                    <div v-if="!day.isOtherMonth" class="flex-1 min-w-0 sm:hidden">
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="(task, tIdx) in day.tasks.slice(0, 2)" :key="tIdx"
+                                class="text-xs text-gray-700 dark:text-gray-300 truncate block max-w-[120px]">
+                                {{ task.title }}
+                            </span>
+                            <span v-if="day.tasks.length > 2" class="text-xs text-indigo-500 font-medium">
+                                +{{ day.tasks.length - 2 }}
+                            </span>
+                            <span v-if="day.hasExtraTasks"
+                                class="text-xs text-amber-600 font-medium">
+                                Extra
+                            </span>
                         </div>
-                        <div v-if="day.hasExtraTasks"
-                            class="h-1.5 rounded-sm bg-amber-400"
-                            title="Tareas extra">
-                        </div>
                     </div>
-                    <button v-if="canCreate && !day.isNonWorkingDay && !allBlocksFull(day, workBlocks)"
-                        @click.stop="emit('createTask', day.date, '09:00-11:00')"
-                        class="absolute top-1 right-1 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
-                        <Plus class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    </button>
                 </div>
-            </template>
+                <div v-if="!day.isOtherMonth && day.holidayName"
+                    class="text-[10px] text-red-500 font-medium leading-tight mb-1 mt-1 hidden sm:block">
+                    {{ day.holidayName }}
+                </div>
+                <div v-if="!day.isOtherMonth" class="flex-col gap-[3px] mt-2 hidden sm:flex">
+                    <div v-for="(task, tIdx) in day.tasks.slice(0, 4)" :key="tIdx"
+                        class="h-2 rounded"
+                        :class="statusColors[task.status] || 'bg-gray-400'"
+                        :title="task.time_range + ' - ' + task.title">
+                    </div>
+                    <div v-if="day.tasks.length > 4"
+                        class="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-tight pl-0.5">
+                        +{{ day.tasks.length - 4 }} mas
+                    </div>
+                    <div v-if="day.hasExtraTasks"
+                        class="flex items-center gap-1 mt-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Extra</span>
+                    </div>
+                </div>
+                <button v-if="!day.isOtherMonth && canCreate && !day.isNonWorkingDay && !allBlocksFull(day, workBlocks)"
+                    @click.stop="emit('createTask', day.date, '09:00-11:00')"
+                    class="absolute top-1 right-1 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition hidden sm:block">
+                    <Plus class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                </button>
+            </div>
         </div>
     </div>
 </template>

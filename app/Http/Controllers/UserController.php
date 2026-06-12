@@ -85,7 +85,7 @@ class UserController extends Controller
 
         $user = auth()->user();
         $roles = $user->hasRole('Super Admin')
-            ? Role::whereNull('organization_id')->orWhere('organization_id', $user->activeOrganizationId())->pluck('name')
+            ? Role::where(function ($q) use ($user) { $q->whereNull('organization_id')->orWhere('organization_id', $user->activeOrganizationId()); })->pluck('name')
             : Role::where('organization_id', $user->activeOrganizationId())->where('name', '!=', 'Super Admin')->pluck('name');
 
         return Inertia::render('Users/Create', [
@@ -124,7 +124,7 @@ class UserController extends Controller
 
         $authUser = request()->user();
         $roles = $authUser->hasRole('Super Admin')
-            ? Role::whereNull('organization_id')->orWhere('organization_id', $authUser->activeOrganizationId())->pluck('name')
+            ? Role::where(function ($q) use ($authUser) { $q->whereNull('organization_id')->orWhere('organization_id', $authUser->activeOrganizationId()); })->pluck('name')
             : Role::where('organization_id', $authUser->activeOrganizationId())->where('name', '!=', 'Super Admin')->pluck('name');
 
         return Inertia::render('Users/Edit', [

@@ -2,7 +2,6 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -18,12 +17,12 @@ class GeminiService
 
     public function __construct()
     {
-        $this->keys = $this->loadKeys();
+        $this->keys = config('services.gemini.api_keys', []);
         $this->totalKeys = count($this->keys);
 
         if ($this->totalKeys === 0) {
             throw new \RuntimeException(
-                'Configura Gemini_key_1, Gemini_key_2, etc. en el archivo .env.'
+                'Configura GEMINI_API_KEY, GEMINI_KEY_1, etc. en el archivo .env.'
             );
         }
     }
@@ -38,8 +37,8 @@ class GeminiService
                 return $this->callWithRetry($prompt, $key);
             } catch (\Exception $e) {
                 $errorType = $this->isRateLimitError($e) ? 'rate-limit' : get_class($e);
-                $errors[] = "key#" . ($key['index'] + 1) . ": {$errorType}";
-                Log::warning("Gemini key#{$key['index']} failed: {$e->getMessage()}");
+                $errors[] = "key #{$this->currentIndex}: {$errorType}";
+                Log::warning("Gemini key failed: {$e->getMessage()}");
                 continue;
             }
         }
@@ -48,13 +47,13 @@ class GeminiService
         throw new \RuntimeException("No fue posible generar contenido con las API keys disponibles. {$details}");
     }
 
-    private function callWithRetry(string $prompt, array $key): string
+    private function callWithRetry(string $prompt, string $key): string
     {
         $lastError = null;
 
         for ($retry = 0; $retry < self::MAX_RETRIES_PER_KEY; $retry++) {
             try {
-                return $this->callGemini($prompt, $key['value']);
+                return $this->callGemini($prompt, $key);
             } catch (\Exception $e) {
                 $lastError = $e;
                 if ($retry < self::MAX_RETRIES_PER_KEY - 1) {
@@ -98,62 +97,7 @@ class GeminiService
         return trim($text);
     }
 
-    private function loadKeys(): array
-    {
-        $keys = [];
-
-        // Try GEMINI_KEY_1..4 from .env (Laravel style via config)
-        for ($i = 1; $i <= 4; $i++) {
-            $key = config("services.gemini.api_key_{$i}") ?: env("GEMINI_KEY_{$i}");
-            if ($key && trim($key) !== '') {
-                $keys[] = ['index' => count($keys), 'value' => trim($key)];
-            }
-        }
-
-        if (empty($keys)) {
-            // Check GEMINI_API_KEY (supports comma-separated multiple keys)
-            $singleKey = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
-            if ($singleKey && trim($singleKey) !== '') {
-                $parts = explode(',', $singleKey);
-                foreach ($parts as $i => $part) {
-                    $trimmed = trim($part);
-                    if ($trimmed !== '') {
-                        $keys[] = ['index' => $i, 'value' => $trimmed];
-                    }
-                }
-            }
-        }
-
-        if (empty($keys)) {
-            // Legacy: scan all env vars for Gemini_key_N pattern
-            $indexed = [];
-            $pattern = '/^gemini_key_(\d+)$/i';
-
-            foreach ([$_ENV, getenv()] as $envSource) {
-                if (!is_array($envSource)) continue;
-                foreach ($envSource as $name => $value) {
-                    if (preg_match($pattern, $name, $matches) && trim($value) !== '') {
-                        $idx = (int) $matches[1];
-                        $indexed[$idx] = trim($value);
-                    }
-                }
-            }
-
-            foreach ($indexed as $value) {
-                $keys[] = ['index' => count($keys), 'value' => $value];
-            }
-        }
-
-        if (empty($keys)) {
-            throw new \RuntimeException(
-                'Configura Gemini_key_1, Gemini_key_2, etc. en el archivo .env.'
-            );
-        }
-
-        return $keys;
-    }
-
-    private function nextKey(): array
+    private function nextKey(): string
     {
         $key = $this->keys[$this->currentIndex];
         $this->currentIndex = ($this->currentIndex + 1) % $this->totalKeys;

@@ -170,12 +170,12 @@ const formatNumber = (n) => {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-                <StatCard title="Canales" :value="stats.total_channels" />
-                <StatCard title="Videos totales" :value="stats.total_videos" />
-                <StatCard title="Publicados" :value="stats.published_total" />
-                <StatCard title="Publicados este mes" :value="stats.published_this_month" />
-                <StatCard title="Pendientes" :value="stats.pending_count" />
+            <div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-5 gap-6">
+                <StatCard title="Canales" :value="stats.total_channels" color="#ef4444" />
+                <StatCard title="Videos totales" :value="stats.total_videos" color="#6366f1" />
+                <StatCard title="Publicados" :value="stats.published_total" color="#22c55e" />
+                <StatCard title="Publicados este mes" :value="stats.published_this_month" color="#f59e0b" />
+                <StatCard title="Pendientes" :value="stats.pending_count" color="#a855f7" />
             </div>
 
             <div v-if="channels.length === 0"
@@ -387,12 +387,8 @@ const formatNumber = (n) => {
                                     <tr class="border-b border-gray-200 dark:border-gray-700">
                                         <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Video</th>
                                         <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Titulo</th>
-                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">
-                                            <Eye class="w-3 h-3 inline" /> Vistas
-                                        </th>
-                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">
-                                            <MessageCircle class="w-3 h-3 inline" /> Comentarios
-                                        </th>
+                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Vistas</th>
+                                        <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Comentarios</th>
                                         <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Publicado</th>
                                     </tr>
                                 </thead>

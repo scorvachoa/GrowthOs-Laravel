@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas, historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, integración con YouTube API, e importación desde proyecto Python legado.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas, historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, e integración con YouTube API.
 
 ---
 
@@ -122,16 +122,27 @@ AI:              view ai, view ai history, download ai
 
 ### UI / UX
 - Layout con sidebar dinámico según permisos
-- Topbar con perfil y logout
+- Topbar fijo con perfil, logout y selector de empresa (Super Admin)
 - Flash messages y toasts
 - Modal centrado de error 403 para respuestas Inertia (con backdrop, icono, botón "Entendido")
 - Modal de confirmación para eliminaciones
-- Componentes reutilizables (formularios, botones, paginación, modales)
+- Componentes reutilizables (formularios, botones, paginación, modales, StatCard con color)
 - Soporte modo claro / oscuro (Tailwind `dark:`)
 - Dark theme en Welcome, Login, Register y Forgot Password con diseño glassmorphism
 - Vista cards / lista toggleable en sección de videos recientes
-- Auto-selección del primer bloque horario libre al crear tarea
+- Auto-selección del primer bloque horario libre al crear tarea (salta bloque ocupados)
 - Botón "+" se oculta cuando el bloque o día están completos
+- Selector de color con círculos blancos y círculo interior de color en formularios
+- StatCards con borde superior y valor coloreados según métrica
+- Dashboard responsivo: stats 2 columnas en mobile, 5 en desktop
+- Modales con scroll interno y márgenes laterales en mobile
+- Página /ideas con scroll solo en lista de ideas; sidebars y buscador estáticos
+- Calendario mensual con cards independientes, días de otros meses visibles en baja opacidad
+- Configuración en grid de 2 columnas en desktop
+- Botón copiar con animación check (pop-in) en invitaciones
+- Búsquedas con debounce (400ms) en usuarios y roles
+- Paginación en tabla de roles
+- Nombre de app desde variable de entorno (`VITE_APP_NAME`)
 
 ---
 
@@ -242,7 +253,7 @@ app/
 │   ├── AI/                  # GeminiService, ElevenLabsService, AIContentService, Prompts,
 │   │                        # ScriptCleaner, CopyParser, PhraseCleaner
 │   ├── PlanningCalendarService, DashboardService, UserService, IdeaService, YouTubeService
-└── Support/                 # WorkBlocks, VideoTaskStatuses (enums planos con constantes)
+└── Support/                 # WorkBlocks (lógica de bloques de trabajo)
 
 database/
 ├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history,
@@ -285,13 +296,12 @@ resources/js/
 ## Arquitectura
 
 - **Service Layer** — lógica de negocio desacoplada de controladores (`UserService`, `DashboardService`, `PlanningCalendarService`, `IdeaService`)
-- **Support classes** — constantes y helpers sin enums nativos (`WorkBlocks`, `VideoTaskStatuses`)
+- **Enums nativos** — `VideoTaskStatus` como backed enum PHP 8 con labels y helpers
 - **Policies + middleware `can`** — autorización en backend (no solo en UI)
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
-- **Import Python** — comando `import:python-data` migra datos desde SQLite (tasks.db) a Laravel, con detección de duplicados
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
 - **Permisos granulares** — cada acción CRUD tiene su propio permiso (32 permisos en 10 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 
@@ -324,13 +334,6 @@ npm run build    # Build de producción
 php artisan test     # Tests PHPUnit
 ```
 
-### Importar datos desde Python
-
-```bash
-php artisan import:python-data "E:\Python\Git\GrowthOS\database\tasks.db"
-```
-
-Importa video tareas, tareas extra, ideas y canales desde la base SQLite del proyecto Python legado. Es idempotente (detecta duplicados por fecha+bloque y los salta).
 
 ---
 
@@ -347,7 +350,6 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 | `ELEVENLABS_API_KEY` | API Key de ElevenLabs para generación de audio MP3 |
 | `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
 | `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
-| `IMPORT_SOURCE_PATH` | Ruta al archivo SQLite del proyecto Python (`database/tasks.db`) para migrar datos |
 | `APP_TIMEZONE` | Zona horaria de la aplicación (`America/Lima`) |
 
 ---
@@ -373,19 +375,36 @@ Importa video tareas, tareas extra, ideas y canales desde la base SQLite del pro
 - [x] YouTube section con estadísticas via API (suscriptores, vistas, videos recientes, toggle cards/lista)
 - [x] Ideas (CRUD, tabs por canal, búsqueda, sort, import/export txt)
 - [x] Historial de tareas (listado con filtros + timeline de cambios por tarea)
-- [x] Import Python (comando `import:python-data` — migra tasks, extra_tasks, ideas desde SQLite)
+
 - [x] Planning: botón "+" oculto cuando bloque/día completo
-- [x] VideoTaskForm: auto-selección del primer bloque libre
+- [x] VideoTaskForm: auto-selección del primer bloque libre (salta ocupados al cargar)
 - [x] Show: layout 3 columnas (guion, copy, video) + YouTube/TikTok embed
 - [x] PDF mejorado: line-height 1.6, escalado proporcional, footer, color en links
 - [x] AI Generator con Gemini 2.5 Flash (guion, copy, frases, audio ElevenLabs)
 - [x] Historial de generaciones AI (descarga TXT, envío a planificador, cargar en editor, filtro usado en planner)
 - [x] Dark theme en Welcome, Login, Register y Forgot Password
-
-### Pendiente
 - [x] Permisos granulares (32 permisos en 10 grupos, reemplazando `manage users`, `manage tasks`, `view ai`)
 - [x] Modal de error 403 con redirect a página anterior (Inertia)
 - [x] Protección Super Admin: solo otro Super Admin puede editar/eliminar su cuenta
+- [x] StatCard con prop `color` (borde + valor coloreado)
+- [x] ColorPicker circular inline en formularios
+- [x] Dashboard responsivo: stats 2 col mobile, KPIs coloreados, actividad limitada a 5, ocultar secciones a no-admin, excluir Super Admin de usuarios recientes
+- [x] Ideas: layout 3 columnas con scroll solo en lista central
+- [x] SearchInput con debounce (400ms) en todos los módulos
+- [x] Roles: paginación en tabla
+- [x] Localización: Logout → Cerrar sesión, Search → Buscar, GrowthOS → VITE_APP_NAME
+- [x] YouTube: stats coloreadas, 2 cards por fila en mobile
+- [x] Topbar: memory leak corregido (removeEventListener en unmount)
+- [x] Planning: navegación SPA con router.visit/replace (sin window.location)
+- [x] VideoTaskForm: auto-liberar bloque ocupado si el seleccionado vía URL está ocupado
+- [x] CalendarMonth: cards independientes, días fuera de mes en baja opacidad
+- [x] Settings: grid 2 columnas, color con círculos
+- [x] Botón copiar con animación check (pop-in) en invitaciones
+- [x] Overflow-x-hidden global para mobile
+- [x] Topbar sticky → fixed con padding compensado
+
+### Pendiente
+- [ ] Dashboard: multi-empresa (Super Admin ve todas)
 - [ ] Tests de autorización y CRUD
 - [ ] Multi-tenancy y suscripciones
 

@@ -38,6 +38,15 @@ return [
         'api_key_2' => env('GEMINI_KEY_2'),
         'api_key_3' => env('GEMINI_KEY_3'),
         'api_key_4' => env('GEMINI_KEY_4'),
+
+        // All API keys aggregated for multi-key rotation
+        'api_keys' => array_values(array_filter([
+            env('GEMINI_API_KEY'),
+            env('GEMINI_KEY_1'),
+            env('GEMINI_KEY_2'),
+            env('GEMINI_KEY_3'),
+            env('GEMINI_KEY_4'),
+        ], fn ($v) => !empty(trim($v ?? '')))),
     ],
 
     'elevenlabs' => [

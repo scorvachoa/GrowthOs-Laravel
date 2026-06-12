@@ -26,8 +26,8 @@ const emit = defineEmits([
 </script>
 
 <template>
-    <div class="fixed inset-y-0 right-0 z-50">
-        <div class="w-[480px] h-full bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto">
+    <div class="fixed inset-y-0 right-0 z-50 max-w-full">
+        <div class="w-full sm:w-[480px] h-full bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto">
             <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedDate }}</h3>

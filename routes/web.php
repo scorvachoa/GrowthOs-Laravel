@@ -10,7 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskReportController;
 use App\Http\Controllers\ReportHistoryController;
-use App\Http\Controllers\SettingsController;
+
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\YoutubeController;
 use App\Http\Controllers\VideoTaskController;

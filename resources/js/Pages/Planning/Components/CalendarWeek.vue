@@ -38,7 +38,8 @@ function isHourOccupied(day, hour) {
 </script>
 
 <template>
-    <div class="grid grid-cols-[80px_repeat(7,1fr)] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+    <div class="overflow-x-auto -mx-4 sm:mx-0">
+        <div class="min-w-[640px] grid grid-cols-[80px_repeat(7,1fr)] border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-xl overflow-hidden">
         <div class="border-r border-b border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50"
             :style="{ gridColumn: 1, gridRow: 1 }"></div>
         <template v-for="(day, dIdx) in days" :key="day.date">
@@ -88,6 +89,7 @@ function isHourOccupied(day, hour) {
                     : 'bg-teal-50 dark:bg-teal-900/20 border border-dashed border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300')"
             :title="(p._type === 'extra' ? '[Extra] ' : '') + p.title + ' (' + p.time_range + ', ' + (statusLabels[p.status] || p.status) + ')'">
             {{ p.title }}
+            </div>
         </div>
     </div>
 </template>

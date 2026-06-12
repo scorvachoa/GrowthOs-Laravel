@@ -17,15 +17,16 @@ class StoreChannelRequest extends FormRequest
     public function rules(): array
     {
         $channel = $this->route('channel');
+        $orgId = $this->user()->activeOrganizationId();
 
         return [
             'name' => [
                 'required',
                 'string',
                 'max:120',
-                $channel
-                    ? Rule::unique('channels', 'name')->ignore($channel->id)
-                    : 'unique:channels,name',
+                Rule::unique('channels', 'name')
+                    ->where(fn ($q) => $q->where('organization_id', $orgId))
+                    ->ignore($channel?->id),
             ],
             'color' => ['required', 'string', 'max:20'],
             'youtube_channel_id' => ['nullable', 'string', 'max:120'],

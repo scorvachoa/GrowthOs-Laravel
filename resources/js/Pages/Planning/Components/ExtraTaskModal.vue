@@ -68,7 +68,7 @@ function submit() {
 <template>
     <transition name="fade">
         <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 mx-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white">
                         {{ editingExtra ? 'Editar tarea extra' : 'Nueva tarea extra' }}

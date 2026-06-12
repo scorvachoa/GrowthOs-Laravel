@@ -8,7 +8,7 @@ use App\Models\Channel;
 use App\Models\VideoTask;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -33,7 +33,7 @@ class VideoTaskController extends Controller
                     ? $this->planningValidator->resolveBlock($settings, $request->string('bloque')->toString())
                     : '',
             ],
-            'statuses' => VideoTaskStatuses::options(),
+            'statuses' => VideoTaskStatus::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
@@ -59,7 +59,7 @@ class VideoTaskController extends Controller
         $videoTask->load('channel');
         return Inertia::render('VideoTasks/Show', [
             'task' => $this->serializeTask($videoTask),
-            'statuses' => VideoTaskStatuses::options(),
+            'statuses' => VideoTaskStatus::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
@@ -70,7 +70,7 @@ class VideoTaskController extends Controller
         $videoTask->load('channel');
         return Inertia::render('VideoTasks/Edit', [
             'task' => $this->serializeTask($videoTask),
-            'statuses' => VideoTaskStatuses::options(),
+            'statuses' => VideoTaskStatus::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
         ]);
     }
@@ -112,7 +112,7 @@ class VideoTaskController extends Controller
     public function updateStatus(Request $request, VideoTask $videoTask)
     {
         $validated = $request->validate([
-            'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
+            'status' => ['required', Rule::in(VideoTaskStatus::values())],
         ]);
 
         $videoTask->update([

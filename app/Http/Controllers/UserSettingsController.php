@@ -39,17 +39,9 @@ class UserSettingsController extends Controller
             'youtube_max_recent_videos' => 'sometimes|integer|min:1|max:50',
         ]);
 
-        $settings = array_merge($user->merged_settings, $validated);
-        $user->settings = $settings;
+        $user->settings = array_merge($user->merged_settings, $validated);
         $user->save();
 
-        $workBlocks = WorkBlocks::generate($settings['block_hours']);
-
-        session()->flash('success', 'Configuracion actualizada');
-
-        return Inertia::render('Settings/Index', [
-            'settings' => $user->merged_settings,
-            'workBlocks' => $workBlocks,
-        ]);
+        return redirect()->route('settings.index')->with('success', 'Configuracion actualizada');
     }
 }

@@ -24,7 +24,7 @@ const close = () => {
     <Teleport to="body">
         <Transition name="modal">
             <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" @click.self="close">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center relative mx-4">
                     <button @click="close" class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                         <X class="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </button>

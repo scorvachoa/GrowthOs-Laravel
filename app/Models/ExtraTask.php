@@ -19,9 +19,12 @@ class ExtraTask extends Model
         'created_by',
     ];
 
-    protected $casts = [
-        'task_date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'task_date' => 'date',
+        ];
+    }
 
     public function creator()
     {

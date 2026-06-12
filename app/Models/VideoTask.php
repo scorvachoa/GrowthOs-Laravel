@@ -22,11 +22,15 @@ class VideoTask extends Model
         'status',
         'created_by',
         'channel_id',
+        'key_phrases',
     ];
 
-    protected $casts = [
-        'task_date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'task_date' => 'date',
+        ];
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

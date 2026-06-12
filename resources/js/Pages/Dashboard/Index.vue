@@ -10,6 +10,10 @@ import {
 } from 'lucide-vue-next'
 
 const page = usePage()
+const user = computed(() => page.props.auth?.user)
+const canViewUsers = computed(() =>
+    user.value?.roles?.some(r => r === 'Super Admin' || r === 'Admin')
+)
 
 const props = defineProps({
     stats: Object,
@@ -64,25 +68,26 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
 
 <template>
     <AppLayout>
-        <div class="space-y-8">
-            <div class="flex items-center justify-between">
+        <div class="space-y-6 sm:space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
                     <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de produccion de video</p>
                 </div>
                 <button @click="showPdfModal = true"
-                    class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2">
+                    class="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2 text-sm">
                     <FileDown class="w-4 h-4" />
-                    Exportar PDF
+                    <span class="hidden sm:inline">Exportar PDF</span>
+                    <span class="sm:hidden">PDF</span>
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-                <StatCard title="Tareas de video" :value="stats.total_video_tasks" />
-                <StatCard title="Tareas extra" :value="stats.total_extra_tasks" />
-                <StatCard title="En progreso" :value="stats.in_progress" />
-                <StatCard title="Completadas" :value="stats.completed" />
-                <StatCard title="Vencidas" :value="stats.overdue" />
+            <div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-6">
+                <StatCard title="Tareas de video" :value="stats.total_video_tasks" color="#6366f1" />
+                <StatCard title="Tareas extra" :value="stats.total_extra_tasks" color="#14b8a6" />
+                <StatCard title="En progreso" :value="stats.in_progress" color="#f59e0b" />
+                <StatCard title="Completadas" :value="stats.completed" color="#22c55e" />
+                <StatCard title="Vencidas" :value="stats.overdue" color="#ef4444" />
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -168,7 +173,7 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                <div v-if="canViewUsers" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
                             <Users class="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -196,7 +201,7 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                                 <p class="font-medium text-gray-900 dark:text-white text-sm">{{ user.name }}</p>
                                 <p class="text-xs text-gray-500">{{ user.email }}</p>
                             </div>
-                            <span class="text-xs text-gray-400">{{ user.created_at }}</span>
+                            <span class="text-xs text-gray-400">{{ (user.created_at || '').slice(0, 19).replace('T', ' ') }}</span>
                         </div>
                     </div>
                 </div>
@@ -230,7 +235,7 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                <div v-if="canViewUsers" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-3 rounded-xl bg-blue-100 dark:bg-blue-900">
                             <Activity class="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -245,17 +250,16 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                             class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
                             Sin actividad reciente
                         </div>
-                        <div v-for="log in stats.recent_activity" :key="log.id"
+                        <div v-for="log in stats.recent_activity?.slice(0, 5)" :key="log.id"
                             class="flex items-start gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 last:border-0">
                             <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
                                 {{ log.causer?.name?.charAt(0) || '?' }}
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm text-gray-900 dark:text-white">
-                                    <span class="font-medium">{{ log.causer?.name || 'Sistema' }}</span>
-                                    <span class="text-gray-500"> {{ log.description }}</span>
+                                    <span class="font-medium">{{ log.causer?.name || 'Sistema' }}</span> <span class="text-gray-500">{{ log.description }}</span>
                                 </p>
-                                <p class="text-xs text-gray-400 mt-0.5">{{ log.created_at }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5"> {{ log.created_at }}</p>
                             </div>
                         </div>
                     </div>

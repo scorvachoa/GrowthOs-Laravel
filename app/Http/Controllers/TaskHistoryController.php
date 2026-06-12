@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Models\VideoTask;
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -40,7 +40,7 @@ class TaskHistoryController extends Controller
 
         return Inertia::render('TaskHistory/Index', [
             'tasks' => $tasks,
-            'statuses' => VideoTaskStatuses::options(),
+            'statuses' => VideoTaskStatus::options(),
             'filters' => $request->only(['q', 'status']),
         ]);
     }

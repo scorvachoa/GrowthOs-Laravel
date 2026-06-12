@@ -103,20 +103,20 @@ const scopeLabel = (scope) => {
                     <table class="w-full table-fixed">
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700">
-                                <th class="text-left px-4 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400 w-[160px]">Fecha</th>
-                                <th class="text-left px-4 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Usuario</th>
-                                <th class="text-left px-4 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400 w-[110px]">Tipo</th>
-                                <th class="text-left px-4 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400">Archivo</th>
-                                <th class="text-right px-4 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400 w-[140px]">Acción</th>
+                                <th class="text-left px-4 py-4 text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 w-[90px] sm:w-[160px]">Fecha</th>
+                                <th class="text-left px-4 py-4 text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell w-[140px]">Usuario</th>
+                                <th class="text-left px-4 py-4 text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 hidden md:table-cell w-[110px]">Tipo</th>
+                                <th class="text-left px-4 py-4 text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400">Archivo</th>
+                                <th class="text-right px-4 py-4 text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 w-[80px] sm:w-[140px]">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="item in filteredHistories" :key="item.id"
                                 class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                <td class="px-4 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">{{ item.created_at }}</td>
-                                <td class="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{{ item.user_name }}</td>
-                                <td class="px-4 py-4">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+                                <td class="px-4 py-4 text-xs sm:text-sm text-gray-900 dark:text-white whitespace-nowrap">{{ item.created_at?.substring(0, 10) }}</td>
+                                <td class="px-4 py-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate hidden sm:table-cell">{{ item.user_name }}</td>
+                                <td class="px-4 py-4 hidden md:table-cell">
+                                    <span class="px-2 py-1 text-[10px] sm:text-xs font-medium rounded-full whitespace-nowrap"
                                         :class="{
                                             'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': item.scope === 'anual',
                                             'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200': item.scope === 'mensual',
@@ -126,18 +126,20 @@ const scopeLabel = (scope) => {
                                         {{ scopeLabel(item.scope) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{{ item.filename }}</td>
-                                <td class="px-4 py-4 text-right flex items-center justify-end gap-2">
-                                    <a v-if="can('download reports')" :href="`/report-history/${item.id}/download`"
-                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition flex-shrink-0">
-                                        <FileDown class="w-3 h-3" />
-                                        Descargar
-                                    </a>
-                                    <button v-if="can('delete reports')" @click="confirmDelete(item)"
-                                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition flex-shrink-0"
-                                        title="Eliminar">
-                                        <Trash2 class="w-4 h-4" />
-                                    </button>
+                                <td class="px-4 py-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-[25ch]">{{ item.filename }}</td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-1 sm:gap-2">
+                                        <a v-if="can('download reports')" :href="`/report-history/${item.id}/download`"
+                                            class="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] sm:text-xs font-medium transition flex-shrink-0">
+                                            <FileDown class="w-3 h-3" />
+                                            <span class="hidden sm:inline">Descargar</span>
+                                        </a>
+                                        <button v-if="can('delete reports')" @click="confirmDelete(item)"
+                                            class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition flex-shrink-0"
+                                            title="Eliminar">
+                                            <Trash2 class="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="filteredHistories.length === 0">

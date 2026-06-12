@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Idea;
+use Illuminate\Support\Facades\Auth;
 
 class IdeaService
 {
@@ -33,13 +34,19 @@ class IdeaService
             return 0;
         }
 
-        $count = 0;
-        foreach ($lines as $line) {
-            Idea::create(['channel_id' => $channelId, 'content' => $line]);
-            $count++;
-        }
+        $now = now();
+        $orgId = Auth::user()?->activeOrganizationId();
+        $data = array_map(fn ($line) => [
+            'channel_id' => $channelId,
+            'content' => $line,
+            'organization_id' => $orgId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], array_values($lines));
 
-        return $count;
+        Idea::insert($data);
+
+        return count($lines);
     }
 
     public function toggleUsed(Idea $idea, bool $value): void

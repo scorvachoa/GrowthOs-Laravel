@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Services\PlanningValidator;
-use App\Support\VideoTaskStatuses;
+use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -38,7 +38,7 @@ class StoreVideoTaskRequest extends FormRequest
             'copy' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
             'channel_id' => ['nullable', 'exists:channels,id'],
-            'status' => ['required', Rule::in(VideoTaskStatuses::ALL)],
+            'status' => ['required', Rule::in(VideoTaskStatus::values())],
         ];
 
         if ($useBlocks) {

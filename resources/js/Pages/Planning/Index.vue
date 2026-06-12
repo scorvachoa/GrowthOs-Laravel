@@ -82,9 +82,30 @@ const firstDayOfMonth = computed(() => {
 
 const calendarDays = computed(() => {
     const days = []
-    for (let i = 0; i < firstDayOfMonth.value; i++) {
-        days.push(null)
+
+    const prevMonth = currentMonth.value === 1 ? 12 : currentMonth.value - 1
+    const prevYear = currentMonth.value === 1 ? currentYear.value - 1 : currentYear.value
+    const lastDayPrev = new Date(prevYear, prevMonth, 0).getDate()
+
+    for (let i = firstDayOfMonth.value - 1; i >= 0; i--) {
+        const d = lastDayPrev - i
+        const dateObj = new Date(prevYear, prevMonth - 1, d)
+        const dateStr = formatDate(dateObj)
+        days.push({
+            day: d,
+            date: dateStr,
+            isNonWorkingDay: isNonWorkingDay(dateObj.getDay()),
+            isOtherMonth: true,
+            isToday: false,
+            isHoliday: null,
+            holidayName: null,
+            blocks: {},
+            tasks: [],
+            count: 0,
+            hasExtraTasks: false,
+        })
     }
+
     for (let d = 1; d <= daysInMonth.value; d++) {
         const dateObj = new Date(currentYear.value, currentMonth.value - 1, d)
         const dateStr = formatDate(dateObj)
@@ -99,6 +120,7 @@ const calendarDays = computed(() => {
             day: d,
             date: dateStr,
             isNonWorkingDay: isNonWorkingDay(dayOfWeek),
+            isOtherMonth: false,
             isToday,
             isHoliday,
             holidayName: isHoliday || null,
@@ -108,6 +130,28 @@ const calendarDays = computed(() => {
             hasExtraTasks,
         })
     }
+
+    const nextMonth = currentMonth.value === 12 ? 1 : currentMonth.value + 1
+    const nextYear = currentMonth.value === 12 ? currentYear.value + 1 : currentYear.value
+    const remaining = (7 - (days.length % 7)) % 7
+    for (let d = 1; d <= remaining; d++) {
+        const dateObj = new Date(nextYear, nextMonth - 1, d)
+        const dateStr = formatDate(dateObj)
+        days.push({
+            day: d,
+            date: dateStr,
+            isNonWorkingDay: isNonWorkingDay(dateObj.getDay()),
+            isOtherMonth: true,
+            isToday: false,
+            isHoliday: null,
+            holidayName: null,
+            blocks: {},
+            tasks: [],
+            count: 0,
+            hasExtraTasks: false,
+        })
+    }
+
     return days
 })
 
@@ -250,9 +294,8 @@ function goToday() {
     const today = new Date()
     currentYear.value = today.getFullYear()
     currentMonth.value = today.getMonth() + 1
-    const mon = today.getDay() === 0 ? 6 : today.getDay() - 1
     const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - mon)
+    weekStart.setDate(today.getDate() - today.getDay())
     currentWeekStart.value = formatDate(weekStart)
     updateUrl()
 }
@@ -309,7 +352,7 @@ function updateUrl() {
     if (viewMode.value === 'week') {
         params.set('week_start', currentWeekStart.value)
     }
-    window.history.replaceState({}, '', `/planning?${params}`)
+    router.replace(`/planning?${params}`, { preserveState: true })
 }
 
 watch([currentYear, currentMonth], () => {
@@ -334,15 +377,15 @@ function closeSidebar() {
 
 function createTask(fecha, bloque) {
     const params = new URLSearchParams({ fecha, bloque }).toString()
-    window.location.href = `/video-tasks/create?${params}`
+    router.visit(`/video-tasks/create?${params}`)
 }
 
 function viewTask(id) {
-    window.location.href = `/video-tasks/${id}`
+    router.visit(`/video-tasks/${id}`)
 }
 
 function editTask(id) {
-    window.location.href = `/video-tasks/${id}/edit`
+    router.visit(`/video-tasks/${id}/edit`)
 }
 
 function confirmDeleteTask(task) {
@@ -425,45 +468,45 @@ async function executeExtraDelete() {
 
 <template>
     <AppLayout>
-        <div class="space-y-6">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                    <div class="flex items-center gap-3">
+        <div class="space-y-4 sm:space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div class="flex items-center gap-2 sm:gap-3">
                         <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700">
                             <button @click="setView('month')"
-                                class="px-4 py-2 text-sm font-medium transition"
+                                class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition"
                                 :class="viewMode === 'month' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
                                 Mes
                             </button>
                             <button @click="setView('week')"
-                                class="px-4 py-2 text-sm font-medium transition"
+                                class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition"
                                 :class="viewMode === 'week' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
                                 Semana
                             </button>
                         </div>
                         <button @click="goToday"
-                            class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            class="px-3 sm:px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                             Hoy
                         </button>
                     </div>
 
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center gap-2 sm:gap-4 order-first sm:order-none">
                         <button @click="viewMode === 'month' ? prevMonth() : prevWeek()"
-                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition shrink-0">
                             <ChevronLeft class="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white capitalize min-w-[220px] text-center">
+                        <h2 class="text-sm sm:text-lg font-bold text-gray-900 dark:text-white capitalize text-center truncate max-w-[160px] sm:max-w-none">
                             {{ viewMode === 'month' ? monthName : weekName }}
                         </h2>
                         <button @click="viewMode === 'month' ? nextMonth() : nextWeek()"
-                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition shrink-0">
                             <ChevronRight class="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                     </div>
                     <button v-if="can('export planning')" @click="showPdfModal = true"
-                        class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2">
+                        class="px-4 sm:px-5 py-2 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2 text-sm">
                         <FileDown class="w-4 h-4" />
-                        Exportar PDF
+                        <span class="hidden sm:inline">Exportar PDF</span>
                     </button>
                 </div>
 
@@ -534,7 +577,7 @@ async function executeExtraDelete() {
 
         <transition name="fade">
             <div v-if="showExtraDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
                     <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Confirmar eliminacion</h2>
                     <p class="text-gray-600 dark:text-gray-300 mb-2">Se eliminara la tarea extra:</p>
                     <p class="font-semibold text-gray-900 dark:text-white mb-6">{{ extraDeleteTarget?.title }}</p>
@@ -554,7 +597,7 @@ async function executeExtraDelete() {
 
         <transition name="fade">
             <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
                     <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">Confirmar eliminacion</h2>
                     <p class="text-gray-600 dark:text-gray-300 mb-2">Se eliminara la tarea:</p>
                     <p class="font-semibold text-gray-900 dark:text-white mb-6">{{ deleteTarget?.title }}</p>

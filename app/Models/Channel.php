@@ -13,5 +13,6 @@ class Channel extends Model
         'color',
         'youtube_channel_id',
         'channel_url',
+        'organization_id',
     ];
 }

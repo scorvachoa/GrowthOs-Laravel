@@ -38,6 +38,7 @@ const logoPreview = ref(props.organization?.logo_url || null)
 const selectedOrgId = ref(null)
 const deleteTarget = ref(null)
 const showDeleteModal = computed(() => deleteTarget.value !== null)
+const copied = ref(false)
 const deleteMessage = computed(() => {
     const t = deleteTarget.value
     if (!t) return ''
@@ -127,6 +128,8 @@ function generateInvite() {
 function copyInvite() {
     if (props.organization?.invite_code) {
         navigator.clipboard?.writeText(props.organization.invite_code)
+        copied.value = true
+        setTimeout(() => { copied.value = false }, 1500)
     }
 }
 
@@ -162,12 +165,12 @@ function createCompany() {
 <template>
     <AppLayout>
         <div class="max-w-7xl mx-auto space-y-8">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Empresas</h1>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Empresas</h1>
                     <p class="text-gray-500 dark:text-gray-400 mt-1">Administra empresas y canales</p>
                 </div>
-                <div v-if="isSuperAdmin && companies && can('create empresa')" class="flex gap-2">
+                <div v-if="isSuperAdmin && companies && can('create empresa')" class="flex gap-2 shrink-0">
                     <PrimaryButton @click="createCompany">
                         <Plus class="w-4 h-4" /> Nueva empresa
                     </PrimaryButton>
@@ -181,11 +184,11 @@ function createCompany() {
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700">
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Empresa</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Usuarios</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[170px] whitespace-nowrap">Código admin</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[170px] whitespace-nowrap">Código empleados</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Creada</th>
-                                <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[130px]">Acciones</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[80px] sm:w-[100px]">Usuarios</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[170px] whitespace-nowrap">Código admin</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[170px] whitespace-nowrap">Código empleados</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell w-[120px]">Creada</th>
+                                <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[90px] sm:w-[130px]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -198,40 +201,40 @@ function createCompany() {
                                             {{ org.name.charAt(0).toUpperCase() }}
                                         </div>
                                         <div>
-                                            <span class="font-medium text-gray-900 dark:text-white">{{ org.name }}</span>
+                                            <span class="font-medium text-gray-900 dark:text-white text-sm truncate max-w-[120px] sm:max-w-none">{{ org.name }}</span>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-4 py-4">
-                                    <span class="inline-flex items-center gap-1 text-gray-500">
-                                        <Users class="w-3.5 h-3.5" /> {{ org.users_count }}
+                                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                                        <Users class="w-3 h-3 sm:w-3.5 sm:h-3.5" /> {{ org.users_count }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4">
+                                <td class="px-4 py-4 hidden lg:table-cell">
                                     <code v-if="org.admin_invite_code" class="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-amber-600 dark:text-amber-400">{{ org.admin_invite_code }}</code>
                                     <span v-else class="text-xs text-gray-400">Consumido</span>
                                 </td>
-                                <td class="px-4 py-4">
+                                <td class="px-4 py-4 hidden lg:table-cell">
                                     <code v-if="org.invite_code" class="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-green-600 dark:text-green-400">{{ org.invite_code }}</code>
                                     <span v-else class="text-xs text-gray-400">—</span>
                                 </td>
-                                <td class="px-4 py-4 text-gray-500 text-xs">{{ org.created_at }}</td>
+                                <td class="px-4 py-4 text-gray-500 text-xs hidden sm:table-cell">{{ org.created_at?.substring(0, 10) }}</td>
                                 <td class="px-4 py-4 text-right">
-                                    <div class="flex items-center justify-end gap-1">
+                                    <div class="flex items-center justify-end gap-0 sm:gap-1">
                                         <button @click="viewCompany(org)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
                                             title="Ver empresa">
-                                            <Eye class="w-4 h-4" />
+                                            <Eye class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </button>
                                         <button v-if="can('edit empresa')" @click="router.get(`/company/${org.id}/edit`)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition"
                                             title="Editar">
-                                            <Pencil class="w-4 h-4" />
+                                            <Pencil class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </button>
                                         <button v-if="can('delete empresa')" @click="deleteCompany(org)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition"
                                             title="Eliminar">
-                                            <Trash2 class="w-4 h-4" />
+                                            <Trash2 class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </button>
                                     </div>
                                 </td>
@@ -254,7 +257,7 @@ function createCompany() {
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Company info form -->
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
                         <div class="flex items-center gap-3 mb-6">
@@ -288,7 +291,14 @@ function createCompany() {
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Color principal</label>
                                 <div class="flex items-center gap-3">
-                                    <input v-model="orgForm.primary_color" type="color" class="w-12 h-10 rounded-xl border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
+                                    <div class="relative w-10 h-10">
+                                        <div class="w-10 h-10 rounded-full bg-white border border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                            <div class="w-[22px] h-[22px] rounded-full"
+                                                :style="{ backgroundColor: orgForm.primary_color }"></div>
+                                        </div>
+                                        <input type="color" v-model="orgForm.primary_color"
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    </div>
                                     <span class="text-sm text-gray-500">{{ orgForm.primary_color }}</span>
                                 </div>
                             </div>
@@ -309,13 +319,20 @@ function createCompany() {
                         <form @submit.prevent="addChannel" class="space-y-4">
                             <div>
                                 <label class="block mb-1 text-xs font-medium text-gray-500">Nombre del canal</label>
-                                <input v-model="newChannel.name" type="text" placeholder="Canal principal" required
+                                <input v-model="newChannel.name" type="text" placeholder="Canal" required
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                             </div>
                             <div>
                                 <label class="block mb-1 text-xs font-medium text-gray-500">Color</label>
                                 <div class="flex items-center gap-2">
-                                    <input v-model="newChannel.color" type="color" class="w-10 h-9 rounded-lg border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
+                                    <div class="relative w-10 h-10 flex-shrink-0">
+                                        <div class="w-10 h-10 rounded-full bg-white border border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                            <div class="w-[22px] h-[22px] rounded-full"
+                                                :style="{ backgroundColor: newChannel.color }"></div>
+                                        </div>
+                                        <input type="color" v-model="newChannel.color"
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    </div>
                                     <input v-model="newChannel.color" type="text" placeholder="#4f46e5"
                                         class="flex-1 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                                 </div>
@@ -354,10 +371,13 @@ function createCompany() {
                         <div v-if="props.organization?.invite_code" class="mb-4">
                             <label class="block mb-1 text-xs font-medium text-gray-500 uppercase tracking-wider">Código activo</label>
                             <div class="flex items-center gap-2">
-                                <code class="flex-1 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-900 text-lg font-bold text-amber-600 dark:text-amber-400 tracking-wider text-center select-all">{{ props.organization.invite_code }}</code>
+                                <code class="flex-1 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-900 text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400 tracking-wider text-center select-all truncate">{{ props.organization.invite_code }}</code>
                                 <button @click="copyInvite"
-                                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition">
-                                    <Copy class="w-4 h-4" />
+                                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition relative">
+                                    <transition name="pop" mode="out-in">
+                                        <Check v-if="copied" key="check" class="w-4 h-4 text-green-500" />
+                                        <Copy v-else key="copy" class="w-4 h-4" />
+                                    </transition>
                                 </button>
                             </div>
                         </div>
@@ -388,10 +408,10 @@ function createCompany() {
                             <thead>
                                 <tr class="border-b border-gray-200 dark:border-gray-700">
                                     <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-10"></th>
-                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[200px]">Nombre</th>
-                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">ID YouTube</th>
-                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">URL</th>
-                                    <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Acciones</th>
+                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[160px] sm:w-[200px]">Nombre</th>
+                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden md:table-cell">ID YouTube</th>
+                                    <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell w-[100px]">URL</th>
+                                    <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[80px] sm:w-[100px]">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -399,11 +419,11 @@ function createCompany() {
                                     <tr v-if="editingId !== channel.id"
                                         class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                         <td class="px-4 py-4">
-                                            <span class="block w-4 h-8 rounded-full" :style="{ backgroundColor: channel.color }"></span>
+                                            <span class="block w-5 h-5 rounded-full" :style="{ backgroundColor: channel.color }"></span>
                                         </td>
                                         <td class="px-4 py-4 font-medium text-gray-900 dark:text-white truncate">{{ channel.name }}</td>
-                                        <td class="px-4 py-4 text-gray-500 font-mono text-xs truncate">{{ channel.youtube_channel_id || '—' }}</td>
-                                        <td class="px-4 py-4">
+                                        <td class="px-4 py-4 text-gray-500 font-mono text-xs truncate hidden md:table-cell">{{ channel.youtube_channel_id || '—' }}</td>
+                                        <td class="px-4 py-4 hidden sm:table-cell">
                                             <a v-if="channel.channel_url" :href="channel.channel_url" target="_blank"
                                                 class="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:underline">
                                                 <ExternalLink class="w-3 h-3" /> Abrir
@@ -411,14 +431,14 @@ function createCompany() {
                                             <span v-else class="text-gray-400 text-xs">—</span>
                                         </td>
                                         <td class="px-4 py-4 text-right">
-                                            <div class="flex items-center justify-end gap-1">
+                                            <div class="flex items-center justify-end gap-0 sm:gap-1">
                                                 <button v-if="can('edit empresa')" @click="startEdit(channel)"
                                                     class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition">
-                                                    <Pencil class="w-4 h-4" />
+                                                    <Pencil class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                                 </button>
                                                 <button v-if="can('delete empresa')" @click="deleteChannel(channel)"
                                                     class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition">
-                                                    <Trash2 class="w-4 h-4" />
+                                                    <Trash2 class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                                 </button>
                                             </div>
                                         </td>
@@ -426,7 +446,7 @@ function createCompany() {
                                     <tr v-else class="bg-gray-50 dark:bg-gray-900">
                                         <td colspan="5" class="px-4 py-4">
                                             <div class="flex items-center gap-4 mb-3">
-                                                <span class="w-4 h-8 rounded-full flex-shrink-0" :style="{ backgroundColor: editForm.color }"></span>
+                                                <span class="w-5 h-5 rounded-full flex-shrink-0" :style="{ backgroundColor: editForm.color }"></span>
                                                 <span class="text-sm font-semibold text-gray-900 dark:text-white">Editando: {{ editForm.name }}</span>
                                             </div>
                                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -490,3 +510,13 @@ function createCompany() {
         />
     </AppLayout>
 </template>
+
+<style scoped>
+.pop-enter-active { animation: pop-in .25s ease-out; }
+.pop-leave-active { animation: pop-in .15s ease-in reverse; }
+@keyframes pop-in {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>

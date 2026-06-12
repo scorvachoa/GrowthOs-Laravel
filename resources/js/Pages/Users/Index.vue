@@ -44,8 +44,12 @@ const confirmDelete = () => {
     })
 }
 
+let debounceTimer
 watch(search, (value) => {
-    router.get('/users', { search: value }, { preserveState: true, replace: true })
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+        router.get('/users', { search: value }, { preserveState: true, replace: true })
+    }, 400)
 })
 
 const initials = (name) => {
