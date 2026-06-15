@@ -120,6 +120,10 @@ AI:              view ai, view ai history, download ai
 - Sincronización de permisos por rol
 - Protección de rutas con middleware `can:*`
 
+### PDF - Reportes
+- Observaciones por día con subtítulo "Observaciones" en el color de la empresa y borde izquierdo coloreado
+- Tareas extra con diseño de tarjeta y borde izquierdo gris oscuro (mismo estilo que observaciones)
+
 ### UI / UX
 - Layout con sidebar dinámico según permisos
 - Topbar fijo con perfil, logout y selector de empresa (Super Admin)
@@ -143,6 +147,8 @@ AI:              view ai, view ai history, download ai
 - Búsquedas con debounce (400ms) en usuarios y roles
 - Paginación en tabla de roles
 - Nombre de app desde variable de entorno (`VITE_APP_NAME`)
+- DaySidebar: secciones colapsables (Tareas de video, Tareas extra, Observaciones) con iconos ChevronDown/ChevronRight
+- DaySidebar: selectores de estado más anchos (`min-w-[130px]`)
 
 ---
 
@@ -376,6 +382,9 @@ php artisan test     # Tests PHPUnit
 - [x] Ideas (CRUD, tabs por canal, búsqueda, sort, import/export txt)
 - [x] Historial de tareas (listado con filtros + timeline de cambios por tarea)
 
+- [x] PDF Report: observaciones por día (subtítulo "Observaciones" con color empresa, borde izquierdo)
+- [x] PDF Report: tareas extra con diseño de borde izquierdo gris oscuro
+- [x] DaySidebar: secciones colapsables (Tareas de video, Tareas extra, Observaciones)
 - [x] Planning: botón "+" oculto cuando bloque/día completo
 - [x] VideoTaskForm: auto-selección del primer bloque libre (salta ocupados al cargar)
 - [x] Show: layout 3 columnas (guion, copy, video) + YouTube/TikTok embed

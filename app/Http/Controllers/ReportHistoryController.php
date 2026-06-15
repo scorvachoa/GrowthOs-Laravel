@@ -9,13 +9,27 @@ use Inertia\Inertia;
 
 class ReportHistoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = min(max((int) $request->input('per_page', 10), 5), 100);
+
         $histories = ReportHistory::query()
             ->with('user')
+            ->when(
+                $request->search,
+                fn ($q, $search) => $q->where(function ($q) use ($search) {
+                    $q->where('filename', 'like', "%{$search}%")
+                      ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                })
+            )
+            ->when(
+                $request->scope,
+                fn ($q, $scope) => $q->where('scope', $scope)
+            )
             ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn ($item) => [
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn ($item) => [
                 'id' => $item->id,
                 'user_name' => $item->user?->name ?? '-',
                 'scope' => $item->scope,
@@ -27,6 +41,7 @@ class ReportHistoryController extends Controller
 
         return Inertia::render('Reports/History', [
             'histories' => $histories,
+            'filters' => $request->only(['search', 'scope', 'per_page']),
         ]);
     }
 

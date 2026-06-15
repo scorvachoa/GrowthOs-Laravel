@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import Pagination from '@/Components/UI/Pagination.vue'
+import { Search } from 'lucide-vue-next'
 
 const props = defineProps({
     tasks: Object,
@@ -12,6 +13,24 @@ const props = defineProps({
 
 const search = ref(props.filters?.q || '')
 const statusFilter = ref(props.filters?.status || '')
+const perPage = ref(props.filters?.per_page || 10)
+
+function load() {
+    router.get('/task-history', {
+        q: search.value || '',
+        status: statusFilter.value || '',
+        per_page: perPage.value,
+    }, { preserveState: true, replace: true })
+}
+
+let debounceTimer
+watch(search, () => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(load, 400)
+})
+
+watch(statusFilter, load)
+watch(perPage, load)
 
 const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -32,13 +51,6 @@ const formatDate = (dateStr) => {
     const d = new Date(dateStr + 'T12:00:00')
     return d.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-function applyFilters() {
-    router.get('/task-history', {
-        q: search.value || '',
-        status: statusFilter.value || '',
-    }, { preserveState: true, replace: true })
-}
 </script>
 
 <template>
@@ -52,18 +64,29 @@ function applyFilters() {
                 <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center gap-3">
                     <div class="relative flex-1 max-w-md">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input v-model="search" @input="applyFilters" placeholder="Buscar por título..."
+                        <input v-model="search" placeholder="Buscar por título..."
                             class="w-full pl-10 pr-4 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm" />
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button v-for="s in statuses" :key="s.value"
-                            @click="statusFilter = statusFilter === s.value ? '' : s.value; applyFilters()"
+                            @click="statusFilter = statusFilter === s.value ? '' : s.value"
                             class="px-3 py-1.5 rounded-lg border text-xs font-medium transition"
                             :class="statusFilter === s.value
                                 ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-700 dark:text-indigo-300'
                                 : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
                             {{ s.label }}
                         </button>
+
+                        <span class="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></span>
+
+                        <select v-model="perPage"
+                            class="px-4 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 min-w-[80px]">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -106,21 +129,11 @@ function applyFilters() {
                     </table>
                 </div>
 
-                <div v-if="tasks.last_page > 1" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-                    <span class="text-xs text-gray-500 text-center sm:text-left">
-                        Pagina {{ tasks.current_page }} de {{ tasks.last_page }}
-                        ({{ tasks.total }} tareas)
-                    </span>
-                    <div class="flex gap-1 justify-center">
-                        <button :disabled="!tasks.prev_page_url" @click="router.get(tasks.prev_page_url, {}, { preserveState: true, replace: true })"
-                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                            <ChevronLeft class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                        </button>
-                        <button :disabled="!tasks.next_page_url" @click="router.get(tasks.next_page_url, {}, { preserveState: true, replace: true })"
-                            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                            <ChevronRight class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                        </button>
+                <div class="flex items-center justify-between gap-4 px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                    <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        Mostrando {{ tasks?.from || 0 }} - {{ tasks?.to || 0 }} de {{ tasks?.total || 0 }} tareas
                     </div>
+                    <Pagination v-if="tasks?.links" :links="tasks.links" />
                 </div>
             </div>
         </div>

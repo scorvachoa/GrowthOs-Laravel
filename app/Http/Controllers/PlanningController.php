@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DayObservation;
 use App\Models\VideoTask;
 use App\Services\PlanningCalendarService;
 use App\Support\WorkBlocks;
@@ -90,6 +91,39 @@ class PlanningController extends Controller
         return response()->json(
             $this->calendar->tasksForDate($request->string('fecha'))
         );
+    }
+
+    public function getObservation(Request $request)
+    {
+        $request->validate(['fecha' => ['required', 'date']]);
+
+        $obs = DayObservation::query()
+            ->where('organization_id', Auth::user()->activeOrganizationId())
+            ->where('task_date', $request->string('fecha'))
+            ->first();
+
+        return response()->json([
+            'notes' => $obs?->notes ?? '',
+        ]);
+    }
+
+    public function saveObservation(Request $request)
+    {
+        $request->validate([
+            'fecha' => ['required', 'date'],
+            'notes' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $orgId = Auth::user()->activeOrganizationId();
+
+        DayObservation::updateOrCreate(
+            ['organization_id' => $orgId, 'task_date' => $request->string('fecha')],
+            ['notes' => $request->string('notes'), 'created_by' => Auth::id()],
+        );
+
+        PlanningCalendarService::bustCache();
+
+        return response()->json(['ok' => true]);
     }
 
     public function occupiedBlocks(Request $request)

@@ -39,7 +39,7 @@ class TaskReportController extends Controller
 
         $tasks = $this->reportService->loadTasksForRange($orgId, $start, $end);
         $extraTasks = $this->reportService->loadExtraTasksForRange($orgId, $start, $end);
-        $days = $this->reportService->buildDayGroups($tasks, $extraTasks, $start, $end);
+        $days = $this->reportService->buildDayGroups($orgId, $tasks, $extraTasks, $start, $end);
         $company = $this->reportService->buildCompanyData($user);
 
         $filename = $this->reportService->generateAndSave(

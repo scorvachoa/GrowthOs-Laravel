@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DayObservation;
 use App\Models\ExtraTask;
 use App\Models\VideoTask;
 use App\Enums\VideoTaskStatus;
@@ -32,6 +33,7 @@ class PlanningCalendarService
 
         $monthTasks = $this->loadMonthTasks($monthStart, $monthEnd);
         $monthExtraTasks = $this->loadMonthExtraTasks($monthStart, $monthEnd);
+        $observationsMap = $this->loadObservationsMap($monthStart, $monthEnd);
 
         [$tasksCount, $blocksMap, $tasksDetailMap] = $this->buildMonthMaps($monthTasks, $workBlocks);
         $hasExtraTasksMap = $this->buildExtraTasksMap($monthExtraTasks);
@@ -50,6 +52,7 @@ class PlanningCalendarService
             'has_extra_tasks_map' => $hasExtraTasksMap,
             'week_tasks_detail_map' => $weekTasksDetailMap,
             'week_extra_tasks_detail_map' => $weekExtraTasksDetailMap,
+            'observations_map' => $observationsMap,
             'holidays_map' => $this->holidays->forYear($year),
             'work_blocks' => $workBlocks,
             'statuses' => VideoTaskStatus::options(),
@@ -59,6 +62,7 @@ class PlanningCalendarService
     private function loadMonthTasks(Carbon $start, Carbon $end): Collection
     {
         return VideoTask::query()
+            ->with('channel')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->orderBy('task_date')
@@ -74,6 +78,18 @@ class PlanningCalendarService
             ->where('task_date', '<', $end)
             ->get()
             ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
+    }
+
+    private function loadObservationsMap(Carbon $start, Carbon $end): array
+    {
+        return DayObservation::query()
+            ->where('task_date', '>=', $start)
+            ->where('task_date', '<', $end)
+            ->where('organization_id', Auth::user()->activeOrganizationId())
+            ->get()
+            ->keyBy(fn (DayObservation $obs) => $obs->task_date->format('Y-m-d'))
+            ->map(fn (DayObservation $obs) => true)
+            ->all();
     }
 
     private function buildMonthMaps(Collection $monthTasks, array $workBlocks): array
@@ -108,6 +124,7 @@ class PlanningCalendarService
         $weekEnd = $weekStart->copy()->addDays(7);
 
         $weekTasks = VideoTask::query()
+            ->with('channel')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
             ->orderBy('task_date')
@@ -162,6 +179,7 @@ class PlanningCalendarService
     public function tasksForDate(string $date): array
     {
         return VideoTask::query()
+            ->with('channel')
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
             ->orderBy('time_range')
@@ -191,6 +209,9 @@ class PlanningCalendarService
             'time_range' => $task->time_range,
             'title' => $task->title,
             'status' => $task->status,
+            'channel' => $task->channel
+                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                : null,
         ];
     }
 
@@ -206,6 +227,9 @@ class PlanningCalendarService
             'key_phrases' => $task->key_phrases,
             'youtube_url' => $task->youtube_url,
             'status' => $task->status,
+            'channel' => $task->channel
+                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                : null,
         ];
     }
 }

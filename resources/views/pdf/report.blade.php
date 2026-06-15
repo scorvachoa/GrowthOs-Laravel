@@ -15,6 +15,9 @@
         .task-title { font-size: 12px; }
         .task-link { font-size: 11px; font-style: italic; color: {{ $company['primary_color'] }}; }
         .no-tasks { font-size: 11px; color: #9ca3af; margin-left: 12px; }
+        .observation-row, .extra-row { margin-left: 12px; margin-top: 6px; padding: 6px 8px; background: #f9fafb; border-radius: 4px; }
+        .observation-row { border-left: 3px solid {{ $company['primary_color'] }}; }
+        .extra-row { border-left: 3px solid #6b7280; }
         .footer { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 9px; color: {{ $company['primary_color'] }}; }
     </style>
 </head>
@@ -31,16 +34,29 @@
             <div class="day-title">{{ $day['date'] }}</div>
             @if(!empty($day['tasks']))
                 @foreach($day['tasks'] as $task)
-                    <div class="task-row">
-                        <div class="task-time">{{ $task['time_range'] }}</div>
-                        <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:10px;">({{ $task['status_label'] }})</span></div>
-                        @if($task['youtube_url'])
-                            <div class="task-link">{{ $task['youtube_url'] }}</div>
-                        @endif
-                    </div>
+                    @if($task['type'] === 'extra')
+                        <div class="extra-row">
+                            <div class="task-time">{{ $task['time_range'] }}</div>
+                            <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:10px;">({{ $task['status_label'] }})</span></div>
+                        </div>
+                    @else
+                        <div class="task-row">
+                            <div class="task-time">{{ $task['time_range'] }}</div>
+                            <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:10px;">({{ $task['status_label'] }})</span></div>
+                            @if($task['youtube_url'])
+                                <div class="task-link">{{ $task['youtube_url'] }}</div>
+                            @endif
+                        </div>
+                    @endif
                 @endforeach
             @else
                 <div class="no-tasks">Sin tareas</div>
+            @endif
+            @if($day['observation'])
+                <div class="observation-row">
+                    <div style="color:{{ $company['primary_color'] }};font-size:11px;font-weight:bold;margin-bottom:2px;">Observaciones</div>
+                    <div style="font-size:11px;color:#6b7280;font-style:italic;">{{ $day['observation'] }}</div>
+                </div>
             @endif
         </div>
     @empty

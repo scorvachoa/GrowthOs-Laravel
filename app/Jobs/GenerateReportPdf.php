@@ -33,7 +33,7 @@ class GenerateReportPdf implements ShouldQueue
 
         $tasks = $reportService->loadTasksForRange($orgId, $start, $end);
         $extraTasks = $reportService->loadExtraTasksForRange($orgId, $start, $end);
-        $days = $reportService->buildDayGroups($tasks, $extraTasks, $start, $end);
+        $days = $reportService->buildDayGroups($orgId, $tasks, $extraTasks, $start, $end);
         $company = $reportService->buildCompanyData($this->user);
 
         $filename = $reportService->generateAndSave(

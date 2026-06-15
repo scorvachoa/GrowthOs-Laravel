@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import { FileDown, Trash2, Search } from 'lucide-vue-next'
 
@@ -10,36 +11,38 @@ const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
 
 const props = defineProps({
-    histories: Array,
+    histories: Object,
+    filters: Object,
 })
 
-const search = ref('')
-const scopeFilter = ref('')
+const search = ref(props.filters?.search || '')
+const scopeFilter = ref(props.filters?.scope || '')
+const perPage = ref(props.filters?.per_page || 10)
 
-const filteredHistories = computed(() => {
-    let result = props.histories
+function load() {
+    router.get('/report-history', {
+        search: search.value || '',
+        scope: scopeFilter.value || '',
+        per_page: perPage.value,
+    }, { preserveState: true, replace: true })
+}
 
-    if (search.value) {
-        const q = search.value.toLowerCase()
-        result = result.filter(h =>
-            (h.filename && h.filename.toLowerCase().includes(q)) ||
-            (h.user_name && h.user_name.toLowerCase().includes(q))
-        )
-    }
-
-    if (scopeFilter.value) {
-        result = result.filter(h => h.scope === scopeFilter.value)
-    }
-
-    return result
+let debounceTimer
+watch(search, () => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(load, 400)
 })
+
+watch(scopeFilter, load)
+watch(perPage, load)
 
 const deletingItem = ref(null)
-const deleteMessage = computed(() => deletingItem.value
-    ? `¿Eliminar el reporte "${deletingItem.value.filename}"?`
-    : '')
+const deleteMessage = ref('')
 
-function confirmDelete(item) { deletingItem.value = item }
+function confirmDelete(item) {
+    deletingItem.value = item
+    deleteMessage.value = `¿Eliminar el reporte "${item.filename}"?`
+}
 
 function executeDelete() {
     router.delete(`/report-history/${deletingItem.value.id}`, {
@@ -68,7 +71,7 @@ const scopeLabel = (scope) => {
                         <input v-model="search" type="text" placeholder="Buscar por archivo o usuario..."
                             class="w-full pl-10 pr-4 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm">
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button @click="scopeFilter = scopeFilter === 'anual' ? '' : 'anual'"
                             class="px-3 py-1.5 rounded-lg border text-xs font-medium transition"
                             :class="scopeFilter === 'anual'
@@ -97,6 +100,17 @@ const scopeLabel = (scope) => {
                                 : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'">
                             Diario
                         </button>
+
+                        <span class="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block"></span>
+
+                        <select v-model="perPage"
+                            class="px-4 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 min-w-[80px]">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -111,7 +125,7 @@ const scopeLabel = (scope) => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="item in filteredHistories" :key="item.id"
+                            <tr v-for="item in histories?.data || []" :key="item.id"
                                 class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-xs sm:text-sm text-gray-900 dark:text-white whitespace-nowrap">{{ item.created_at?.substring(0, 10) }}</td>
                                 <td class="px-4 py-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate hidden sm:table-cell">{{ item.user_name }}</td>
@@ -142,15 +156,21 @@ const scopeLabel = (scope) => {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="filteredHistories.length === 0">
+                            <tr v-if="!histories?.data?.length">
                                 <td colspan="5" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 italic">
-                                    <template v-if="histories.length === 0">Aún no se han generado reportes</template>
-                                    <template v-else>No hay reportes que coincidan con tu búsqueda</template>
+                                    Aún no se han generado reportes
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    Mostrando {{ histories?.from || 0 }} - {{ histories?.to || 0 }} de {{ histories?.total || 0 }} reportes
+                </div>
+                <Pagination v-if="histories?.links" :links="histories.links" />
             </div>
         </div>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { router, Link, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
@@ -33,6 +33,7 @@ const snapshot = ref(props.calendar)
 const selectedDate = ref(null)
 const dayTasks = ref([])
 const extraTasks = ref([])
+const dayObservation = ref({ notes: '' })
 const showSidebar = ref(false)
 const showDeleteModal = ref(false)
 const showExtraDeleteModal = ref(false)
@@ -278,15 +279,18 @@ async function fetchSnapshot() {
 
 async function fetchDayTasks(date) {
     try {
-        const [tasksRes, extraRes] = await Promise.all([
+        const [tasksRes, extraRes, obsRes] = await Promise.all([
             axios.get('/planning/tasks', { params: { fecha: date } }),
             axios.get('/extra-tasks', { params: { fecha: date } }),
+            axios.get('/planning/observation', { params: { fecha: date } }),
         ])
         dayTasks.value = tasksRes.data
         extraTasks.value = extraRes.data
+        dayObservation.value = obsRes.data
     } catch (e) {
         dayTasks.value = []
         extraTasks.value = []
+        dayObservation.value = { notes: '' }
     }
 }
 
@@ -295,9 +299,10 @@ function goToday() {
     currentYear.value = today.getFullYear()
     currentMonth.value = today.getMonth() + 1
     const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - today.getDay())
+    weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7))
     currentWeekStart.value = formatDate(weekStart)
     updateUrl()
+    fetchSnapshot()
 }
 
 function prevMonth() {
@@ -307,6 +312,7 @@ function prevMonth() {
         currentYear.value--
     }
     updateUrl()
+    fetchSnapshot()
 }
 
 function nextMonth() {
@@ -316,6 +322,7 @@ function nextMonth() {
         currentYear.value++
     }
     updateUrl()
+    fetchSnapshot()
 }
 
 function prevWeek() {
@@ -345,6 +352,7 @@ function nextWeek() {
 function setView(mode) {
     viewMode.value = mode
     updateUrl()
+    fetchSnapshot()
 }
 
 function updateUrl() {
@@ -352,16 +360,8 @@ function updateUrl() {
     if (viewMode.value === 'week') {
         params.set('week_start', currentWeekStart.value)
     }
-    router.replace(`/planning?${params}`, { preserveState: true })
+    window.history.replaceState({}, '', `/planning?${params}`)
 }
-
-watch([currentYear, currentMonth], () => {
-    fetchSnapshot()
-})
-
-watch(viewMode, () => {
-    fetchSnapshot()
-})
 
 async function openDay(date) {
     selectedDate.value = date
@@ -409,6 +409,29 @@ function executeDelete() {
 function updateTaskStatus(task, status) {
     axios.patch(`/video-tasks/${task.id}/status`, { status }).then(() => {
         if (selectedDate.value) fetchDayTasks(selectedDate.value)
+        fetchSnapshot()
+    })
+}
+
+function updateExtraTaskStatus(task, status) {
+    axios.patch(`/extra-tasks/${task.id}`, {
+        task_date: task.task_date,
+        time_range: task.time_range,
+        title: task.title,
+        status,
+        location: task.location,
+    }).then(() => {
+        if (selectedDate.value) fetchDayTasks(selectedDate.value)
+        fetchSnapshot()
+    })
+}
+
+function saveObservation(notes) {
+    axios.post('/planning/observation', {
+        fecha: selectedDate.value,
+        notes,
+    }).then(() => {
+        dayObservation.value.notes = notes
         fetchSnapshot()
     })
 }
@@ -553,6 +576,7 @@ async function executeExtraDelete() {
                 :statuses="snapshot.statuses"
                 :status-labels="statusLabels"
                 :holiday="snapshot.holidays_map?.[selectedDate]"
+                :observation="dayObservation"
                 :can-create="can('create planning')"
                 :can-edit="can('edit planning')"
                 :can-delete="can('delete planning')"
@@ -563,7 +587,9 @@ async function executeExtraDelete() {
                 @deleteTask="confirmDeleteTask"
                 @updateStatus="updateTaskStatus"
                 @openExtraModal="openExtraModal"
-                @deleteExtra="confirmDeleteExtra" />
+                @deleteExtra="confirmDeleteExtra"
+                @updateExtraStatus="updateExtraTaskStatus"
+                @saveObservation="saveObservation" />
         </transition>
 
         <ExtraTaskModal

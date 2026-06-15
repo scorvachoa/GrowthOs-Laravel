@@ -76,6 +76,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/extra-tasks', [ExtraTaskController::class, 'store'])->middleware('can:create planning')->name('extra-tasks.store');
     Route::patch('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'update'])->middleware('can:edit planning')->name('extra-tasks.update');
     Route::delete('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'destroy'])->middleware('can:delete planning')->name('extra-tasks.destroy');
+    Route::get('/planning/observation', [PlanningController::class, 'getObservation'])->middleware('can:view planning')->name('planning.observation.get');
+    Route::post('/planning/observation', [PlanningController::class, 'saveObservation'])->middleware('can:view planning')->name('planning.observation.save');
 
     // Task History
     Route::get('/task-history', [TaskHistoryController::class, 'index'])->middleware('can:view tasks')->name('task-history.index');

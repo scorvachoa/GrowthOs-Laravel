@@ -26,22 +26,27 @@ class TaskHistoryController extends Controller
             $query->where('status', $request->string('status')->toString());
         }
 
-        $tasks = $query->paginate(30)->through(fn ($task) => [
-            'id' => $task->id,
-            'task_date' => $task->task_date->format('Y-m-d'),
-            'time_range' => $task->time_range,
-            'title' => $task->title,
-            'status' => $task->status,
-            'channel' => $task->channel
-                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
-                : null,
-            'created_by' => $task->creator?->name,
-        ]);
+        $perPage = min(max((int) $request->input('per_page', 10), 5), 100);
+
+        $tasks = $query
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn ($task) => [
+                'id' => $task->id,
+                'task_date' => $task->task_date->format('Y-m-d'),
+                'time_range' => $task->time_range,
+                'title' => $task->title,
+                'status' => $task->status,
+                'channel' => $task->channel
+                    ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                    : null,
+                'created_by' => $task->creator?->name,
+            ]);
 
         return Inertia::render('TaskHistory/Index', [
             'tasks' => $tasks,
             'statuses' => VideoTaskStatus::options(),
-            'filters' => $request->only(['q', 'status']),
+            'filters' => $request->only(['q', 'status', 'per_page']),
         ]);
     }
 

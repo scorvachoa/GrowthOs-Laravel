@@ -40,9 +40,8 @@ class RoleController extends Controller
                     $query->where('name', 'like', "%{$search}%")
             )
             ->orderBy('name')
-            ->paginate(10)
-            ->withQueryString()
-            ->through(fn ($role) => [
+            ->get()
+            ->map(fn ($role) => [
                 'id' => $role->id,
                 'name' => $role->name,
                 'organization_id' => $role->organization_id,

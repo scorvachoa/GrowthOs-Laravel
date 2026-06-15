@@ -53,7 +53,7 @@ const scopeOptions = [
 
 watch(() => props.show, (v) => {
     if (v) {
-        scope.value = 'mensual'
+        scope.value = scopeMap[props.defaultScope] || 'mensual'
         reportYear.value = props.year
         reportMonth.value = props.month
         reportWeekStart.value = props.weekStart || getCurrentMonday()

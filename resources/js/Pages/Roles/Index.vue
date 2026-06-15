@@ -4,12 +4,11 @@ import { router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import Pagination from '@/Components/UI/Pagination.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import { Shield, Plus, Pencil, Trash2, Users, KeyRound, Building2 } from 'lucide-vue-next'
 
 const props = defineProps({
-    roles: Object,
+    roles: Array,
     filters: Object,
     companies: Array,
 })
@@ -76,7 +75,7 @@ const executeDelete = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="role in roles?.data || []" :key="role.id"
+                        <tr v-for="role in roles || []" :key="role.id"
                             class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                             <td class="px-4 py-4">
                                 <div class="flex items-center gap-3">
@@ -121,7 +120,7 @@ const executeDelete = () => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="!roles?.data?.length">
+                        <tr v-if="!roles?.length">
                             <td colspan="5" class="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
                                 <Shield class="w-10 h-10 mx-auto mb-2 opacity-40" />
                                 No se encontraron roles
@@ -132,7 +131,6 @@ const executeDelete = () => {
                 </div>
             </div>
 
-            <Pagination v-if="roles?.links" :links="roles.links" />
         </div>
 
         <ConfirmDeleteModal

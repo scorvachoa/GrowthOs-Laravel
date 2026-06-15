@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DayObservation;
 use App\Models\ExtraTask;
 use App\Models\Organization;
 use App\Models\ReportHistory;
@@ -78,9 +79,16 @@ class ReportService
             ->get();
     }
 
-    public function buildDayGroups(Collection $tasks, Collection $extraTasks, Carbon $start, Carbon $end): array
+    public function buildDayGroups(?int $orgId, Collection $tasks, Collection $extraTasks, Carbon $start, Carbon $end): array
     {
         $labels = VideoTaskStatus::labels();
+        $observations = DayObservation::query()
+            ->where('organization_id', $orgId)
+            ->where('task_date', '>=', $start)
+            ->where('task_date', '<', $end)
+            ->get()
+            ->keyBy(fn ($o) => $o->task_date->format('Y-m-d'));
+
         $days = [];
         $current = $start->copy();
 
@@ -102,14 +110,18 @@ class ReportService
             foreach ($dayExtras as $task) {
                 $items[] = [
                     'time_range' => $task->time_range,
-                    'title' => $task->title . ' (Extra)',
+                    'title' => $task->title,
                     'status_label' => $task->status,
                     'youtube_url' => null,
                     'type' => 'extra',
                 ];
             }
 
-            $days[] = ['date' => $dateStr, 'tasks' => $items];
+            $days[] = [
+                'date' => $dateStr,
+                'tasks' => $items,
+                'observation' => isset($observations[$dateStr]) ? $observations[$dateStr]->notes : null,
+            ];
             $current->addDay();
         }
 
