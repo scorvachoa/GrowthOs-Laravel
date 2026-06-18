@@ -23,6 +23,9 @@ use App\Http\Controllers\AI\CopyController;
 use App\Http\Controllers\AI\PhrasesController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\UserSettingsController;
+use App\Http\Controllers\VacationController;
+use App\Http\Controllers\TimeOffController;
+use App\Http\Controllers\BackupController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -88,6 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ideas', [IdeaController::class, 'store'])->middleware('can:create ideas')->name('ideas.store');
     Route::post('/ideas/import', [IdeaController::class, 'import'])->middleware('can:import ideas')->name('ideas.import');
     Route::get('/ideas/export', [IdeaController::class, 'export'])->middleware('can:export ideas')->name('ideas.export');
+    Route::post('/ideas/bulk-update', [IdeaController::class, 'bulkUpdate'])->middleware('can:edit ideas')->name('ideas.bulk-update');
     Route::patch('/ideas/{idea}/used', [IdeaController::class, 'toggleUsed'])->middleware('can:edit ideas')->name('ideas.toggle-used');
     Route::patch('/ideas/{idea}', [IdeaController::class, 'update'])->middleware('can:edit ideas')->name('ideas.update');
     Route::delete('/ideas/{idea}', [IdeaController::class, 'destroy'])->middleware('can:delete ideas')->name('ideas.destroy');
@@ -118,7 +122,8 @@ Route::middleware('auth')->group(function () {
 
     // User Settings (per-user preferences)
     Route::get('/settings', [UserSettingsController::class, 'index'])->middleware('can:view configuracion')->name('settings.index');
-    Route::put('/settings', [UserSettingsController::class, 'update'])->middleware('can:edit configuracion')->name('settings.update');
+    Route::put('/settings', [UserSettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/backup-schedule', [UserSettingsController::class, 'updateBackupSchedule'])->middleware('can:configure backup')->name('settings.backup-schedule');
 
     // YouTube
     Route::get('/youtube', [YoutubeController::class, 'index'])->middleware('can:view youtube')->name('youtube.index');
@@ -136,6 +141,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/ai/history/{id}', [AIController::class, 'show'])->middleware('can:view ai history')->name('ai.show');
     Route::delete('/ai/history/{id}', [AIController::class, 'destroy'])->middleware('can:view ai history')->name('ai.destroy');
     Route::get('/ai/history/{id}/download', [AIController::class, 'downloadTxt'])->middleware('can:download ai')->name('ai.download');
+
+    // Vacations
+    Route::get('/vacations', [VacationController::class, 'index'])->middleware('can:view vacations')->name('vacations.index');
+    Route::post('/vacations', [VacationController::class, 'store'])->middleware('can:view vacations')->name('vacations.store');
+    Route::patch('/vacations/{vacation}/approve', [VacationController::class, 'approve'])->middleware('can:approve vacations')->name('vacations.approve');
+    Route::patch('/vacations/{vacation}/reject', [VacationController::class, 'reject'])->middleware('can:reject vacations')->name('vacations.reject');
+    Route::patch('/vacations/{vacation}', [VacationController::class, 'update'])->middleware('can:edit vacations')->name('vacations.update');
+    Route::delete('/vacations/{vacation}', [VacationController::class, 'destroy'])->middleware('can:delete vacations')->name('vacations.destroy');
+
+    // Backups
+    Route::get('/backup', [BackupController::class, 'index'])->middleware('can:view backup')->name('backup.index');
+    Route::get('/backup/export', [BackupController::class, 'export'])->middleware('can:create backup')->name('backup.export');
+    Route::post('/backup/import', [BackupController::class, 'import'])->middleware('can:create backup')->name('backup.import');
+    Route::get('/backup/scheduled/{filename}/download', [BackupController::class, 'downloadScheduled'])->middleware('can:download backups')->name('backup.scheduled.download');
+    Route::delete('/backup/scheduled/{filename}', [BackupController::class, 'deleteScheduled'])->middleware('can:create backup')->name('backup.scheduled.delete');
+
+    // Time Off
+    Route::get('/time-off', [TimeOffController::class, 'index'])->middleware('can:view time off')->name('time-off.index');
+    Route::post('/time-off', [TimeOffController::class, 'store'])->middleware('can:view time off')->name('time-off.store');
+    Route::patch('/time-off/{time_off}/approve', [TimeOffController::class, 'approve'])->middleware('can:approve time off')->name('time-off.approve');
+    Route::patch('/time-off/{time_off}/reject', [TimeOffController::class, 'reject'])->middleware('can:reject time off')->name('time-off.reject');
+    Route::patch('/time-off/{time_off}', [TimeOffController::class, 'update'])->middleware('can:edit time off')->name('time-off.update');
+    Route::delete('/time-off/{time_off}', [TimeOffController::class, 'destroy'])->middleware('can:delete time off')->name('time-off.destroy');
 });
 
 require __DIR__.'/auth.php';

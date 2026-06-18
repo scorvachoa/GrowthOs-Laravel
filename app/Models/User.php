@@ -34,6 +34,16 @@ class User extends Authenticatable
         return $this->belongsTo(Organization::class);
     }
 
+    public function vacations()
+    {
+        return $this->hasMany(Vacation::class);
+    }
+
+    public function timeOffs()
+    {
+        return $this->hasMany(TimeOff::class);
+    }
+
     public function activeOrganizationId(): ?int
     {
         if ($this->hasRole('Super Admin')) {
@@ -80,7 +90,7 @@ class User extends Authenticatable
             'lunch_end' => '14:00',
             'working_days' => [1, 2, 3, 4, 5],
             'max_tasks_per_block' => 1,
-            'default_report_scope' => 'monthly',
+            'default_report_scope' => 'mensual',
             'dashboard_default_view' => 'month',
             'youtube_max_recent_videos' => 10,
             'app_locale' => 'es',

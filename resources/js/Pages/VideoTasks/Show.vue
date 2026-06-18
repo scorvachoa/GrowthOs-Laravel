@@ -51,9 +51,9 @@ const embedUrl = computed(() => {
     const url = props.task.youtube_url
     if (!url) return null
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
     const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/)
-    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`
+    if (ttMatch) return { src: `https://www.tiktok.com/player/v1/${ttMatch[1]}`, type: 'tiktok' }
     return null
 })
 </script>
@@ -127,11 +127,16 @@ const embedUrl = computed(() => {
                             <Copy v-else class="w-4 h-4" />
                         </button>
                     </div>
-                    <iframe v-if="embedUrl" :src="embedUrl"
+                    <iframe v-if="embedUrl && embedUrl.type === 'youtube' && !embedUrl.shorts" :src="embedUrl.src"
                         class="w-full aspect-video rounded-xl"
                         frameborder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
+                        allowfullscreen>
+                    </iframe>
+                    <iframe v-else-if="embedUrl" :src="embedUrl.src"
+                        class="rounded-xl mx-auto w-full max-w-[325px] aspect-[9/16]"
+                        frameborder="0"
                         allowfullscreen>
                     </iframe>
                     <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"

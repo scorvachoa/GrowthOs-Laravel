@@ -14,7 +14,8 @@ class VideoTaskPolicy
 
     public function view(User $user, VideoTask $videoTask): bool
     {
-        return $user->can('view planning');
+        return $user->can('view planning')
+            && $this->inOrg($user, $videoTask);
     }
 
     public function create(User $user): bool
@@ -24,11 +25,18 @@ class VideoTaskPolicy
 
     public function update(User $user, VideoTask $videoTask): bool
     {
-        return $user->can('edit planning');
+        return $user->can('edit planning')
+            && $this->inOrg($user, $videoTask);
     }
 
     public function delete(User $user, VideoTask $videoTask): bool
     {
-        return $user->can('delete planning');
+        return $user->can('delete planning')
+            && $this->inOrg($user, $videoTask);
+    }
+
+    private function inOrg(User $user, VideoTask $videoTask): bool
+    {
+        return $videoTask->organization_id === $user->activeOrganizationId();
     }
 }

@@ -3,23 +3,29 @@ import { ref, watch, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
-import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown, Check } from 'lucide-vue-next'
+import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown, Check, Square, CheckSquare } from 'lucide-vue-next'
 
 const props = defineProps({
     channels: Array,
     selected_channel_id: Number,
-    ideas: Array,
+    ideas: {
+        type: [Object, Array],
+        default: () => ({ data: [], links: [] }),
+    },
     query: String,
     sort: { type: String, default: 'date_desc' },
+    status: { type: String, default: 'all' },
 })
 
 const activeTab = ref(props.selected_channel_id)
 const searchQuery = ref(props.query || '')
 const currentSort = ref(props.sort || 'date_desc')
+const currentStatus = ref(props.status || 'all')
 const showModal = ref(false)
 const newIdeasText = ref('')
 const editingIdea = ref(null)
@@ -27,19 +33,42 @@ const deletingIdea = ref(null)
 const copiedId = ref(null)
 const deleteMessage = computed(() => deletingIdea.value ? `¿Eliminar "${deletingIdea.value.content}"?` : '')
 
+const selectedIds = ref(new Set())
+const selectAll = ref(false)
+
+const ideasList = computed(() => {
+    return Array.isArray(props.ideas) ? props.ideas : (props.ideas?.data || [])
+})
+
+const paginationLinks = computed(() => {
+    return Array.isArray(props.ideas) ? [] : (props.ideas?.links || [])
+})
+
 function nav(params) {
-    router.get('/ideas', { channel_id: activeTab.value, q: searchQuery.value, sort: currentSort.value, ...params }, { preserveState: true, preserveScroll: true })
+    router.get('/ideas', { channel_id: activeTab.value, q: searchQuery.value, sort: currentSort.value, status: currentStatus.value, ...params }, { preserveState: true, preserveScroll: true })
 }
 
 function switchChannel(channelId) {
     activeTab.value = channelId
     searchQuery.value = ''
     currentSort.value = 'date_desc'
+    currentStatus.value = 'all'
+    selectedIds.value = new Set()
+    selectAll.value = false
     router.get('/ideas', { channel_id: channelId })
 }
 
 function setSort(sort) {
     currentSort.value = sort
+    selectedIds.value = new Set()
+    selectAll.value = false
+    nav()
+}
+
+function setStatus(status) {
+    currentStatus.value = status
+    selectedIds.value = new Set()
+    selectAll.value = false
     nav()
 }
 
@@ -100,14 +129,75 @@ function exportTxt() {
 let debounceTimer
 watch(searchQuery, () => {
     clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => nav(), 400)
+    debounceTimer = setTimeout(() => {
+        selectedIds.value = new Set()
+        selectAll.value = false
+        nav()
+    }, 400)
 })
+
+function toggleSelect(ideaId) {
+    const newSet = new Set(selectedIds.value)
+    if (newSet.has(ideaId)) {
+        newSet.delete(ideaId)
+    } else {
+        newSet.add(ideaId)
+    }
+    selectedIds.value = newSet
+    selectAll.value = ideasList.value.length > 0 && newSet.size === ideasList.value.length
+}
+
+function toggleSelectAll() {
+    if (selectAll.value) {
+        selectedIds.value = new Set()
+        selectAll.value = false
+    } else {
+        selectedIds.value = new Set(ideasList.value.map(i => i.id))
+        selectAll.value = true
+    }
+}
+
+const hasSelection = computed(() => selectedIds.value.size > 0)
+
+function bulkAction(action, extraData = {}) {
+    if (selectedIds.value.size === 0) return
+    router.post('/ideas/bulk-update', { ids: Array.from(selectedIds.value), action, ...extraData }, {
+        preserveState: true, preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = new Set()
+            selectAll.value = false
+        },
+    })
+}
+
+const showBulkEdit = ref(false)
+const bulkEditContents = ref({})
+
+function openBulkEdit() {
+    const contents = {}
+    ideasList.value
+        .filter(i => selectedIds.value.has(i.id))
+        .forEach(i => { contents[i.id] = i.content })
+    bulkEditContents.value = contents
+    showBulkEdit.value = true
+}
+
+function submitBulkEdit() {
+    bulkAction('edit', { contents: bulkEditContents.value })
+    showBulkEdit.value = false
+}
 
 const sortOptions = [
     { value: 'date_desc', label: 'Nuevos', icon: ArrowDown },
     { value: 'date_asc', label: 'Antiguos', icon: ArrowUp },
     { value: 'alpha_asc', label: 'A-Z', icon: ArrowDownAZ },
     { value: 'alpha_desc', label: 'Z-A', icon: ArrowUpZA },
+]
+
+const statusOptions = [
+    { value: 'all', label: 'Todas' },
+    { value: 'pending', label: 'Pendientes' },
+    { value: 'used', label: 'Usadas' },
 ]
 </script>
 
@@ -168,14 +258,24 @@ const sortOptions = [
                         </div>
 
                         <div class="flex flex-col min-h-0 h-full overflow-hidden">
-                            <div class="p-6 pb-0 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-                                <div class="flex gap-2 pb-4">
-                                    <div class="relative flex-1">
+                            <div class="p-6 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 space-y-3">
+                                <div class="flex gap-2 items-center flex-wrap">
+                                    <div class="relative min-w-0 flex-[2_1_200px]">
                                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                         <input v-model="searchQuery" type="text" placeholder="Buscar idea..."
                                             class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-amber-500 focus:border-amber-500" />
                                     </div>
-                                    <div class="flex rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                    <div class="flex gap-1">
+                                        <button v-for="opt in statusOptions" :key="opt.value"
+                                            @click="setStatus(opt.value)"
+                                            class="px-3 py-1.5 text-xs font-medium rounded-lg transition whitespace-nowrap"
+                                            :class="currentStatus === opt.value
+                                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
+                                            {{ opt.label }}
+                                        </button>
+                                    </div>
+                                    <div class="flex rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden flex-shrink-0">
                                         <button v-for="opt in sortOptions" :key="opt.value"
                                             @click="setSort(opt.value)"
                                             class="p-2.5 text-xs font-medium transition"
@@ -187,9 +287,45 @@ const sortOptions = [
                                         </button>
                                     </div>
                                 </div>
+
+                                <div v-if="hasSelection" class="flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <button @click="toggleSelectAll"
+                                            class="p-0.5 rounded hover:bg-amber-200/50 dark:hover:bg-amber-800/50 transition text-amber-500"
+                                            :title="selectAll ? 'Deseleccionar todo' : 'Seleccionar todo'">
+                                            <CheckSquare v-if="selectAll" class="w-4 h-4" />
+                                            <Square v-else class="w-4 h-4" />
+                                        </button>
+                                        <span class="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                            {{ selectedIds.size }} seleccionadas
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button v-if="can('edit ideas')" @click="openBulkEdit()"
+                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5">
+                                            <Pencil class="w-3.5 h-3.5" /> Editar
+                                        </button>
+                                        <button @click="bulkAction('mark_used')"
+                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition flex items-center gap-1.5">
+                                            <CheckCircle2 class="w-3.5 h-3.5" /> Usadas
+                                        </button>
+                                        <button @click="bulkAction('mark_pending')"
+                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1.5">
+                                            <Circle class="w-3.5 h-3.5" /> Pendientes
+                                        </button>
+                                        <button @click="bulkAction('delete')"
+                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5">
+                                            <Trash2 class="w-3.5 h-3.5" /> Eliminar
+                                        </button>
+                                        <button @click="selectedIds = new Set(); selectAll = false"
+                                            class="p-1 rounded-lg hover:bg-amber-200/50 dark:hover:bg-amber-800/50 text-amber-500 transition">
+                                            <X class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <template v-if="ideas.length === 0">
+                            <template v-if="ideasList.length === 0">
                                 <div class="flex-1 flex items-center justify-center px-6 py-4">
                                     <div class="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
                                         <FileText class="w-10 h-10 mx-auto mb-2 opacity-40" />
@@ -198,12 +334,15 @@ const sortOptions = [
                                 </div>
                             </template>
                             <div v-else class="flex-1 overflow-y-auto px-6 py-4 space-y-1">
-                                <div v-for="idea in ideas" :key="idea.id"
-                                    class="group flex items-start gap-3 p-3 rounded-xl transition relative"
-                                    :class="idea.is_used
-                                        ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60'
-                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'">
-                                    <div class="mt-0.5 flex-shrink-0 cursor-pointer" @click="toggleUsed(idea)">
+                                <div v-for="idea in ideasList" :key="idea.id"
+                                    class="group flex items-start gap-2 p-3 rounded-xl transition relative"
+                                    :class="[
+                                        idea.is_used
+                                            ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                                            : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                                        selectedIds.has(idea.id) ? 'ring-2 ring-amber-400 dark:ring-amber-600 bg-amber-50/50 dark:bg-amber-900/10' : ''
+                                    ]">
+                                    <div class="cursor-pointer flex-shrink-0" @click="toggleUsed(idea)">
                                         <CheckCircle2 v-if="idea.is_used" class="w-5 h-5 text-green-500" />
                                         <Circle v-else class="w-5 h-5 text-gray-300 dark:text-gray-600" />
                                     </div>
@@ -238,7 +377,17 @@ const sortOptions = [
                                             </span>
                                         </p>
                                     </div>
+                                    <button @click="toggleSelect(idea.id)"
+                                        class="p-0.5 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition text-amber-400 hover:text-amber-600 flex-shrink-0"
+                                        :class="{ 'text-amber-600 dark:text-amber-300': selectedIds.has(idea.id) }">
+                                        <CheckSquare v-if="selectedIds.has(idea.id)" class="w-4 h-4" />
+                                        <Square v-else class="w-4 h-4" />
+                                    </button>
                                 </div>
+                            </div>
+
+                            <div v-if="paginationLinks.length > 0" class="flex-shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+                                <Pagination :links="paginationLinks" />
                             </div>
                         </div>
 
@@ -324,6 +473,36 @@ const sortOptions = [
             @close="deletingIdea = null"
             @confirm="executeDelete"
         />
+
+        <transition name="fade">
+            <div v-if="showBulkEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showBulkEdit = false">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Editar ideas seleccionadas</h3>
+                        <button @click="showBulkEdit = false" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                            <X class="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div v-for="(content, id) in bulkEditContents" :key="id" class="space-y-1">
+                            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Idea #{{ id }}</label>
+                            <textarea v-model="bulkEditContents[id]" rows="2"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-amber-500 focus:border-amber-500 text-sm resize-none"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <button @click="showBulkEdit = false"
+                            class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            Cancelar
+                        </button>
+                        <button @click="submitBulkEdit"
+                            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 transition">
+                            <Pencil class="w-4 h-4" /> Guardar cambios
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
     </AppLayout>
 </template>
 

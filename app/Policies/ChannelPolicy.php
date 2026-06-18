@@ -14,7 +14,8 @@ class ChannelPolicy
 
     public function view(User $user, Channel $channel): bool
     {
-        return $user->can('view empresa');
+        return $user->can('view empresa')
+            && $this->inOrg($user, $channel);
     }
 
     public function create(User $user): bool
@@ -24,11 +25,18 @@ class ChannelPolicy
 
     public function update(User $user, Channel $channel): bool
     {
-        return $user->can('edit empresa');
+        return $user->can('edit empresa')
+            && $this->inOrg($user, $channel);
     }
 
     public function delete(User $user, Channel $channel): bool
     {
-        return $user->can('delete empresa');
+        return $user->can('delete empresa')
+            && $this->inOrg($user, $channel);
+    }
+
+    private function inOrg(User $user, Channel $channel): bool
+    {
+        return $channel->organization_id === $user->activeOrganizationId();
     }
 }

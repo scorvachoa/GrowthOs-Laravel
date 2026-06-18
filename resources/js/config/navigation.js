@@ -11,6 +11,8 @@ import {
     Sparkles,
     Building2,
     BookOpen,
+    Umbrella,
+    CalendarClock,
 } from 'lucide-vue-next'
 
 export default [
@@ -36,13 +38,6 @@ export default [
     },
 
     {
-        title: 'AI Generator',
-        icon: Sparkles,
-        route: '/ai',
-        permission: 'generate ai',
-    },
-
-    {
         title: 'YouTube',
         icon: Youtube,
         route: '/youtube',
@@ -54,6 +49,13 @@ export default [
         icon: Lightbulb,
         route: '/ideas',
         permission: 'view ideas',
+    },
+
+    {
+        title: 'AI Generator',
+        icon: Sparkles,
+        route: '/ai',
+        permission: 'generate ai',
     },
 
     {
@@ -78,10 +80,17 @@ export default [
     },
 
     {
-        title: 'Configuracion',
-        icon: Settings,
-        route: '/settings',
-        permission: 'view configuracion',
+        title: 'Vacaciones',
+        icon: Umbrella,
+        route: '/vacations',
+        permission: 'view vacations',
+    },
+
+    {
+        title: 'Permisos',
+        icon: CalendarClock,
+        route: '/time-off',
+        permission: 'view time off',
     },
 
     {
@@ -89,6 +98,13 @@ export default [
         icon: Building2,
         route: '/company',
         permission: 'view empresa',
+    },
+
+    {
+        title: 'Configuracion',
+        icon: Settings,
+        route: '/settings',
+        permission: 'view configuracion',
     },
 
     {

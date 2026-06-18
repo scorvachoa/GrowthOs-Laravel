@@ -80,8 +80,8 @@ class PhraseCleanerTest extends TestCase
         $result = $this->cleaner->clean($input);
 
         foreach (explode("\n", $result) as $line) {
-            $this->assertStringNotStartsNotWith('1.', $line);
-            $this->assertStringNotStartsNotWith('2.', $line);
+            $this->assertStringStartsNotWith('1.', $line);
+            $this->assertStringStartsNotWith('2.', $line);
         }
     }
 

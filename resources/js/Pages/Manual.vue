@@ -3,7 +3,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import {
     LayoutDashboard, Users, Shield, CalendarDays, ClipboardList,
     Lightbulb, FileClock, Youtube, Settings, Building2, Sparkles,
-    BookOpen, ChevronRight, ArrowRight
+    BookOpen, ChevronRight, ArrowRight, Umbrella, CalendarClock, HardDrive
 } from 'lucide-vue-next'
 
 const sections = [
@@ -13,40 +13,8 @@ const sections = [
         title: 'Dashboard',
         content: [
             'Resumen visual del rendimiento del equipo. Muestra metricas clave como tareas completadas, videos programados, y actividad reciente.',
-            'Los graficos se actualizan en tiempo real al cambiar de mes o rango de fechas. Usa los filtros superiores para ajustar la vista.',
-        ],
-    },
-    {
-        id: 'ai-generator',
-        icon: Sparkles,
-        title: 'AI Generator',
-        content: [
-            'Genera guiones, copys y frases para videos usando inteligencia artificial (Gemini).',
-            'Escribe una idea en el campo de texto y haz clic en "Generar Guion". El sistema creara un guion optimizado para YouTube Shorts (45-60s).',
-            'Luego puedes generar Copy (titulo, descripcion, CTA, hashtags, tags SEO) y Frases (para overlays en pantalla).',
-            'Usa el boton "Exportar TXT" para descargar todo el contenido generado o "Usar en Planificador" para crear una tarea en el calendario.',
-            'El historial guarda tus ultimas 5 generaciones. Accede a "Historial" para ver todas.',
-        ],
-    },
-    {
-        id: 'users',
-        icon: Users,
-        title: 'Usuarios',
-        content: [
-            'Gestion de usuarios del sistema. Puedes crear, editar y eliminar usuarios.',
-            'Cada usuario tiene un rol que determina sus permisos. Los Super Admins tienen acceso global.',
-            'Los usuarios regulares estan vinculados a una empresa y solo ven datos de esa empresa.',
-        ],
-    },
-    {
-        id: 'roles',
-        icon: Shield,
-        title: 'Roles y Permisos',
-        content: [
-            'Define roles con permisos especificos para controlar el acceso a cada seccion del sistema.',
-            'Los permisos disponibles incluyen: ver/crear/editar/eliminar para cada modulo (Dashboard, Usuarios, Roles, Planificacion, Tareas, Ideas, Reportes, YouTube, AI, Empresa, Configuracion).',
-            'El rol "Super Admin" tiene todos los permisos y no puede ser modificado desde esta pantalla.',
-            'Puedes seleccionar permisos individuales o por grupo. Usa el buscador para filtrar permisos rapidamente.',
+            'Las cards se adaptan segun los permisos del usuario: si no tienes permiso "view users", las secciones de usuarios se ocultan automaticamente sin dejar espacios vacios.',
+            'Incluye un grafico de rendimiento circular con el porcentaje de completitud del periodo y las tareas del dia.',
         ],
     },
     {
@@ -55,10 +23,9 @@ const sections = [
         title: 'Planificacion',
         content: [
             'Calendario mensual y semanal para planificar tareas de video y tareas extra.',
-            'Vista mensual: cada dia muestra barras apiladas (indigo = tareas de video, amber = tareas extra). Haz clic en un dia para ver el detalle en el panel lateral.',
-            'Vista semanal: grilla horaria con las tareas ubicadas segun su hora de inicio y duracion. Las tareas que se superponen se muestran lado a lado.',
-            'Las tareas extra aparecen con borde punteado. Los feriados se muestran en rojo.',
-            'Usa los botones "<" y ">" para navegar entre meses/semanas. Exporta a PDF con el boton de descarga.',
+            'Vista mensual: cada dia muestra barras apiladas (indigo = tareas de video, amber = tareas extra). Las tareas extra se muestran como barras individuales una al lado de la otra para ver cuantas hay.',
+            'Vista semanal: grilla horaria con las tareas ubicadas segun su hora de inicio y duracion. Las tareas superpuestas se muestran lado a lado.',
+            'Las tareas extra aparecen con borde punteado (teal en oficina, naranja fuera de oficina). Los feriados se muestran en rojo.',
         ],
     },
     {
@@ -68,25 +35,7 @@ const sections = [
         content: [
             'Historial completo de tareas de video con filtros por fecha, estado, canal y usuario.',
             'Cada tarea tiene: titulo, script, copy, estado, canal asignado, rango horario y enlace a YouTube.',
-            'Los estados disponibles son: Pendiente, Script Listo, Editando, Revision, Programado, Publicado, Cancelado.',
-        ],
-    },
-    {
-        id: 'ideas',
-        icon: Lightbulb,
-        title: 'Ideas',
-        content: [
-            'Banco de ideas para videos. Puedes crear, editar, importar y exportar ideas.',
-            'Cada idea tiene un titulo, descripcion y estado. Las ideas se pueden convertir directamente en tareas desde el planificador.',
-        ],
-    },
-    {
-        id: 'history',
-        icon: FileClock,
-        title: 'Historial de Reportes',
-        content: [
-            'Registro de todos los reportes generados y descargados. Incluye reportes diarios, semanales y mensuales.',
-            'Cada entrada muestra el tipo de reporte, fecha de generacion, filtros aplicados y el archivo PDF.',
+            'Estados: Pendiente, Script Listo, Editando, Revision, Programado, Publicado, Cancelado.',
         ],
     },
     {
@@ -95,18 +44,77 @@ const sections = [
         title: 'YouTube',
         content: [
             'Gestion de canales de YouTube vinculados. Muestra los videos de cada canal con su estado de publicacion.',
-            'Los canales se sincronizan automaticamente con la API de YouTube. Puedes ver estadisticas y detalles de cada video.',
+            'Grafico de linea con Chart.js que muestra la tendencia de publicaciones en el tiempo, con soporte para modo oscuro.',
+            'Los canales se sincronizan con la API de YouTube. Puedes ver estadisticas y detalles de cada video.',
         ],
     },
     {
-        id: 'config',
-        icon: Settings,
-        title: 'Configuracion',
+        id: 'ideas',
+        icon: Lightbulb,
+        title: 'Ideas',
         content: [
-            'Configuracion global del sistema para cada usuario.',
-            'Horario laboral: define tu hora de inicio y fin de jornada, duracion de bloques (1h, 2h), y si usas bloques fijos o personalizados.',
-            'Dias laborables: selecciona los dias de la semana que trabajas. Los dias no laborables se marcan en el calendario.',
-            'Todas las configuraciones se aplican globalmente en el planificador, AI Generator y demas modulos.',
+            'Banco de ideas para videos. Puedes crear, editar, importar y exportar ideas.',
+            'Cada idea tiene contenido, canal sugerido, etiquetas y prioridad. Las ideas se pueden marcar como usadas y filtrar por canal.',
+        ],
+    },
+    {
+        id: 'ai-generator',
+        icon: Sparkles,
+        title: 'AI Generator',
+        content: [
+            'Genera guiones, copys y frases para videos usando inteligencia artificial (Gemini).',
+            'Escribe una idea y genera un guion optimizado para YouTube Shorts (45-60s). Luego puedes generar Copy (titulo, descripcion, CTA, hashtags, tags SEO) y Frases.',
+            'Usa "Exportar TXT" para descargar todo o "Usar en Planificador" para crear una tarea en el calendario.',
+            'El historial guarda las ultimas 5 generaciones. Accede a "Historial" desde el boton en la parte superior.',
+        ],
+    },
+    {
+        id: 'history',
+        icon: FileClock,
+        title: 'Historial de Reportes',
+        content: [
+            'Registro de todos los reportes generados y descargados. Incluye reportes diarios, semanales, mensuales y anuales.',
+            'Cada entrada muestra el tipo de reporte, fecha de generacion, filtros aplicados y el archivo PDF para descargar.',
+        ],
+    },
+    {
+        id: 'users',
+        icon: Users,
+        title: 'Usuarios',
+        content: [
+            'Gestion de usuarios del sistema. Puedes crear, editar y eliminar usuarios.',
+            'Cada usuario tiene un rol que determina sus permisos. Los Super Admins tienen acceso global y pueden cambiar entre empresas.',
+            'Los usuarios regulares estan vinculados a una empresa y solo ven datos de esa empresa.',
+        ],
+    },
+    {
+        id: 'roles',
+        icon: Shield,
+        title: 'Roles y Permisos',
+        content: [
+            'Define roles con permisos especificos para controlar el acceso a cada seccion del sistema.',
+            'Los permisos disponibles incluyen: ver/crear/editar/eliminar para cada modulo.',
+            'El rol "Super Admin" tiene todos los permisos (organization_id = null, alcance global).',
+            'Los permisos de configuracion son granulares: "configure work hours", "configure youtube", "configure dashboard", "configure backup".',
+        ],
+    },
+    {
+        id: 'vacations',
+        icon: Umbrella,
+        title: 'Vacaciones',
+        content: [
+            'Gestion de solicitudes de vacaciones. Los usuarios pueden solicitar vacaciones y los administradores pueden aprobar o rechazar.',
+            'Las vacaciones aprobadas se muestran en el calendario de planificacion como ausencias.',
+        ],
+    },
+    {
+        id: 'timeoff',
+        icon: CalendarClock,
+        title: 'Permisos',
+        content: [
+            'Solicitud de permisos personales, medicos, tramites u otros. Incluye hora de inicio y fin opcional.',
+            'Puedes marcar "Todo el dia" para que tome automaticamente el horario laboral configurado (inicio y fin de jornada).',
+            'Los administradores pueden aprobar o rechazar solicitudes desde la misma pantalla.',
         ],
     },
     {
@@ -114,16 +122,40 @@ const sections = [
         icon: Building2,
         title: 'Empresa',
         content: [
-            'Gestion de la empresa/organizacion. Configura el nombre, color primario y otros datos de tu organizacion.',
-            'Los usuarios regulares solo ven los datos de su empresa. Los Super Admins pueden cambiar entre empresas.',
+            'Gestion de la empresa/organizacion. Configura el nombre, color primario, logo y canales de YouTube.',
+            'Los usuarios regulares solo ven los datos de su empresa. Los Super Admins pueden cambiar entre empresas desde el topbar.',
+            'Al iniciar sesion como Super Admin sin empresa activa, se muestra un selector de empresa.',
+        ],
+    },
+    {
+        id: 'config',
+        icon: Settings,
+        title: 'Configuracion',
+        content: [
+            'Configuracion global del sistema para cada usuario. Cada seccion se muestra segun el permiso del usuario.',
+            'Horario laboral: define hora de inicio y fin de jornada, duracion de bloques (1h, 2h), dias laborables y bloques fijos o personalizados.',
+            'YouTube: configuracion del grafico y maximo de videos recientes a mostrar.',
+            'Dashboard: vista por defecto (semana/mes/ano) y alcance de reporte predeterminado.',
+            'Backup: programacion de backup automatico (hora y dia de la semana). Solo visible con permiso "configure backup".',
+        ],
+    },
+    {
+        id: 'backup',
+        icon: HardDrive,
+        title: 'Backup',
+        content: [
+            'Respaldo y restauracion de datos. Accesible desde el icono de disco en el topbar.',
+            'Exporta todas las tablas del sistema a un archivo JSON descargable, con soporte para grandes volumenes de datos mediante streaming y chunking.',
+            'Restauracion: sube un archivo JSON de backup previo para restaurar los datos. El proceso valida que los datos correspondan a la organizacion correcta.',
+            'Backups programados: se generan automaticamente segun la configuracion de horario en Ajustes. Descarga o elimina backups desde la misma pagina.',
         ],
     },
 ]
 
 const generalTips = [
-    'Usa el panel lateral izquierdo para navegar entre las secciones. Puedes colapsarlo con el boton "<" en la parte inferior.',
-    'El topbar superior muestra tu empresa activa y tu perfil. Los Super Admins pueden cambiar de empresa desde ahi.',
-    'Los permisos determinan que secciones y acciones estan disponibles para cada usuario. Contacta a un Super Admin si necesitas acceder a algo.',
+    'Usa el panel lateral izquierdo para navegar entre las secciones. El orden sigue el flujo de trabajo: Dashboard, Planificacion, Tareas, YouTube, Ideas, AI, Historial, Usuarios, Roles, Vacaciones, Permisos, Empresa, Configuracion.',
+    'El topbar superior muestra tu empresa activa, el boton de Backup y tu perfil. Los Super Admins pueden cambiar de empresa desde el nombre de la empresa.',
+    'Los permisos determinan que secciones y acciones estan disponibles. Contacta a un Super Admin si necesitas acceso a algo.',
     'Todas las acciones importantes muestran notificaciones de exito/error en la parte superior de la pantalla.',
 ]
 </script>

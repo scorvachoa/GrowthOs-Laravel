@@ -13,6 +13,7 @@ const props = defineProps({
     canCreate: Boolean,
     canEdit: Boolean,
     canDelete: Boolean,
+    absences: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits([
@@ -176,6 +177,19 @@ function cancelEdit() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6" v-if="absences.length > 0">
+                    <div class="flex items-center gap-1.5 mb-3">
+                        <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ausencias</h4>
+                    </div>
+                    <div v-for="(a, i) in absences" :key="i"
+                        class="rounded-lg p-2.5 mb-1.5 text-sm flex items-center gap-2"
+                        :class="a.type === 'vacation' ? 'bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300' : 'bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300'">
+                        <span class="w-2 h-2 rounded-full inline-flex flex-shrink-0"
+                            :class="a.type === 'vacation' ? 'bg-purple-500' : 'bg-orange-500'"></span>
+                        {{ a.label }}
                     </div>
                 </div>
 

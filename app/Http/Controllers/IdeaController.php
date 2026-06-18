@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Channel;
 use App\Services\IdeaService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class IdeaController extends Controller
@@ -19,9 +20,14 @@ class IdeaController extends Controller
         $channelId = (int) ($request->query('channel_id', $channels->first()?->id ?? 0));
         $search = $request->query('q', '');
         $sort = $request->query('sort', 'date_desc');
+        $status = $request->query('status', 'all');
 
         if (!in_array($sort, ['date_desc', 'date_asc', 'alpha_asc', 'alpha_desc'])) {
             $sort = 'date_desc';
+        }
+
+        if (!in_array($status, ['all', 'used', 'pending'])) {
+            $status = 'all';
         }
 
         if (!$channels->contains('id', $channelId)) {
@@ -29,7 +35,7 @@ class IdeaController extends Controller
         }
 
         $ideas = $channelId
-            ? $this->ideaService->list($channelId, $search, $sort)
+            ? $this->ideaService->list($channelId, $search, $sort, $status)
             : collect();
 
         return Inertia::render('Ideas/Index', [
@@ -39,24 +45,17 @@ class IdeaController extends Controller
                 'color' => $c->color,
             ]),
             'selected_channel_id' => $channelId,
-            'ideas' => $ideas->map(fn ($idea) => [
-                'id' => $idea->id,
-                'content' => $idea->content,
-                'is_used' => $idea->is_used,
-                'tags' => $idea->tags,
-                'priority' => $idea->priority,
-                'category' => $idea->category,
-                'created_at' => $idea->created_at?->format('Y-m-d') ?? '',
-            ]),
+            'ideas' => $ideas,
             'query' => $search,
             'sort' => $sort,
+            'status' => $status,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'channel_id' => ['required', 'integer', 'exists:channels,id'],
+            'channel_id' => ['required', 'integer', Rule::exists('channels', 'id')->where(fn ($q) => $q->where('organization_id', $request->user()->activeOrganizationId()))],
             'content_lines' => ['required', 'string'],
         ]);
 
@@ -71,7 +70,7 @@ class IdeaController extends Controller
     public function import(Request $request)
     {
         $validated = $request->validate([
-            'channel_id' => ['required', 'integer', 'exists:channels,id'],
+            'channel_id' => ['required', 'integer', Rule::exists('channels', 'id')->where(fn ($q) => $q->where('organization_id', $request->user()->activeOrganizationId()))],
             'txt_file' => ['required', 'file', 'mimes:txt', 'max:2048'],
         ]);
 
@@ -86,7 +85,7 @@ class IdeaController extends Controller
 
     public function export(Request $request)
     {
-        $request->validate(['channel_id' => ['required', 'integer', 'exists:channels,id']]);
+        $request->validate(['channel_id' => ['required', 'integer', Rule::exists('channels', 'id')->where(fn ($q) => $q->where('organization_id', $request->user()->activeOrganizationId()))]]);
 
         $channelId = (int) $request->query('channel_id');
         $channel = Channel::findOrFail($channelId);
@@ -127,5 +126,26 @@ class IdeaController extends Controller
         $this->ideaService->toggleUsed($idea, $validated['used']);
 
         return redirect()->back();
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:ideas,id'],
+            'action' => ['required', 'string', 'in:mark_used,mark_pending,delete,edit'],
+            'contents' => ['nullable', 'array'],
+        ]);
+
+        $count = $this->ideaService->bulkUpdate($validated['ids'], $validated['action'], $validated['contents'] ?? []);
+
+        $messages = [
+            'mark_used' => "{$count} ideas marcadas como usadas",
+            'mark_pending' => "{$count} ideas marcadas como pendientes",
+            'delete' => "{$count} ideas eliminadas",
+            'edit' => "{$count} ideas actualizadas",
+        ];
+
+        return redirect()->back()->with('success', $messages[$validated['action']]);
     }
 }

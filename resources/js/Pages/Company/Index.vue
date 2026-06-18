@@ -292,8 +292,8 @@ function createCompany() {
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Color principal</label>
                                 <div class="flex items-center gap-3">
                                     <div class="relative w-10 h-10">
-                                        <div class="w-10 h-10 rounded-full bg-white border border-gray-300 dark:border-gray-700 flex items-center justify-center">
-                                            <div class="w-[22px] h-[22px] rounded-full"
+                                        <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                            <div class="w-7 h-7 rounded-full"
                                                 :style="{ backgroundColor: orgForm.primary_color }"></div>
                                         </div>
                                         <input type="color" v-model="orgForm.primary_color"
@@ -326,8 +326,8 @@ function createCompany() {
                                 <label class="block mb-1 text-xs font-medium text-gray-500">Color</label>
                                 <div class="flex items-center gap-2">
                                     <div class="relative w-10 h-10 flex-shrink-0">
-                                        <div class="w-10 h-10 rounded-full bg-white border border-gray-300 dark:border-gray-700 flex items-center justify-center">
-                                            <div class="w-[22px] h-[22px] rounded-full"
+                                        <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                            <div class="w-7 h-7 rounded-full"
                                                 :style="{ backgroundColor: newChannel.color }"></div>
                                         </div>
                                         <input type="color" v-model="newChannel.color"
@@ -419,7 +419,7 @@ function createCompany() {
                                     <tr v-if="editingId !== channel.id"
                                         class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                         <td class="px-4 py-4">
-                                            <span class="block w-5 h-5 rounded-full" :style="{ backgroundColor: channel.color }"></span>
+                                            <span class="" :style="{ backgroundColor: channel.color }"></span>
                                         </td>
                                         <td class="px-4 py-4 font-medium text-gray-900 dark:text-white truncate">{{ channel.name }}</td>
                                         <td class="px-4 py-4 text-gray-500 font-mono text-xs truncate hidden md:table-cell">{{ channel.youtube_channel_id || '—' }}</td>
@@ -458,7 +458,14 @@ function createCompany() {
                                                 <div>
                                                     <label class="block mb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">Color</label>
                                                     <div class="flex items-center gap-2">
-                                                        <input v-model="editForm.color" type="color" class="w-9 h-8 rounded-lg border border-gray-300 dark:border-gray-700 cursor-pointer p-0.5" />
+                                                        <div class="relative w-10 h-10 flex-shrink-0">
+                                                            <div class="w-10 h-10 rounded-full bg-white border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center">
+                                                                <div class="w-7 h-7 rounded-full"
+                                                                    :style="{ backgroundColor: editForm.color }"></div>
+                                                            </div>
+                                                            <input type="color" v-model="editForm.color"
+                                                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                        </div>
                                                         <input v-model="editForm.color" type="text"
                                                             class="flex-1 text-sm rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                                     </div>

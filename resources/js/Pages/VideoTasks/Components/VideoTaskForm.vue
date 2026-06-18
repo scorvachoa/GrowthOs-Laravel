@@ -69,10 +69,10 @@ watch(() => props.form.task_date, async (date) => {
 const embedUrl = computed(() => {
     const url = props.form.youtube_url
     if (!url) return null
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
     const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/)
-    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`
+    if (ttMatch) return { src: `https://www.tiktok.com/player/v1/${ttMatch[1]}`, type: 'tiktok' }
     return null
 })
 
@@ -151,7 +151,22 @@ function blockDisabled(block) {
                     </div>
                 </div>
 
-                <TextInput v-model="form.youtube_url" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
+                <div>
+                    <TextInput v-model="form.youtube_url" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
+                    <div v-if="embedUrl" class="mt-2">
+                        <iframe v-if="embedUrl.type === 'youtube' && !embedUrl.shorts" :src="embedUrl.src"
+                            class="w-full aspect-video rounded-xl"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                        </iframe>
+                        <iframe v-else :src="embedUrl.src"
+                            class="rounded-xl mx-auto w-full max-w-[325px] aspect-[9/16]"
+                            frameborder="0"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
             </div>
 
             <div class="space-y-5">
@@ -169,16 +184,6 @@ function blockDisabled(block) {
                     <div v-if="form.errors.copy" class="mt-1 text-sm text-red-500">{{ form.errors.copy }}</div>
                 </div>
 
-                <div v-if="embedUrl || form.youtube_url">
-                    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Vista previa</label>
-                    <iframe v-if="embedUrl" :src="embedUrl"
-                        class="w-full aspect-video rounded-xl"
-                        frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen>
-                    </iframe>
-                    <p v-else class="text-xs text-gray-400">URL no reconocida para previsualizacion</p>
-                </div>
             </div>
         </div>
 

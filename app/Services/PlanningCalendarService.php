@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\DayObservation;
 use App\Models\ExtraTask;
+use App\Models\TimeOff;
+use App\Models\Vacation;
 use App\Models\VideoTask;
 use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
@@ -20,7 +22,7 @@ class PlanningCalendarService
 
     public static function bustCache(?int $userId = null): void
     {
-        Cache::increment('planning_bust_' . ($userId ?? Auth::id()));
+        Cache::increment('planning_bust_' . ($userId ?? Auth::id() ?? 'system'));
     }
 
     public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null): array
@@ -34,6 +36,7 @@ class PlanningCalendarService
         $monthTasks = $this->loadMonthTasks($monthStart, $monthEnd);
         $monthExtraTasks = $this->loadMonthExtraTasks($monthStart, $monthEnd);
         $observationsMap = $this->loadObservationsMap($monthStart, $monthEnd);
+        $absencesMap = $this->loadAbsencesMap($monthStart, $monthEnd);
 
         [$tasksCount, $blocksMap, $tasksDetailMap] = $this->buildMonthMaps($monthTasks, $workBlocks);
         $hasExtraTasksMap = $this->buildExtraTasksMap($monthExtraTasks);
@@ -53,6 +56,7 @@ class PlanningCalendarService
             'week_tasks_detail_map' => $weekTasksDetailMap,
             'week_extra_tasks_detail_map' => $weekExtraTasksDetailMap,
             'observations_map' => $observationsMap,
+            'absences_map' => $absencesMap,
             'holidays_map' => $this->holidays->forYear($year),
             'work_blocks' => $workBlocks,
             'statuses' => VideoTaskStatus::options(),
@@ -78,6 +82,58 @@ class PlanningCalendarService
             ->where('task_date', '<', $end)
             ->get()
             ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
+    }
+
+    private function loadAbsencesMap(Carbon $start, Carbon $end): array
+    {
+        $orgUsers = \App\Models\User::where('organization_id', Auth::user()->activeOrganizationId())
+            ->pluck('id');
+
+        $vacations = Vacation::query()
+            ->whereIn('user_id', $orgUsers)
+            ->where('status', 'aprobado')
+            ->where('start_date', '<', $end)
+            ->where('end_date', '>=', $start)
+            ->get(['user_id', 'start_date', 'end_date', 'type']);
+
+        $timeOffs = TimeOff::query()
+            ->whereIn('user_id', $orgUsers)
+            ->where('status', 'aprobado')
+            ->where('date', '>=', $start)
+            ->where('date', '<', $end)
+            ->get(['user_id', 'date', 'type']);
+
+        $map = [];
+
+        foreach ($vacations as $v) {
+            $s = $v->start_date instanceof Carbon ? $v->start_date : Carbon::parse($v->start_date);
+            $e = $v->end_date instanceof Carbon ? $v->end_date : Carbon::parse($v->end_date);
+            $cursor = $s->copy()->max($start);
+            $rangeEnd = $e->copy()->min($end->copy()->subDay());
+            while ($cursor <= $rangeEnd) {
+                $key = $cursor->format('Y-m-d');
+                $map[$key][] = [
+                    'type' => 'vacation',
+                    'label' => 'Vacaciones',
+                ];
+                $cursor->addDay();
+            }
+        }
+
+        foreach ($timeOffs as $t) {
+            $key = $t->date instanceof Carbon ? $t->date->format('Y-m-d') : Carbon::parse($t->date)->format('Y-m-d');
+            $map[$key][] = [
+                'type' => 'time_off',
+                'label' => 'Permiso: ' . match ($t->type) {
+                    'medico' => 'Medico',
+                    'personal' => 'Personal',
+                    'tramite' => 'Tramite',
+                    default => 'Otro',
+                },
+            ];
+        }
+
+        return $map;
     }
 
     private function loadObservationsMap(Carbon $start, Carbon $end): array
@@ -113,8 +169,8 @@ class PlanningCalendarService
     private function buildExtraTasksMap(Collection $extraTasks): array
     {
         $map = [];
-        foreach ($extraTasks as $dayKey => $_) {
-            $map[$dayKey] = true;
+        foreach ($extraTasks as $dayKey => $tasks) {
+            $map[$dayKey] = $tasks->count();
         }
         return $map;
     }

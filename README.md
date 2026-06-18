@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas, historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, respaldo de datos exportable, e integración con YouTube API.
 
 ---
 
@@ -74,6 +74,18 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 | AI Historial (descargar) | — | `download ai` |
 | AI Historial (filtrar usadas en planner) | — | `view ai history` |
 | Perfil | `/profile` | Usuario autenticado |
+| Vacaciones (ver) | `/vacations` | `view vacations` |
+| Vacaciones (solicitar) | — | `create vacations` |
+| Vacaciones (editar) | — | `edit vacations` |
+| Vacaciones (aprobar/rechazar) | — | `approve vacations`, `reject vacations` |
+| Vacaciones (eliminar) | — | `delete vacations` |
+| Permisos (ver) | `/time-off` | `view time off` |
+| Permisos (solicitar) | — | `create time off` |
+| Permisos (editar) | — | `edit time off` |
+| Permisos (aprobar/rechazar) | — | `approve time off`, `reject time off` |
+| Permisos (eliminar) | — | `delete time off` |
+| Respaldo de datos | `/backup` | Super Admin |
+| Manual | `/manual` | Todos los autenticados |
 
 ### Autenticación (Laravel Breeze + Inertia)
 - Login / Logout
@@ -89,7 +101,7 @@ Roles por defecto tras `db:seed`:
 | **Super Admin** | Todos |
 | **Employee** | Sin permisos asignados (extensible) |
 
-Permisos del sistema (32 en total, agrupados por módulo):
+Permisos del sistema (34 en total, agrupados por módulo):
 
 ```
 Dashboard:       view dashboard
@@ -99,11 +111,14 @@ Planificación:   view planning, create planning, edit planning, delete planning
 Tareas extra:    view extra tasks, create extra tasks, edit extra tasks, delete extra tasks
 Ideas:           view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
 Historial:       view task history
-Reportes:        view reports, download reports
+Reportes:        view reports, download reports, delete reports
 YouTube:         view youtube
-Empresa:         edit company
+Empresa:         view empresa, create empresa, edit empresa, delete empresa
 Canales:         create channels, edit channels, delete channels
 AI:              view ai, view ai history, download ai
+Config:          view configuracion, configure work hours, configure youtube, configure dashboard, configure backup
+Vacaciones:      view vacations, create vacations, edit vacations, approve vacations, reject vacations, delete vacations
+Permisos:        view time off, create time off, edit time off, approve time off, reject time off, delete time off
 ```
 
 ### CRUD de usuarios
@@ -149,6 +164,16 @@ AI:              view ai, view ai history, download ai
 - Nombre de app desde variable de entorno (`VITE_APP_NAME`)
 - DaySidebar: secciones colapsables (Tareas de video, Tareas extra, Observaciones) con iconos ChevronDown/ChevronRight
 - DaySidebar: selectores de estado más anchos (`min-w-[130px]`)
+- **Ideas**: paginación (50 por página), filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, barra de acciones masivas (Marcar como usadas, pendientes, eliminar, editar contenido)
+- **Vacaciones y Permisos**: listado con mismo formato que Usuarios (tabla con búsqueda, paginación, hover), formulario modal, aprobación/rechazo
+- **Respaldo de datos**: exportación de todas las tablas del sistema en JSON comprimido, restauración con validación por empresa, programación semanal desde Configuración
+- **Dashboard adaptativo**: grid de columnas se ajusta dinámicamente si el usuario no tiene permiso `view users`
+- **Sidebar reordenado**: por flujo de trabajo (Dashboard → Planificación → Tareas → YouTube → Ideas → AI → Historial → Usuarios → Roles → Vacaciones → Permisos → Empresa → Configuración → Manual)
+- **Planning mes**: tareas extra visibles como barras ámbar individuales lado a lado
+- **YouTube**: gráficos con Chart.js (vue-chartjs) en vez de SVG custom
+- **403 personalizado**: página SPA con botones "Volver" e "Ir al Dashboard"
+- **Configuración**: permisos granulares por sección (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`), ya no existe permiso master `edit configuracion`
+- **Respaldo en topbar**: icono `HardDrive` fijo en la topbar, eliminado del sidebar
 
 ---
 
@@ -248,22 +273,28 @@ Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
 
 ```
 app/
+├── Enums/                   # VideoTaskStatus (backed string enum PHP 8)
 ├── Http/
 │   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory,
-│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory, AI
+│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory, AI,
+│   │                        # Backup, Vacation, TimeOff, Manual
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
-├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea, GeneratedVideo
-├── Policies/                # UserPolicy
+├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea,
+│   │                        # GeneratedVideo, Vacation, TimeOff, DayObservation
+├── Policies/                # UserPolicy, ChannelPolicy, VideoTaskPolicy, IdeaPolicy, ExtraTaskPolicy
 ├── Services/
 │   ├── AI/                  # GeminiService, ElevenLabsService, AIContentService, Prompts,
 │   │                        # ScriptCleaner, CopyParser, PhraseCleaner
-│   ├── PlanningCalendarService, DashboardService, UserService, IdeaService, YouTubeService
-└── Support/                 # WorkBlocks (lógica de bloques de trabajo)
+│   └── BackupService, PlanningCalendarService, DashboardService, UserService, IdeaService,
+│       YouTubeService, ReportService
+├── Support/                 # WorkBlocks (lógica de bloques de trabajo)
+└── Traits/                  # BelongsToOrganization, OwnedByUser (global scopes)
 
 database/
 ├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history,
-│                           # organizations, channels, ideas
+│                           # organizations, channels, ideas, generated_videos, day_observations,
+│                           # vacations, time_offs
 └── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
 
 resources/views/pdf/         # report.blade.php (template PDF con logo, color empresa y footer)
@@ -276,7 +307,8 @@ resources/js/
 │   ├── Modals/              # Modal, ConfirmDelete
 │   ├── Navigation/          # Sidebar, Topbar, SidebarItem
 │   ├── Notifications/       # Toast, ToastContainer
-│   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard
+│   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard, ErrorModal
+├── Composables/             # useTheme (modo claro/oscuro)
 ├── config/
 │   └── navigation.js        # Menú lateral filtrado por permiso
 ├── Layouts/
@@ -284,17 +316,22 @@ resources/js/
 └── Pages/
     ├── AI/                  # Index (generador 4 columnas) + History (historial con descarga TXT y envío a planificador)
     ├── Auth/
-    ├── Dashboard/           # KPIs reales con statcards + círculo SVG rendimiento + Exportar PDF
-    ├── Ideas/               # Index (tabs por canal, búsqueda, sort, CRUD, import/export txt)
+    ├── Backup/              # Index (exportación, restauración, programación, scope selector)
+    ├── Dashboard/           # KPIs reales con statcards + gráficos Chart.js + Exportar PDF
+    ├── Error/               # 403.vue (página personalizada SPA)
+    ├── Ideas/               # Index (tabs por canal, búsqueda, sort, paginación, filtro estado, selección múltiple, edición en masa, CRUD, import/export txt)
+    ├── Manual/              # Manual.vue (documentación del sistema)
     ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal + Exportar PDF
     ├── Profile/
     ├── Reports/             # History.vue (historial de reportes PDF)
-    ├── Roles/
-    ├── Settings/            # Empresa (nombre, logo, color) + Canales (CRUD inline)
+    ├── Roles/               # Index + Create + Edit + RoleForm
+    ├── Settings/            # Index (horario laboral, YouTube, dashboard, respaldo, empresa + canales inline)
     ├── TaskHistory/         # Index (lista tareas con estado) + Show (timeline de cambios)
-    ├── Users/
+    ├── TimeOff/             # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
+    ├── Users/               # Index + Create + Edit
+    ├── Vacations/           # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
     ├── VideoTasks/          # Create, Edit, Show (3 columnas + video embed), VideoTaskForm
-    └── Youtube/             # Index (tabs canal, estadísticas, cards/lista videos, estado videos)
+    └── Youtube/             # Index (tabs canal, gráficos Chart.js, cards/lista videos)
 ```
 
 ---
@@ -309,7 +346,10 @@ resources/js/
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
-- **Permisos granulares** — cada acción CRUD tiene su propio permiso (32 permisos en 10 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (34 permisos en 12 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
+- **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
+- **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
 
 ---
 
@@ -411,9 +451,24 @@ php artisan test     # Tests PHPUnit
 - [x] Botón copiar con animación check (pop-in) en invitaciones
 - [x] Overflow-x-hidden global para mobile
 - [x] Topbar sticky → fixed con padding compensado
+- [x] Vacaciones y Permisos (CRUD, aprobar/rechazar, formulario modal, tabla con búsqueda)
+- [x] Respaldo de datos (BackupService con export streaming chunked, restore, schedule)
+- [x] Backup schedule en Settings con permiso granular `configure backup`
+- [x] Permisos granulares en Configuración (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`)
+- [x] Eliminado permiso master `edit configuracion`
+- [x] Chart.js en /youtube (reemplaza SVG custom)
+- [x] 403 personalizado (SPA + Blade con Vite CSS)
+- [x] Planning: tareas extra como barras ámbar en vista mensual
+- [x] Dashboard adaptativo (grid dinámico según permisos)
+- [x] Sidebar reordenado por flujo de trabajo
+- [x] Manual del sistema
+- [x] Backup scope selector (Super Admin elige empresa en /backup)
+- [x] Dashboard multi-empresa (Super Admin ve stats de todas o por empresa)
+- [x] Ideas: paginación, filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, edición en masa
+- [x] Company picker forzoso para Super Admin sin empresa activa
+- [x] CSRF token refrescado cliente-side, recarga en 419
 
 ### Pendiente
-- [ ] Dashboard: multi-empresa (Super Admin ve todas)
 - [ ] Tests de autorización y CRUD
 - [ ] Multi-tenancy y suscripciones
 

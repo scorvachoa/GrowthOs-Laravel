@@ -58,7 +58,29 @@ class RolesAndPermissionsSeeder extends Seeder
             'delete empresa',
 
             'view configuracion',
-            'edit configuracion',
+            'configure work hours',
+            'configure youtube',
+            'configure dashboard',
+            'configure backup',
+
+            'view vacations',
+            'create vacations',
+            'edit vacations',
+            'delete vacations',
+
+            'view time off',
+            'create time off',
+            'edit time off',
+            'delete time off',
+            'approve time off',
+            'reject time off',
+
+            'approve vacations',
+            'reject vacations',
+
+            'view backup',
+            'create backup',
+            'download backups',
         ];
 
         foreach ($permissions as $permission) {
@@ -73,18 +95,24 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $superAdmin->givePermissionTo($permissions);
 
-        $defaultOrgId = \DB::table('organizations')->value('id');
-
-        $employee = Role::firstOrCreate([
-            'name' => 'Employee',
-        ], ['organization_id' => $defaultOrgId]);
-
-        $admin = Role::firstOrCreate([
-            'name' => 'Admin',
-        ], ['organization_id' => $defaultOrgId]);
-
+        $orgIds = \DB::table('organizations')->pluck('id');
         $adminPermissions = array_values(array_filter($permissions, fn ($p) => !str_ends_with($p, 'roles')));
-        $admin->givePermissionTo($adminPermissions);
+
+        foreach ($orgIds as $orgId) {
+            $employee = Role::firstOrCreate([
+                'name' => 'Employee',
+                'organization_id' => $orgId,
+            ]);
+
+            $admin = Role::firstOrCreate([
+                'name' => 'Admin',
+                'organization_id' => $orgId,
+            ]);
+
+            if ($admin->permissions()->count() === 0) {
+                $admin->givePermissionTo($adminPermissions);
+            }
+        }
 
         $oldPermissions = [
             'manage users',

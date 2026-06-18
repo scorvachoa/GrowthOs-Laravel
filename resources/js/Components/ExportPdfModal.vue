@@ -8,19 +8,12 @@ const props = defineProps({
     month: { type: Number, default: () => new Date().getMonth() + 1 },
     weekStart: { type: String, default: '' },
     day: { type: String, default: '' },
-    defaultScope: { type: String, default: 'monthly' },
+    defaultScope: { type: String, default: 'mensual' },
 })
-
-const scopeMap = {
-    daily: 'dia',
-    weekly: 'semanal',
-    monthly: 'mensual',
-    year: 'anual',
-}
 
 const emit = defineEmits(['close'])
 
-const scope = ref(scopeMap[props.defaultScope] || 'mensual')
+const scope = ref(props.defaultScope)
 const reportYear = ref(props.year)
 const reportMonth = ref(props.month)
 const reportWeekStart = ref(props.weekStart || getCurrentMonday())
@@ -53,7 +46,7 @@ const scopeOptions = [
 
 watch(() => props.show, (v) => {
     if (v) {
-        scope.value = scopeMap[props.defaultScope] || 'mensual'
+        scope.value = props.defaultScope
         reportYear.value = props.year
         reportMonth.value = props.month
         reportWeekStart.value = props.weekStart || getCurrentMonday()

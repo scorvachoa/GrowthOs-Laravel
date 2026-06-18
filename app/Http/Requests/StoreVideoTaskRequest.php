@@ -37,7 +37,9 @@ class StoreVideoTaskRequest extends FormRequest
             'script' => ['nullable', 'string'],
             'copy' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
-            'channel_id' => ['nullable', 'exists:channels,id'],
+            'channel_id' => ['nullable', Rule::exists('channels', 'id')->where(function ($q) {
+                $q->where('organization_id', $this->user()->activeOrganizationId());
+            })],
             'status' => ['required', Rule::in(VideoTaskStatus::values())],
         ];
 

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings, Search, SearchX } from 'lucide-vue-next'
+import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings, Search, SearchX, Umbrella, CalendarClock, HardDrive } from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -36,6 +36,9 @@ const groups = computed(() => {
         'generate ai': Sparkles,
         'view empresa': Building2,
         'view configuracion': Settings,
+        'view vacations': Umbrella,
+        'view time off': CalendarClock,
+        'view backup': HardDrive,
     }
 
     const groupMap = {
@@ -72,10 +75,27 @@ const groups = computed(() => {
         'delete empresa': 'Empresa',
 
         'view configuracion': 'Configuracion',
-        'edit configuracion': 'Configuracion',
+        'configure work hours': 'Configuracion',
+        'configure youtube': 'Configuracion',
+        'configure dashboard': 'Configuracion',
+        'configure backup': 'Configuracion',
+        'view vacations': 'Vacaciones',
+        'create vacations': 'Vacaciones',
+        'edit vacations': 'Vacaciones',
+        'delete vacations': 'Vacaciones',
+        'approve vacations': 'Vacaciones',
+        'reject vacations': 'Vacaciones',
+        'view time off': 'Permisos',
+        'create time off': 'Permisos',
+        'edit time off': 'Permisos',
+        'delete time off': 'Permisos',
+        'approve time off': 'Permisos',
+        'reject time off': 'Permisos',
+        'view backup': 'Backup',
+        'create backup': 'Backup',
     }
 
-    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'AI Generator', 'Empresa', 'Configuracion']
+    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'AI Generator', 'Empresa', 'Configuracion', 'Vacaciones', 'Permisos', 'Backup']
     const grouped = {}
 
     for (const p of props.permissions || []) {
@@ -97,6 +117,8 @@ const actionColor = (name) => {
     if (name.startsWith('edit')) return 'blue'
     if (name.startsWith('view')) return 'teal'
     if (name.startsWith('export') || name.startsWith('download') || name.startsWith('import')) return 'purple'
+    if (name.startsWith('approve')) return 'green'
+    if (name.startsWith('reject')) return 'red'
     return 'gray'
 }
 
@@ -117,6 +139,9 @@ const colorClass = (name, selected) => {
             : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
         purple: selected
             ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700'
+            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
+        green: selected
+            ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700'
             : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700/50',
         gray: selected
             ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'

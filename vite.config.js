@@ -6,7 +6,13 @@ export default defineConfig({
     plugins: [
         laravel({
             input: 'resources/js/app.js',
-            refresh: true,
+            refresh: {
+                paths: [
+                    'resources/views/app.blade.php',
+                    'routes/web.php',
+                    'routes/*.php',
+                ],
+            },
         }),
         vue({
             template: {

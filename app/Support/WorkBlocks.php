@@ -11,28 +11,25 @@ class WorkBlocks
         '16:00-18:00',
     ];
 
-    public const MORNING_START = 9;
-    public const MORNING_END = 13;
-    public const AFTERNOON_START = 14;
-    public const AFTERNOON_END = 18;
-
     public static function all(): array
     {
         return self::ALL;
     }
 
-    public static function generate(int $blockHours, ?int $startHour = null, ?int $endHour = null): array
+    public static function generate(int $blockHours, ?int $startHour = null, ?int $endHour = null, ?int $lunchStart = null, ?int $lunchEnd = null): array
     {
-        $startHour ??= self::MORNING_START;
-        $endHour ??= self::AFTERNOON_END;
+        $startHour ??= 9;
+        $endHour ??= 18;
+        $lunchStart ??= 13;
+        $lunchEnd ??= 14;
 
         $blocks = [];
 
-        for ($h = $startHour; $h + $blockHours <= min($endHour, self::MORNING_END); $h += $blockHours) {
+        for ($h = $startHour; $h + $blockHours <= $lunchStart && $h + $blockHours <= $endHour; $h += $blockHours) {
             $blocks[] = sprintf('%02d:00-%02d:00', $h, $h + $blockHours);
         }
 
-        for ($h = max($startHour, self::AFTERNOON_START); $h + $blockHours <= $endHour; $h += $blockHours) {
+        for ($h = max($startHour, $lunchEnd); $h + $blockHours <= $endHour; $h += $blockHours) {
             $blocks[] = sprintf('%02d:00-%02d:00', $h, $h + $blockHours);
         }
 
@@ -44,8 +41,10 @@ class WorkBlocks
         $blockHours = $settings['block_hours'] ?? 2;
         $startHour = self::parseHour($settings['default_work_start'] ?? '09:00');
         $endHour = self::parseHour($settings['default_work_end'] ?? '18:00');
+        $lunchStart = self::parseHour($settings['lunch_start'] ?? '13:00');
+        $lunchEnd = self::parseHour($settings['lunch_end'] ?? '14:00');
 
-        return self::generate($blockHours, $startHour, $endHour);
+        return self::generate($blockHours, $startHour, $endHour, $lunchStart, $lunchEnd);
     }
 
     public static function parseHour(string $time): int
@@ -58,8 +57,8 @@ class WorkBlocks
         return array_fill_keys($blocks ?? self::ALL, 0);
     }
 
-    public static function isValid(string $block): bool
+    public static function isValid(string $block, ?array $validBlocks = null): bool
     {
-        return in_array($block, self::ALL, true);
+        return in_array($block, $validBlocks ?? self::ALL, true);
     }
 }

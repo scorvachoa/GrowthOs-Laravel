@@ -7,13 +7,19 @@ use Illuminate\Support\Facades\Auth;
 
 class IdeaService
 {
-    public function list(int $channelId, string $search = '', string $sort = 'date_desc')
+    public function list(int $channelId, string $search = '', string $sort = 'date_desc', string $status = 'all', int $perPage = 50)
     {
         $query = Idea::query()->where('channel_id', $channelId);
 
         if ($search = trim($search)) {
             $query->where('content', 'like', "%{$search}%");
         }
+
+        match ($status) {
+            'used' => $query->where('is_used', true),
+            'pending' => $query->where('is_used', false),
+            default => null,
+        };
 
         $query->orderBy('is_used');
 
@@ -24,7 +30,7 @@ class IdeaService
             default => $query->orderBy('created_at', 'desc'),
         };
 
-        return $query->get();
+        return $query->paginate($perPage);
     }
 
     public function createBulk(int $channelId, array $lines): int
@@ -62,6 +68,30 @@ class IdeaService
     public function delete(Idea $idea): void
     {
         $idea->delete();
+    }
+
+    public function bulkUpdate(array $ids, string $action, array $contents = []): int
+    {
+        if ($action === 'edit') {
+            $count = 0;
+            foreach ($contents as $id => $content) {
+                $idea = Idea::query()->find((int) $id);
+                if ($idea && in_array($idea->id, $ids)) {
+                    $idea->update(['content' => $content]);
+                    $count++;
+                }
+            }
+            return $count;
+        }
+
+        $ideas = Idea::query()->whereIn('id', $ids)->get();
+
+        return match ($action) {
+            'mark_used' => $ideas->each->update(['is_used' => true])->count(),
+            'mark_pending' => $ideas->each->update(['is_used' => false])->count(),
+            'delete' => $ideas->each->delete()->count(),
+            default => 0,
+        };
     }
 
     public function exportIdeas(int $channelId): string

@@ -60,6 +60,7 @@ class ReportService
     public function loadTasksForRange(?int $orgId, Carbon $start, Carbon $end): Collection
     {
         return VideoTask::query()
+            ->with('channel')
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
@@ -105,6 +106,7 @@ class ReportService
                     'status_label' => $labels[$task->status] ?? $task->status,
                     'youtube_url' => $task->youtube_url,
                     'type' => 'video',
+                    'channel_name' => $task->channel?->name,
                 ];
             }
             foreach ($dayExtras as $task) {
@@ -130,7 +132,8 @@ class ReportService
 
     public function buildCompanyData(User $user): array
     {
-        $org = $user->organization ?? Organization::query()->first();
+        $orgId = $user->activeOrganizationId();
+        $org = $orgId ? Organization::find($orgId) : ($user->organization ?? Organization::query()->first());
 
         return $org ? [
             'name' => $org->name,

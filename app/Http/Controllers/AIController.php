@@ -34,7 +34,9 @@ class AIController extends Controller
 
     public function index()
     {
-        $recent = GeneratedVideo::query()
+        $query = $this->baseQuery();
+
+        $recent = $query
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
@@ -51,6 +53,13 @@ class AIController extends Controller
             ['recent' => $recent],
             $this->sharedData(),
         ));
+    }
+
+    private function baseQuery()
+    {
+        return request()->user()->hasRole('Super Admin')
+            ? GeneratedVideo::withoutGlobalScope('user_scope')
+            : GeneratedVideo::query();
     }
 
     public function show(int $id)
@@ -70,7 +79,7 @@ class AIController extends Controller
 
     public function history(Request $request)
     {
-        $query = GeneratedVideo::query()
+        $query = $this->baseQuery()
             ->orderBy('created_at', 'desc');
 
         if ($search = $request->get('search')) {
@@ -166,16 +175,16 @@ class AIController extends Controller
 
         $video = GeneratedVideo::create([
             'idea' => $idea,
-            'status' => 'processing',
+            'status' => GeneratedVideo::STATUS_PROCESSING,
             'script' => '',
         ]);
 
         try {
             $script = $ai->generateScript($idea);
-            $video->update(['script' => $script, 'status' => 'completed']);
+            $video->update(['script' => $script, 'status' => GeneratedVideo::STATUS_COMPLETED]);
             $video->refresh();
         } catch (\Throwable $e) {
-            $video->update(['status' => 'failed']);
+            $video->update(['status' => GeneratedVideo::STATUS_FAILED]);
             report($e);
 
             return response()->json([
@@ -194,9 +203,6 @@ class AIController extends Controller
     public function createTask(Request $request)
     {
         $settings = auth()->user()->merged_settings;
-        $blockHours = $settings['block_hours'] ?? 2;
-        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
-        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
         $useBlocks = $settings['use_blocks'] ?? true;
         $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
 
@@ -204,11 +210,13 @@ class AIController extends Controller
             'generated_video_id' => ['required', 'integer', 'exists:generated_videos,id'],
             'task_date' => ['required', 'date'],
             'status' => ['required', Rule::in(VideoTaskStatus::values())],
-            'channel_id' => ['nullable', 'integer', 'exists:channels,id'],
+            'channel_id' => ['nullable', 'integer', Rule::exists('channels', 'id')->where(function ($q) {
+                $q->where('organization_id', auth()->user()->activeOrganizationId());
+            })],
         ];
 
         if ($useBlocks) {
-            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $blocks = WorkBlocks::fromSettings($settings);
             $rules['time_range'] = ['required', Rule::in($blocks)];
         } else {
             $rules['time_range'] = ['required', 'string', 'max:30'];

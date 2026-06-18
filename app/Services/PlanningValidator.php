@@ -11,7 +11,7 @@ class PlanningValidator
 {
     public function assertWorkingDay(string $date, array $workingDays): void
     {
-        $dayOfWeek = Carbon::parse($date)->dayOfWeekIso % 7;
+        $dayOfWeek = Carbon::parse($date)->dayOfWeek;
         if (!in_array($dayOfWeek, $workingDays)) {
             throw ValidationException::withMessages([
                 'task_date' => 'La fecha seleccionada no es un dia laborable.',

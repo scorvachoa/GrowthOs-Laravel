@@ -3,16 +3,39 @@ import { reactive, ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { ToggleLeft, Clock, Eye, BarChart3, Monitor } from 'lucide-vue-next'
+import { ToggleLeft, Clock, Eye, BarChart3, Monitor, HardDrive } from 'lucide-vue-next'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
 const can = (perm) => permissions.includes(perm)
+const canEdit = (section) => can(section)
 
 const props = defineProps({
     settings: Object,
     workBlocks: Array,
+    backup_schedule: Object,
 })
+
+const scheduleForm = reactive({
+    time: props.backup_schedule?.time || '03:00',
+    day: props.backup_schedule?.day || 'sunday',
+})
+
+const scheduleProcessing = ref(false)
+
+function saveSchedule() {
+    scheduleProcessing.value = true
+    router.post(route('settings.backup-schedule'), { ...scheduleForm }, {
+        preserveState: false,
+        preserveScroll: true,
+        onFinish: () => { scheduleProcessing.value = false },
+    })
+}
+
+const dayLabels = {
+    monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miercoles',
+    thursday: 'Jueves', friday: 'Viernes', saturday: 'Sabado', sunday: 'Domingo',
+}
 
 const days = [
     { value: 0, label: 'Dom' },
@@ -30,6 +53,8 @@ const form = reactive({
     show_youtube_chart: props.settings.show_youtube_chart,
     default_work_start: props.settings.default_work_start,
     default_work_end: props.settings.default_work_end,
+    lunch_start: props.settings.lunch_start,
+    lunch_end: props.settings.lunch_end,
     working_days: [...(props.settings.working_days || [])],
     max_tasks_per_block: props.settings.max_tasks_per_block,
     default_report_scope: props.settings.default_report_scope,
@@ -41,13 +66,16 @@ const processing = ref(false)
 
 const previewBlocks = computed(() => {
     if (!form.use_blocks) return []
-    const s = form.default_work_start
-    const e = form.default_work_end
+    const startHour = parseInt(form.default_work_start.split(':')[0])
+    const endHour = parseInt(form.default_work_end.split(':')[0])
     const h = form.block_hours
-    const startHour = parseInt(s.split(':')[0])
-    const endHour = parseInt(e.split(':')[0])
+    const lunchStart = parseInt(form.lunch_start.split(':')[0])
+    const lunchEnd = parseInt(form.lunch_end.split(':')[0])
     const blocks = []
-    for (let m = startHour; m + h <= endHour; m += h) {
+    for (let m = startHour; m + h <= lunchStart && m + h <= endHour; m += h) {
+        blocks.push(`${String(m).padStart(2, '0')}:00-${String(m + h).padStart(2, '0')}:00`)
+    }
+    for (let m = Math.max(startHour, lunchEnd); m + h <= endHour; m += h) {
         blocks.push(`${String(m).padStart(2, '0')}:00-${String(m + h).padStart(2, '0')}:00`)
     }
     return blocks
@@ -84,7 +112,7 @@ function submit() {
 
             <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Horario laboral -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 lg:col-span-2">
+                <div v-if="canEdit('configure work hours')" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 lg:col-span-2">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
                             <Clock class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -104,6 +132,19 @@ function submit() {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin jornada</label>
                             <input type="time" v-model="form.default_work_end"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inicio almuerzo</label>
+                            <input type="time" v-model="form.lunch_start"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin almuerzo</label>
+                            <input type="time" v-model="form.lunch_end"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                     </div>
@@ -172,7 +213,7 @@ function submit() {
                 </div>
 
                 <!-- YouTube -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                <div v-if="canEdit('configure youtube')" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
                             <BarChart3 class="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -216,7 +257,7 @@ function submit() {
                 </div>
 
                 <!-- Dashboard y Reportes -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                <div v-if="canEdit('configure dashboard')" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
                             <Monitor class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -241,16 +282,49 @@ function submit() {
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alcance de reportes</label>
                             <select v-model="form.default_report_scope"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="daily">Diario</option>
-                                <option value="weekly">Semanal</option>
-                                <option value="monthly">Mensual</option>
+                                <option value="dia">Diario</option>
+                                <option value="semanal">Semanal</option>
+                                <option value="mensual">Mensual</option>
+                                <option value="anual">Anual</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
+                <!-- Backup schedule -->
+                <div v-if="canEdit('configure backup')" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
+                            <HardDrive class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup automatico</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Programa la generacion automatica de backups</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hora</label>
+                            <input type="time" v-model="scheduleForm.time"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dia</label>
+                            <select v-model="scheduleForm.day"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option v-for="(label, key) in dayLabels" :key="key" :value="key">{{ label }}</option>
+                            </select>
+                        </div>
+                        <PrimaryButton @click="saveSchedule" :disabled="scheduleProcessing" class="shrink-0">
+                            {{ scheduleProcessing ? 'Guardando...' : 'Guardar horario' }}
+                        </PrimaryButton>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-3">Los backups se guardan en el servidor y estan disponibles en la pagina de Backup.</p>
+                </div>
+
                 <div class="flex justify-end lg:col-span-2">
-                    <PrimaryButton v-if="can('edit configuracion')" type="submit" :disabled="processing">
+                    <PrimaryButton v-if="can('configure work hours') || can('configure youtube') || can('configure dashboard')" type="submit" :disabled="processing">
                         Guardar configuracion
                     </PrimaryButton>
                 </div>

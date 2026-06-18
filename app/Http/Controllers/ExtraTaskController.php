@@ -8,11 +8,14 @@ use App\Models\ExtraTask;
 use App\Services\PlanningCalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ExtraTaskController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', ExtraTask::class);
+
         $request->validate(['fecha' => ['required', 'date']]);
 
         return response()->json(
@@ -57,6 +60,8 @@ class ExtraTaskController extends Controller
 
     public function destroy(ExtraTask $extraTask)
     {
+        Gate::authorize('delete', $extraTask);
+
         $extraTask->delete();
         PlanningCalendarService::bustCache();
 

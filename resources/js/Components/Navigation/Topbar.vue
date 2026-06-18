@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onUnmounted } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
-import { Menu, LogOut, Sun, Moon } from 'lucide-vue-next'
+import { Menu, LogOut, Sun, Moon, HardDrive } from 'lucide-vue-next'
 import { useTheme } from '@/Composables/useTheme'
 
 const { isDark, toggleDark } = useTheme()
@@ -111,6 +111,12 @@ if (typeof document !== 'undefined') {
                     {{ activeCompany?.name || appName }}
                 </h2>
             </div>
+
+            <Link v-if="user?.permissions?.includes('view backup')" href="/backup"
+                class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition shrink-0"
+                title="Backup">
+                <HardDrive class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            </Link>
         </div>
 
         <div class="flex items-center gap-2 sm:gap-4 shrink-0">

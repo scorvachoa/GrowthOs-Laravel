@@ -44,8 +44,8 @@ class HandleInertiaRequests extends Middleware
                     'logo_url' => $o->logo_path ? \Illuminate\Support\Facades\Storage::url($o->logo_path) : null,
                 ]);
 
-                $activeId = session('active_company_id', $user->organization_id);
-                $activeCompany = $companies->firstWhere('id', $activeId);
+                $activeId = session('active_company_id');
+                $activeCompany = $activeId ? $companies->firstWhere('id', $activeId) : null;
             } else {
                 $org = $user->organization;
                 if ($org) {
@@ -73,6 +73,7 @@ class HandleInertiaRequests extends Middleware
                     'companies' => $companies,
                 ] : null,
             ],
+            'csrf_token' => csrf_token(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),

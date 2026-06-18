@@ -9,8 +9,31 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Populate channels.organization_id if any are still null
+        // Add organization_id to channels if missing
+        if (!Schema::hasColumn('channels', 'organization_id')) {
+            Schema::table('channels', function (Blueprint $table) {
+                $table->foreignId('organization_id')->nullable()->after('id')->constrained()->cascadeOnDelete();
+            });
+        }
+        if (!Schema::hasColumn('video_tasks', 'organization_id')) {
+            Schema::table('video_tasks', function (Blueprint $table) {
+                $table->foreignId('organization_id')->nullable()->after('id')->constrained()->cascadeOnDelete();
+            });
+        }
+        if (!Schema::hasColumn('extra_tasks', 'organization_id')) {
+            Schema::table('extra_tasks', function (Blueprint $table) {
+                $table->foreignId('organization_id')->nullable()->after('id')->constrained()->cascadeOnDelete();
+            });
+        }
+        if (!Schema::hasColumn('ideas', 'organization_id')) {
+            Schema::table('ideas', function (Blueprint $table) {
+                $table->foreignId('organization_id')->nullable()->after('id')->constrained()->cascadeOnDelete();
+            });
+        }
+
         $defaultOrgId = DB::table('organizations')->value('id');
+
+        // Populate channels.organization_id if any are still null
         if ($defaultOrgId) {
             DB::statement('UPDATE channels SET organization_id = ? WHERE organization_id IS NULL', [$defaultOrgId]);
         }
@@ -21,7 +44,7 @@ return new class extends Migration
         // Populate extra_tasks.organization_id if any are still null
         DB::statement('UPDATE extra_tasks INNER JOIN users ON users.id = extra_tasks.created_by SET extra_tasks.organization_id = users.organization_id WHERE extra_tasks.organization_id IS NULL');
 
-        // Make ideas.organization_id NOT NULL (after populating from channels)
+        // Populate ideas.organization_id from their channel, then make NOT NULL
         DB::statement('UPDATE ideas INNER JOIN channels ON channels.id = ideas.channel_id SET ideas.organization_id = channels.organization_id WHERE ideas.organization_id IS NULL');
         Schema::table('ideas', function (Blueprint $table) {
             $table->foreignId('organization_id')->nullable(false)->change();

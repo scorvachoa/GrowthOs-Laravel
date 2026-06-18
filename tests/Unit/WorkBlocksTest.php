@@ -51,10 +51,9 @@ class WorkBlocksTest extends TestCase
     {
         $blocks = WorkBlocks::generate(2, 10, 17);
 
-        $this->assertCount(3, $blocks);
+        $this->assertCount(2, $blocks);
         $this->assertEquals('10:00-12:00', $blocks[0]);
         $this->assertEquals('14:00-16:00', $blocks[1]);
-        $this->assertEquals('16:00-18:00', $blocks[2]);
     }
 
     public function test_from_settings_uses_block_hours(): void

@@ -36,7 +36,7 @@ function allBlocksFull(day, blocks) {
         </div>
         <div class="sm:grid sm:grid-cols-7 gap-1.5">
             <div v-for="(day, idx) in days" :key="idx"
-                v-memo="[day.day, day.date, day.isOtherMonth, day.isToday, day.isNonWorkingDay, day.tasks.length, day.hasExtraTasks, day.holidayName]"
+                v-memo="[day.day, day.date, day.isOtherMonth, day.isToday, day.isNonWorkingDay, day.tasks.length, day.hasExtraTasks, day.extraTasksCount, day.holidayName, day.absences?.length]"
                 @click="!day.isNonWorkingDay && !day.isOtherMonth && emit('openDay', day.date)"
                 class="sm:min-h-[100px] bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-2.5 cursor-pointer transition-all duration-150 relative group"
                 :class="[
@@ -75,8 +75,12 @@ function allBlocksFull(day, blocks) {
                             </span>
                             <span v-if="day.hasExtraTasks"
                                 class="text-xs text-amber-600 font-medium">
-                                Extra
+                                {{ day.extraTasksCount }} extra
                             </span>
+                            <span v-if="day.absences?.some(a => a.type === 'vacation')"
+                                class="text-xs text-purple-600 font-medium">Vac</span>
+                            <span v-if="day.absences?.some(a => a.type === 'time_off')"
+                                class="text-xs text-orange-600 font-medium">Perm</span>
                         </div>
                     </div>
                 </div>
@@ -94,10 +98,22 @@ function allBlocksFull(day, blocks) {
                         class="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-tight pl-0.5">
                         +{{ day.tasks.length - 4 }} mas
                     </div>
-                    <div v-if="day.hasExtraTasks"
-                        class="flex items-center gap-1 mt-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Extra</span>
+                    <div v-if="day.hasExtraTasks" class="flex items-center gap-[2px] mt-1">
+                        <span v-for="n in Math.min(day.extraTasksCount, 5)" :key="n"
+                            class="h-2 rounded-sm w-4 bg-amber-400 dark:bg-amber-500"
+                            :title="day.extraTasksCount + ' tarea' + (day.extraTasksCount !== 1 ? 's' : '') + ' extra'">
+                        </span>
+                        <span v-if="day.extraTasksCount > 5"
+                            class="text-[10px] text-amber-600 dark:text-amber-400 font-medium ml-0.5">
+                            +{{ day.extraTasksCount - 5 }}
+                        </span>
+                    </div>
+                    <div v-if="day.absences?.length" class="flex flex-wrap gap-1 mt-1">
+                        <span v-for="(a, aIdx) in day.absences" :key="aIdx"
+                            class="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            :class="a.type === 'vacation' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'">
+                            {{ a.label }}
+                        </span>
                     </div>
                 </div>
                 <button v-if="!day.isOtherMonth && canCreate && !day.isNonWorkingDay && !allBlocksFull(day, workBlocks)"

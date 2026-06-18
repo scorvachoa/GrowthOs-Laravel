@@ -6,20 +6,21 @@ import StatCard from '@/Components/UI/StatCard.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import {
     ListChecks, TrendingUp, Eye, FileDown,
-    Users, Activity, BarChart3
+    Users, Activity, BarChart3, CalendarCheck,
+    CheckCircle, XCircle, Umbrella, Clock
 } from 'lucide-vue-next'
 
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 const canViewUsers = computed(() =>
-    user.value?.roles?.some(r => r === 'Super Admin' || r === 'Admin')
+    user.value?.permissions?.includes('view users')
 )
 
 const props = defineProps({
     stats: Object,
 })
 
-const defaultReportScope = computed(() => page.props.auth?.user?.settings?.default_report_scope ?? 'monthly')
+const defaultReportScope = computed(() => page.props.auth?.user?.settings?.default_report_scope ?? 'mensual')
 
 const statusColor = (status) => {
     const colors = {
@@ -51,7 +52,11 @@ const statusLabel = (status) => props.stats.status_labels?.[status] || status
 
 const goToPlanning = () => router.get('/planning')
 const viewTask = (id) => router.get(`/video-tasks/${id}`)
+const approveAbsence = (type, id) => router[type === 'vacation' ? 'patch' : 'patch'](`/${type === 'vacation' ? 'vacations' : 'time-off'}/${id}/approve`)
+const rejectAbsence = (type, id) => router[type === 'vacation' ? 'patch' : 'patch'](`/${type === 'vacation' ? 'vacations' : 'time-off'}/${id}/reject`)
 const showPdfModal = ref(false)
+
+const pendingTotal = computed(() => props.stats.pending_approvals?.total || 0)
 
 const statusSummary = computed(() => {
     const keys = ['published', 'scheduled', 'review', 'editing', 'script_ready', 'pending', 'cancelled']
@@ -64,6 +69,8 @@ const statusSummary = computed(() => {
 })
 
 const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + i.count, 0) || 1)
+
+const circumference = 2 * Math.PI * 15.5
 </script>
 
 <template>
@@ -90,7 +97,7 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                 <StatCard title="Vencidas" :value="stats.overdue" color="#ef4444" />
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 gap-6" :class="canViewUsers ? 'xl:grid-cols-3' : 'xl:grid-cols-2'">
 
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
@@ -153,8 +160,8 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e5e7eb" stroke-width="3"
                                     class="dark:stroke-gray-700" />
                                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#4f46e5" stroke-width="3"
-                                    :stroke-dashoffset="100 - stats.period_completion"
-                                    stroke-dasharray="100" stroke-linecap="round" />
+                                    :stroke-dashoffset="circumference - (stats.period_completion / 100 * circumference)"
+                                    :stroke-dasharray="circumference" stroke-linecap="round" />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.period_completion }}%</span>
@@ -207,7 +214,7 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6" :class="canViewUsers ? 'xl:grid-cols-2' : 'xl:grid-cols-1'">
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900">
@@ -261,6 +268,112 @@ const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + 
                                 </p>
                                 <p class="text-xs text-gray-400 mt-0.5"> {{ log.created_at }}</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div v-if="canViewUsers" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900">
+                            <CalendarCheck class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Ausencias de hoy</h2>
+                            <p class="text-sm text-gray-500">Vacaciones y permisos del dia</p>
+                        </div>
+                    </div>
+                    <div v-if="!stats.today_absences?.vacations?.length && !stats.today_absences?.time_offs?.length"
+                        class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                        Sin ausencias hoy
+                    </div>
+                    <div v-if="stats.today_absences?.vacations?.length" class="mb-4">
+                        <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Umbrella class="w-3.5 h-3.5 text-purple-500" /> Vacaciones
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-for="name in stats.today_absences.vacations" :key="name"
+                                class="inline-flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                {{ name }}
+                            </span>
+                        </div>
+                    </div>
+                    <div v-if="stats.today_absences?.time_offs?.length">
+                        <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Clock class="w-3.5 h-3.5 text-orange-500" /> Permisos
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-for="name in stats.today_absences.time_offs" :key="name"
+                                class="inline-flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                {{ name }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
+                            <Clock class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Pendientes de aprobar</h2>
+                            <p class="text-sm text-gray-500">{{ pendingTotal }} solicitud{{ pendingTotal !== 1 ? 'es' : '' }} pendiente{{ pendingTotal !== 1 ? 's' : '' }}</p>
+                        </div>
+                    </div>
+                    <div v-if="!pendingTotal"
+                        class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                        Sin solicitudes pendientes
+                    </div>
+                    <div v-for="item in stats.pending_approvals?.vacations" :key="'vac' + item.id"
+                        class="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <Umbrella class="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ item.user_name }}</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                Vacaciones {{ item.days_used }} dias ({{ item.start_date }} a {{ item.end_date }})
+                            </p>
+                            <p v-if="item.reason" class="text-xs text-gray-400 truncate">{{ item.reason }}</p>
+                        </div>
+                        <div v-if="stats.can_approve_absences" class="flex items-center gap-1 ml-2 shrink-0">
+                            <button @click="approveAbsence('vacation', item.id)"
+                                class="p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition"
+                                title="Aprobar">
+                                <CheckCircle class="w-4 h-4" />
+                            </button>
+                            <button @click="rejectAbsence('vacation', item.id)"
+                                class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition"
+                                title="Rechazar">
+                                <XCircle class="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                    <div v-for="item in stats.pending_approvals?.time_offs" :key="'to' + item.id"
+                        class="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <Clock class="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ item.user_name }}</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                Permiso {{ item.date }} {{ item.start_time }}–{{ item.end_time }}
+                            </p>
+                            <p v-if="item.reason" class="text-xs text-gray-400 truncate">{{ item.reason }}</p>
+                        </div>
+                        <div v-if="stats.can_approve_absences" class="flex items-center gap-1 ml-2 shrink-0">
+                            <button @click="approveAbsence('time_off', item.id)"
+                                class="p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition"
+                                title="Aprobar">
+                                <CheckCircle class="w-4 h-4" />
+                            </button>
+                            <button @click="rejectAbsence('time_off', item.id)"
+                                class="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition"
+                                title="Rechazar">
+                                <XCircle class="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
                 </div>

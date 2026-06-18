@@ -81,12 +81,14 @@ class CopyParser
             }
 
             $heading = preg_replace('/^\s*\d+\.\s*/', '', trim($line, '* '));
-            $key = $this->labelKey($heading);
-            if ($key !== null) {
-                $this->flush($fields, $currentKey, $buffer);
-                $currentKey = $key;
-                $buffer = [];
-                continue;
+            if ($heading === mb_strtoupper($heading)) {
+                $key = $this->labelKey($heading);
+                if ($key !== null) {
+                    $this->flush($fields, $currentKey, $buffer);
+                    $currentKey = $key;
+                    $buffer = [];
+                    continue;
+                }
             }
 
             if ($currentKey !== null) {

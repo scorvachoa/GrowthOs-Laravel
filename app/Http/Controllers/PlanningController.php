@@ -111,15 +111,23 @@ class PlanningController extends Controller
     {
         $request->validate([
             'fecha' => ['required', 'date'],
-            'notes' => ['required', 'string', 'max:5000'],
+            'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $orgId = Auth::user()->activeOrganizationId();
+        $date = $request->string('fecha');
+        $notes = $request->input('notes');
 
-        DayObservation::updateOrCreate(
-            ['organization_id' => $orgId, 'task_date' => $request->string('fecha')],
-            ['notes' => $request->string('notes'), 'created_by' => Auth::id()],
-        );
+        if ($notes === null || trim($notes) === '') {
+            DayObservation::where('organization_id', $orgId)
+                ->where('task_date', $date)
+                ->delete();
+        } else {
+            DayObservation::updateOrCreate(
+                ['organization_id' => $orgId, 'task_date' => $date],
+                ['notes' => $notes, 'created_by' => Auth::id()],
+            );
+        }
 
         PlanningCalendarService::bustCache();
 

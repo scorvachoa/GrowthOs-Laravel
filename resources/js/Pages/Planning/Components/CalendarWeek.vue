@@ -52,6 +52,13 @@ function isHourOccupied(day, hour) {
                     {{ day.day }}
                 </div>
                 <div v-if="day.holidayName" class="text-[10px] text-red-500 font-medium">{{ day.holidayName }}</div>
+                <div v-if="day.absences?.length" class="flex flex-wrap justify-center gap-0.5 mt-0.5">
+                    <span v-for="(a, aIdx) in day.absences" :key="aIdx"
+                        class="text-[9px] font-medium px-1 py-px rounded-full leading-tight"
+                        :class="a.type === 'vacation' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'">
+                        {{ a.label }}
+                    </span>
+                </div>
             </div>
         </template>
         <template v-for="(hour, hIdx) in hours" :key="'h' + hour">

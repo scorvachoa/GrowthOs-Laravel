@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\ExtraTask;
+use App\Models\TimeOff;
 use App\Models\User;
+use App\Models\Vacation;
 use App\Models\VideoTask;
 use App\Enums\VideoTaskStatus;
 use Carbon\Carbon;
@@ -30,6 +32,9 @@ class DashboardService
                 'recent_activity' => $this->recentActivity(),
                 'status_labels' => $labels,
                 'period_label' => $this->periodLabel($scope),
+                'today_absences' => $this->todayAbsences($orgId, $today),
+                'pending_approvals' => $this->pendingApprovals($orgId),
+                'can_approve_absences' => $authUser->hasRole('Super Admin') || $authUser->can('approve vacations') || $authUser->can('approve time off'),
             ]
         );
     }
@@ -161,5 +166,65 @@ class DashboardService
             'month' => 'Mensual',
             default => 'Semanal',
         };
+    }
+
+    private function todayAbsences(?int $orgId, Carbon $today): array
+    {
+        $vacationUsers = User::where('organization_id', $orgId)
+            ->whereHas('vacations', fn ($q) => $q
+                ->where('status', 'aprobado')
+                ->where('start_date', '<=', $today)
+                ->where('end_date', '>=', $today)
+            )->pluck('name');
+
+        $timeOffUsers = User::where('organization_id', $orgId)
+            ->whereHas('timeOffs', fn ($q) => $q
+                ->where('status', 'aprobado')
+                ->where('date', '=', $today)
+            )->pluck('name');
+
+        return [
+            'vacations' => $vacationUsers,
+            'time_offs' => $timeOffUsers,
+        ];
+    }
+
+    private function pendingApprovals(?int $orgId): array
+    {
+        $pendingVacations = Vacation::where('status', 'pendiente')
+            ->whereHas('user', fn ($q) => $q->where('organization_id', $orgId))
+            ->with('user')
+            ->get()
+            ->map(fn ($v) => [
+                'id' => $v->id,
+                'type' => 'vacation',
+                'user_name' => $v->user?->name,
+                'start_date' => $v->start_date->format('Y-m-d'),
+                'end_date' => $v->end_date->format('Y-m-d'),
+                'days_used' => $v->days_used,
+                'reason' => $v->reason,
+                'created_at' => $v->created_at->diffForHumans(),
+            ]);
+
+        $pendingTimeOffs = TimeOff::where('status', 'pendiente')
+            ->whereHas('user', fn ($q) => $q->where('organization_id', $orgId))
+            ->with('user')
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'type' => 'time_off',
+                'user_name' => $t->user?->name,
+                'date' => $t->date->format('Y-m-d'),
+                'start_time' => $t->start_time,
+                'end_time' => $t->end_time,
+                'reason' => $t->reason,
+                'created_at' => $t->created_at->diffForHumans(),
+            ]);
+
+        return [
+            'vacations' => $pendingVacations,
+            'time_offs' => $pendingTimeOffs,
+            'total' => $pendingVacations->count() + $pendingTimeOffs->count(),
+        ];
     }
 }
