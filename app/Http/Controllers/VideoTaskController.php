@@ -6,6 +6,7 @@ use App\Http\Requests\StoreVideoTaskRequest;
 use App\Http\Resources\VideoTaskResource;
 use App\Models\Channel;
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
 use App\Enums\VideoTaskStatus;
@@ -44,6 +45,7 @@ class VideoTaskController extends Controller
         $validated['created_by'] = auth()->id();
 
         VideoTask::create($validated);
+
         PlanningCalendarService::bustCache();
 
         return redirect()
@@ -167,8 +169,74 @@ class VideoTaskController extends Controller
         ]);
     }
 
+    public function storeSession(Request $request, VideoTask $videoTask)
+    {
+        $validated = $request->validate([
+            'date' => ['required', 'date', 'after_or_equal:' . $videoTask->task_date->format('Y-m-d')],
+            'time_range' => ['nullable', 'string', 'max:30'],
+            'status' => ['nullable', Rule::in(['in_progress', 'completed'])],
+        ]);
+
+        $session = $videoTask->sessions()->create([
+            'date' => $validated['date'],
+            'time_range' => $validated['time_range'] ?? null,
+            'status' => $validated['status'] ?? 'in_progress',
+        ]);
+
+        if ($session->status === 'completed') {
+            $videoTask->update(['status' => 'completed']);
+        }
+
+        PlanningCalendarService::bustCache();
+
+        return response()->json([
+            'ok' => true,
+            'session' => [
+                'id' => $session->id,
+                'date' => $session->date->format('Y-m-d'),
+                'time_range' => $session->time_range,
+                'status' => $session->status,
+            ],
+        ]);
+    }
+
+    public function updateSession(Request $request, VideoTask $videoTask, WorkSession $session)
+    {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date', 'after_or_equal:' . $videoTask->task_date->format('Y-m-d')],
+            'time_range' => ['nullable', 'string', 'max:30'],
+            'status' => ['required', Rule::in(['in_progress', 'completed'])],
+        ]);
+
+        $session->update($validated);
+
+        if ($validated['status'] === 'completed') {
+            $videoTask->update(['status' => 'completed']);
+        }
+
+        PlanningCalendarService::bustCache();
+
+        return response()->json([
+            'ok' => true,
+            'session' => [
+                'id' => $session->id,
+                'date' => $session->date->format('Y-m-d'),
+                'time_range' => $session->time_range,
+                'status' => $session->status,
+            ],
+        ]);
+    }
+
+    public function destroySession(VideoTask $videoTask, WorkSession $session)
+    {
+        $session->delete();
+        PlanningCalendarService::bustCache();
+
+        return response()->json(['ok' => true]);
+    }
+
     private function serializeTask(VideoTask $task): array
     {
-        return VideoTaskResource::make($task)->resolve();
+        return VideoTaskResource::make($task->load('sessions'))->resolve();
     }
 }

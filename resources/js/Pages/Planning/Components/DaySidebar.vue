@@ -23,6 +23,8 @@ const emit = defineEmits([
     'editTask',
     'deleteTask',
     'updateStatus',
+    'createSession',
+    'completeSession',
     'openExtraModal',
     'deleteExtra',
     'updateExtraStatus',
@@ -100,6 +102,8 @@ function cancelEdit() {
                                     'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200': task.status === 'scheduled',
                                     'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': task.status === 'published',
                                     'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200': task.status === 'cancelled',
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200': task.status === 'in_progress',
+                                    'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200': task.status === 'completed',
                                 }">
                                 {{ statusLabels[task.status] || task.status }}
                             </span>
@@ -113,7 +117,22 @@ function cancelEdit() {
                             </a>
                         </div>
 
-                        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div v-if="task.is_session" class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">Sesion</span>
+                            <span v-if="task.status === 'completed'"
+                                class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 font-medium">
+                                Completado
+                            </span>
+                            <button v-if="canEdit && task.status !== 'completed'" @click="emit('completeSession', task)"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition">
+                                Completar
+                            </button>
+                            <button @click="emit('viewTask', task.id)"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
+                                Ver tarea
+                            </button>
+                        </div>
+                        <div v-else class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                             <select :value="task.status" @change="emit('updateStatus', task, $event.target.value)"
                                 class="text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white py-1 px-2 min-w-[130px]">
                                 <option v-for="s in statuses || []" :key="s.value" :value="s.value">{{ s.label }}</option>
@@ -125,6 +144,10 @@ function cancelEdit() {
                             <button v-if="canEdit" @click="emit('editTask', task.id)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition">
                                 Editar
+                            </button>
+                            <button v-if="canEdit && task.status !== 'published' && task.status !== 'cancelled'" @click="emit('createSession', task)"
+                                class="text-xs px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition whitespace-nowrap">
+                                + Sesion
                             </button>
                             <button v-if="canDelete" @click="emit('deleteTask', task)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">

@@ -174,6 +174,11 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **403 personalizado**: página SPA con botones "Volver" e "Ir al Dashboard"
 - **Configuración**: permisos granulares por sección (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`), ya no existe permiso master `edit configuracion`
 - **Respaldo en topbar**: icono `HardDrive` fijo en la topbar, eliminado del sidebar
+- **Sesiones de trabajo multi-día**: tabla `work_sessions` permite continuar tareas en días posteriores. Las tareas se muestran en el calendario tanto en su fecha original como en las fechas de sesión, cada una con su propio bloque horario y estado.
+- **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; todo sin salir del calendario.
+- **Edición/eliminación de sesiones**: desde el formulario de editar tarea, sección "Sesiones de trabajo" con opciones de editar fecha/bloque/estado y eliminar con confirmación modal.
+- **Multi-idioma en VideoTasks**: columna `translations` JSON que almacena título/guion/copy en EN y PT. Pestañas de idioma en crear, editar y ver tarea con indicador visual del idioma activo.
+- **Leyenda de colores en planificación**: todos los estados de tarea y sesión visibles con indicador de color, agrupados por sección (Tareas / Sesiones).
 
 ---
 
@@ -280,8 +285,8 @@ app/
 │   │                        # Backup, Vacation, TimeOff, Manual
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
-├── Models/                  # User, VideoTask, ExtraTask, ReportHistory, Organization, Channel, Idea,
-│   │                        # GeneratedVideo, Vacation, TimeOff, DayObservation
+├── Models/                  # User, VideoTask, WorkSession, ExtraTask, ReportHistory, Organization, Channel,
+│   │                        # Idea, GeneratedVideo, Vacation, TimeOff, DayObservation
 ├── Policies/                # UserPolicy, ChannelPolicy, VideoTaskPolicy, IdeaPolicy, ExtraTaskPolicy
 ├── Services/
 │   ├── AI/                  # GeminiService, ElevenLabsService, AIContentService, Prompts,
@@ -467,6 +472,11 @@ php artisan test     # Tests PHPUnit
 - [x] Ideas: paginación, filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, edición en masa
 - [x] Company picker forzoso para Super Admin sin empresa activa
 - [x] CSRF token refrescado cliente-side, recarga en 419
+- [x] Sesiones de trabajo multi-día (WorkSessions): tareas continuadas en días posteriores, visibles en calendario y PDF
+- [x] Multi-idioma en VideoTasks (EN/PT): pestañas de idioma en crear, editar y ver; columna `translations` JSON
+- [x] Leyenda de colores unificada en planificación con todos los estados de tarea y sesión
+- [x] Gestión de sesiones desde sidebar: crear sesión en fecha actual, completar sesión
+- [x] Edición y eliminación de sesiones con modal de confirmación desde el formulario de tarea
 
 ### Pendiente
 - [ ] Tests de autorización y CRUD

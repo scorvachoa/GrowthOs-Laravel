@@ -73,6 +73,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/video-tasks/{video_task}/edit', [VideoTaskController::class, 'edit'])->middleware('can:edit planning')->name('video-tasks.edit');
     Route::put('/video-tasks/{video_task}', [VideoTaskController::class, 'update'])->middleware('can:edit planning')->name('video-tasks.update');
     Route::patch('/video-tasks/{video_task}/status', [VideoTaskController::class, 'updateStatus'])->middleware('can:edit planning')->name('video-tasks.status');
+    Route::post('/video-tasks/{video_task}/sessions', [VideoTaskController::class, 'storeSession'])->middleware('can:edit planning')->name('video-tasks.sessions.store');
+    Route::patch('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'updateSession'])->middleware('can:edit planning')->name('video-tasks.sessions.update');
+    Route::delete('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'destroySession'])->middleware('can:delete planning')->name('video-tasks.sessions.destroy');
     Route::post('/video-tasks/{video_task}/move', [VideoTaskController::class, 'move'])->middleware('can:edit planning')->name('video-tasks.move');
     Route::delete('/video-tasks/{video_task}', [VideoTaskController::class, 'destroy'])->middleware('can:delete planning')->name('video-tasks.destroy');
     Route::get('/extra-tasks', [ExtraTaskController::class, 'index'])->middleware('can:view planning')->name('extra-tasks.index');

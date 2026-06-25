@@ -2,6 +2,7 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import VideoTaskForm from './Components/VideoTaskForm.vue'
 import { useForm, Link } from '@inertiajs/vue3'
+import { provide } from 'vue'
 
 const props = defineProps({
     prefilled: Object,
@@ -15,10 +16,13 @@ const form = useForm({
     title: '',
     script: '',
     copy: '',
+    translations: null,
     youtube_url: '',
     status: 'pending',
     channel_id: null,
 })
+
+provide('taskForm', form)
 
 const submit = () => {
     form.post('/video-tasks')
@@ -33,7 +37,7 @@ const submit = () => {
                 <Link href="/planning" class="text-indigo-600 hover:text-indigo-700">Volver al calendario</Link>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                <VideoTaskForm :form="form" :statuses="statuses" :channels="channels" submit-label="Crear Tarea" @submit="submit" />
+                <VideoTaskForm :statuses="statuses" :channels="channels" submit-label="Crear Tarea" @submit="submit" />
             </div>
         </div>
     </AppLayout>

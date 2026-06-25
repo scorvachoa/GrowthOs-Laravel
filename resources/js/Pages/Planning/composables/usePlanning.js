@@ -40,6 +40,8 @@ export function usePlanning(props) {
         scheduled: 'bg-indigo-500',
         published: 'bg-green-500',
         cancelled: 'bg-red-500',
+        in_progress: 'bg-amber-500',
+        completed: 'bg-teal-500',
     }
 
     const currentYear = ref(props.calendar.year)
@@ -433,6 +435,45 @@ export function usePlanning(props) {
         })
     }
 
+    async function completeSession(task) {
+        if (!task.session_id) return
+        try {
+            await axios.patch(`/video-tasks/${task.id}/sessions/${task.session_id}`, {
+                status: 'completed',
+            })
+            if (selectedDate.value) fetchDayTasks(selectedDate.value)
+            fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to complete session', e)
+        }
+    }
+
+    function todayStr() {
+        const d = new Date()
+        return formatDate(d)
+    }
+
+    async function createSession(task) {
+        if (!task.id) return
+        const today = todayStr()
+        try {
+            const blocksRes = await axios.get('/planning/occupied-blocks', {
+                params: { date: today, except_task_id: task.id }
+            })
+            const freeBlock = blocksRes.data.available?.[0] || null
+
+            await axios.post(`/video-tasks/${task.id}/sessions`, {
+                date: today,
+                time_range: freeBlock,
+                status: 'in_progress',
+            })
+            if (selectedDate.value) fetchDayTasks(selectedDate.value)
+            fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to create session', e)
+        }
+    }
+
     function openExtraModal(task = null) {
         editingExtra.value = task
         showExtraModal.value = true
@@ -504,5 +545,6 @@ export function usePlanning(props) {
         updateTaskStatus, updateExtraTaskStatus, saveObservation,
         openExtraModal, closeExtraModal, saveExtraTask,
         confirmDeleteExtra, executeExtraDelete,
+        createSession, completeSession,
     }
 }

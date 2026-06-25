@@ -30,6 +30,7 @@ const {
     createTask, viewTask, editTask,
     confirmDeleteTask, executeDelete,
     updateTaskStatus, updateExtraTaskStatus, saveObservation,
+    createSession, completeSession,
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
 } = usePlanning(props)
@@ -103,9 +104,23 @@ const {
                         @viewTask="viewTask" />
                 </template>
 
-                <div class="flex items-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-indigo-500"></span> Tarea de video</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-400"></span> Tarea extra</span>
+                <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span class="font-medium text-gray-600 dark:text-gray-300 mr-1">Tareas:</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-yellow-500"></span> Pendiente</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-blue-500"></span> Guion</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-purple-500"></span> Edicion</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-orange-500"></span> Revision</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-indigo-500"></span> Programado</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-green-500"></span> Publicado</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-red-500"></span> Cancelado</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span class="font-medium text-gray-600 dark:text-gray-300 mr-1">Sesiones:</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-500"></span> En progreso</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-teal-500"></span> Completado</span>
+                        <span class="flex items-center gap-2 ml-2"><span class="w-2 h-2 rounded-sm bg-amber-400"></span> Extra</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -133,6 +148,8 @@ const {
                 @editTask="editTask"
                 @deleteTask="confirmDeleteTask"
                 @updateStatus="updateTaskStatus"
+                @createSession="createSession"
+                @completeSession="completeSession"
                 @openExtraModal="openExtraModal"
                 @deleteExtra="confirmDeleteExtra"
                 @updateExtraStatus="updateExtraTaskStatus"

@@ -21,7 +21,17 @@ class VideoTaskResource extends JsonResource
             'copy' => $this->copy,
             'key_phrases' => $this->key_phrases,
             'youtube_url' => $this->youtube_url,
+            'translations' => $this->translations,
         ];
+
+        if ($this->relationLoaded('sessions')) {
+            $data['sessions'] = $this->sessions->map(fn ($s) => [
+                'id' => $s->id,
+                'date' => $s->date->format('Y-m-d'),
+                'time_range' => $s->time_range,
+                'status' => $s->status,
+            ]);
+        }
 
         if ($this->relationLoaded('channel') && $this->channel) {
             $data['channel'] = [

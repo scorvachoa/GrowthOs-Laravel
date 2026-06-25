@@ -19,6 +19,8 @@ const statusColors = {
     scheduled: 'bg-indigo-500',
     published: 'bg-green-500',
     cancelled: 'bg-red-500',
+    in_progress: 'bg-amber-500',
+    completed: 'bg-teal-500',
 }
 
 function allBlocksFull(day, blocks) {

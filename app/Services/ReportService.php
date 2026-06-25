@@ -60,7 +60,7 @@ class ReportService
     public function loadTasksForRange(?int $orgId, Carbon $start, Carbon $end): Collection
     {
         return VideoTask::query()
-            ->with('channel')
+            ->with('channel', 'sessions')
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
@@ -108,6 +108,19 @@ class ReportService
                     'type' => 'video',
                     'channel_name' => $task->channel?->name,
                 ];
+                foreach ($task->sessions as $session) {
+                    $sessionKey = $session->date->format('Y-m-d');
+                    if ($sessionKey === $dateStr && $sessionKey !== $task->task_date->format('Y-m-d')) {
+                        $items[] = [
+                            'time_range' => $session->time_range,
+                            'title' => $task->title,
+                            'status_label' => $session->status === 'completed' ? 'Completado' : 'En progreso',
+                            'youtube_url' => $task->youtube_url,
+                            'type' => 'session',
+                            'channel_name' => $task->channel?->name,
+                        ];
+                    }
+                }
             }
             foreach ($dayExtras as $task) {
                 $items[] = [

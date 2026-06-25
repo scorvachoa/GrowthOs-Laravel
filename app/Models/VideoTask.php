@@ -18,6 +18,7 @@ class VideoTask extends Model
         'title',
         'script',
         'copy',
+        'translations',
         'youtube_url',
         'status',
         'created_by',
@@ -29,6 +30,7 @@ class VideoTask extends Model
     {
         return [
             'task_date' => 'date',
+            'translations' => 'array',
         ];
     }
 
@@ -51,5 +53,10 @@ class VideoTask extends Model
     public function channel()
     {
         return $this->belongsTo(Channel::class);
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(WorkSession::class);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\ExtraTask;
 use App\Models\TimeOff;
 use App\Models\Vacation;
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
@@ -65,14 +66,38 @@ class PlanningCalendarService
 
     private function loadMonthTasks(Carbon $start, Carbon $end): Collection
     {
-        return VideoTask::query()
-            ->with('channel')
+        $tasks = VideoTask::query()
+            ->with('channel', 'sessions')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->orderBy('task_date')
             ->orderBy('time_range')
-            ->get()
-            ->groupBy(fn (VideoTask $task) => $task->task_date->format('Y-m-d'));
+            ->get();
+
+        $map = [];
+
+        foreach ($tasks as $task) {
+            $primaryKey = $task->task_date->format('Y-m-d');
+            $map[$primaryKey][] = $task;
+
+            foreach ($task->sessions as $session) {
+                $sessionKey = $session->date->format('Y-m-d');
+                if ($sessionKey === $primaryKey) continue;
+                if ($sessionKey < $start->format('Y-m-d') || $sessionKey >= $end->format('Y-m-d')) continue;
+                $map[$sessionKey][] = (object)[
+                    'id' => $task->id,
+                    'task_date' => $session->date,
+                    'time_range' => $session->time_range,
+                    'title' => $task->title,
+                    'status' => $session->status,
+                    'channel' => $task->channel,
+                    'sessions' => collect(),
+                    'is_session' => true,
+                ];
+            }
+        }
+
+        return collect($map)->map(fn ($day) => collect($day));
     }
 
     private function loadMonthExtraTasks(Carbon $start, Carbon $end): Collection
@@ -158,7 +183,7 @@ class PlanningCalendarService
             $tasksCount[$dayKey] = $dayTasks->count();
             $blocksMap[$dayKey] = $this->buildBlockCounts($dayTasks, $workBlocks);
             $tasksDetailMap[$dayKey] = $dayTasks
-                ->map(fn (VideoTask $task) => $this->serializeSummary($task))
+                ->map(fn ($task) => $this->serializeSummary($task))
                 ->values()
                 ->all();
         }
@@ -180,7 +205,7 @@ class PlanningCalendarService
         $weekEnd = $weekStart->copy()->addDays(7);
 
         $weekTasks = VideoTask::query()
-            ->with('channel')
+            ->with('channel', 'sessions')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
             ->orderBy('task_date')
@@ -206,12 +231,35 @@ class PlanningCalendarService
         }
 
         foreach ($weekTasks as $task) {
-            $iso = $task->task_date->format('Y-m-d');
-            if (!isset($weekBlockMap[$iso])) continue;
-            if (isset($weekBlockMap[$iso][$task->time_range])) {
-                $weekBlockMap[$iso][$task->time_range]++;
+            $primaryKey = $task->task_date->format('Y-m-d');
+
+            if (isset($weekBlockMap[$primaryKey])) {
+                if (isset($weekBlockMap[$primaryKey][$task->time_range])) {
+                    $weekBlockMap[$primaryKey][$task->time_range]++;
+                }
+                $weekTasksDetailMap[$primaryKey][] = $this->serializeSummary($task);
             }
-            $weekTasksDetailMap[$iso][] = $this->serializeSummary($task);
+
+            foreach ($task->sessions as $session) {
+                $sessionKey = $session->date->format('Y-m-d');
+                if ($sessionKey === $primaryKey) continue;
+                if (!isset($weekBlockMap[$sessionKey])) continue;
+
+                if ($session->time_range && isset($weekBlockMap[$sessionKey][$session->time_range])) {
+                    $weekBlockMap[$sessionKey][$session->time_range]++;
+                }
+                $weekTasksDetailMap[$sessionKey][] = [
+                    'id' => $task->id,
+                    'session_id' => $session->id,
+                    'time_range' => $session->time_range,
+                    'title' => $task->title,
+                    'status' => $session->status,
+                    'is_session' => true,
+                    'channel' => $task->channel
+                        ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                        : null,
+                ];
+            }
         }
 
         foreach ($weekExtraTasks as $task) {
@@ -234,7 +282,7 @@ class PlanningCalendarService
 
     public function tasksForDate(string $date): array
     {
-        return VideoTask::query()
+        $tasks = VideoTask::query()
             ->with('channel')
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
@@ -243,6 +291,37 @@ class PlanningCalendarService
             ->map(fn (VideoTask $task) => $this->serializeDetail($task))
             ->values()
             ->all();
+
+        $sessionEntries = WorkSession::where('date', $date)
+            ->with('videoTask.channel')
+            ->get()
+            ->filter(fn ($s) => $s->videoTask->task_date->format('Y-m-d') !== $date)
+            ->map(fn ($s) => $this->serializeDetailFromSession($s))
+            ->values()
+            ->all();
+
+        return array_merge($tasks, $sessionEntries);
+    }
+
+    private function serializeDetailFromSession(WorkSession $session): array
+    {
+        $task = $session->videoTask;
+        return [
+            'id' => $task->id,
+            'session_id' => $session->id,
+            'task_date' => $session->date->format('Y-m-d'),
+            'time_range' => $session->time_range,
+            'title' => $task->title,
+            'script' => $task->script,
+            'copy' => $task->copy,
+            'key_phrases' => $task->key_phrases,
+            'youtube_url' => $task->youtube_url,
+            'status' => $session->status,
+            'is_session' => true,
+            'channel' => $task->channel
+                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                : null,
+        ];
     }
 
     private function buildBlockCounts(Collection $dayTasks, array $workBlocks): array
@@ -258,7 +337,7 @@ class PlanningCalendarService
         return $counts;
     }
 
-    private function serializeSummary(VideoTask $task): array
+    private function serializeSummary($task): array
     {
         return [
             'id' => $task->id,

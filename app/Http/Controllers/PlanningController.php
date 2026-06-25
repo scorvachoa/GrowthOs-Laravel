@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DayObservation;
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use App\Services\PlanningCalendarService;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
@@ -151,6 +152,15 @@ class PlanningController extends Controller
         }
 
         $occupied = $query->pluck('time_range')->toArray();
+
+        $sessionOccupied = WorkSession::where('date', $date)
+            ->whereNotNull('time_range')
+            ->where('status', 'in_progress')
+            ->when($request->filled('except_task_id'), fn ($q) => $q->where('video_task_id', '!=', $request->integer('except_task_id')))
+            ->pluck('time_range')
+            ->toArray();
+
+        $occupied = array_unique(array_merge($occupied, $sessionOccupied));
 
         $allBlocks = $this->userWorkBlocks();
 

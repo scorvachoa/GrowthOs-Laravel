@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
-import { Copy, Check, ExternalLink } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, Globe } from 'lucide-vue-next'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
@@ -47,6 +47,27 @@ function copyText(text, key) {
     setTimeout(() => { copiedKey.value = null }, 1500)
 }
 
+const translations = computed(() => props.task.translations || {})
+const langs = computed(() => {
+    const keys = Object.keys(translations.value)
+    return ['es', ...keys.filter(k => k !== 'es')]
+})
+const langLabels = { es: 'ES', en: 'EN', pt: 'PT' }
+const currentLang = ref('es')
+
+const currentTitle = computed(() => {
+    if (currentLang.value === 'es') return props.task.title
+    return translations.value[currentLang.value]?.title || ''
+})
+const currentScript = computed(() => {
+    if (currentLang.value === 'es') return props.task.script
+    return translations.value[currentLang.value]?.script || ''
+})
+const currentCopy = computed(() => {
+    if (currentLang.value === 'es') return props.task.copy
+    return translations.value[currentLang.value]?.copy || ''
+})
+
 const embedUrl = computed(() => {
     const url = props.task.youtube_url
     if (!url) return null
@@ -79,42 +100,53 @@ const embedUrl = computed(() => {
                 </span>
             </div>
 
+            <div v-if="langs.length > 1" class="flex items-center gap-1">
+                <button v-for="lang in langs" :key="lang" @click="currentLang = lang"
+                    class="px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5"
+                    :class="currentLang === lang
+                        ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
+                    <Globe class="w-3 h-3" />
+                    {{ langLabels[lang] || lang.toUpperCase() }}
+                </button>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo del video</h2>
-                    <button @click="copyText(task.title, 'title')"
+                    <button @click="copyText(currentTitle, 'title')"
                         class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                         <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
                         <Copy v-else class="w-4 h-4" />
                     </button>
                 </div>
-                <p class="text-gray-900 dark:text-white font-medium">{{ task.title }}</p>
+                <p class="text-gray-900 dark:text-white font-medium">{{ currentTitle }}</p>
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Guion</h2>
-                        <button v-if="task.script" @click="copyText(task.script, 'script')"
+                        <button v-if="currentScript" @click="copyText(currentScript, 'script')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'script'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
                         </button>
                     </div>
-                    <p v-if="task.script" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.script }}</p>
+                    <p v-if="currentScript" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ currentScript }}</p>
                     <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin guion</p>
                 </div>
 
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Copy / Descripcion</h2>
-                        <button v-if="task.copy" @click="copyText(task.copy, 'copy')"
+                        <button v-if="currentCopy" @click="copyText(currentCopy, 'copy')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'copy'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
                         </button>
                     </div>
-                    <p v-if="task.copy" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.copy }}</p>
+                    <p v-if="currentCopy" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ currentCopy }}</p>
                     <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin copy</p>
                 </div>
 
@@ -145,6 +177,30 @@ const embedUrl = computed(() => {
                         {{ task.youtube_url }}
                     </a>
                     <p v-if="!task.youtube_url" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
+                </div>
+            </div>
+
+            <div v-if="task.sessions?.length" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sesiones de trabajo</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3">
+                        <span class="text-gray-700 dark:text-gray-300 font-medium">{{ task.task_date }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ task.time_range || '—' }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">
+                            Inicial
+                        </span>
+                    </div>
+                    <div v-for="session in task.sessions" :key="session.id"
+                        class="flex items-center gap-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3">
+                        <span class="text-gray-700 dark:text-gray-300 font-medium">{{ session.date }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ session.time_range || '—' }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                            :class="session.status === 'completed'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'">
+                            {{ session.status === 'completed' ? 'Completado' : 'En progreso' }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
