@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -19,14 +20,23 @@ class PlanningValidator
         }
     }
 
-    public function assertSlotAvailable(string $date, string $block, ?int $exceptId = null): void
+    public function assertSlotAvailable(string $date, string $block, ?int $exceptVideoTaskId = null, ?int $exceptSessionId = null): void
     {
         $exists = VideoTask::query()
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
             ->where('time_range', $block)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->when($exceptVideoTaskId, fn ($q) => $q->where('id', '!=', $exceptVideoTaskId))
             ->exists();
+
+        if (!$exists) {
+            $sessionExists = WorkSession::where('date', '>=', $date)
+                ->where('date', '<', Carbon::parse($date)->addDay())
+                ->where('time_range', $block)
+                ->when($exceptSessionId, fn ($q) => $q->where('id', '!=', $exceptSessionId))
+                ->exists();
+            $exists = $sessionExists;
+        }
 
         if ($exists) {
             throw ValidationException::withMessages([

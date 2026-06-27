@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { Plus, X, Check, AlertTriangle, Umbrella, Pencil, Search } from 'lucide-vue-next'
+import { Plus, X, Check, AlertTriangle, Umbrella, Pencil, Search, Eye } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
@@ -66,6 +66,14 @@ function submitForm() {
         onSuccess: () => { showForm.value = false; submitting.value = false },
         onError: () => { submitting.value = false },
     })
+}
+
+const showDetail = ref(false)
+const detailItem = ref(null)
+
+function openDetail(v) {
+    detailItem.value = v
+    showDetail.value = true
 }
 
 const showApprove = ref(false)
@@ -205,6 +213,11 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
+                                    <button @click="openDetail(v)"
+                                        class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                        title="Ver detalle">
+                                        <Eye class="w-4 h-4" />
+                                    </button>
                                     <button v-if="can('approve vacations') && v.status === 'pendiente'" @click="confirmApprove(v)"
                                         class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
                                         title="Aprobar">
@@ -324,6 +337,73 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </transition>
+        </teleport>
+
+        <teleport to="body">
+            <transition name="fade">
+                <div v-if="showDetail && detailItem" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showDetail = false">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 mx-4">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Detalle de vacaciones</h3>
+                            <button @click="showDetail = false" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                <X class="w-5 h-5" />
+                            </button>
+                        </div>
+                        <dl class="space-y-3 text-sm">
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Usuario</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.user_name }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Periodo</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.start_date }} al {{ detailItem.end_date }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Tipo</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium capitalize">{{ detailItem.type === 'completa' ? 'Completa' : 'Parcial' }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Dias</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.days_used }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Año</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.year }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Estado</dt>
+                                <dd>
+                                    <span class="text-[11px] font-medium px-2.5 py-1 rounded-full" :class="statusColors[detailItem.status]">
+                                        {{ statusLabels[detailItem.status] }}
+                                    </span>
+                                </dd>
+                            </div>
+                            <div v-if="detailItem.reason" class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Motivo</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium text-right max-w-[280px]">{{ detailItem.reason }}</dd>
+                            </div>
+                            <div v-if="detailItem.approved_by" class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Aprobado por</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.approved_by }}</dd>
+                            </div>
+                            <div v-if="detailItem.approved_at" class="flex justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                                <dt class="text-gray-500 dark:text-gray-400">Aprobado el</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.approved_at }}</dd>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <dt class="text-gray-500 dark:text-gray-400">Solicitado el</dt>
+                                <dd class="text-gray-900 dark:text-white font-medium">{{ detailItem.created_at }}</dd>
+                            </div>
+                        </dl>
+                        <div class="flex justify-end mt-6">
+                            <button @click="showDetail = false"
+                                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                Cerrar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </transition>

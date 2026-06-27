@@ -95,6 +95,7 @@ class User extends Authenticatable
             'youtube_max_recent_videos' => 10,
             'app_locale' => 'es',
             'timezone' => 'America/Lima',
+            'languages' => ['es'],
         ];
     }
 

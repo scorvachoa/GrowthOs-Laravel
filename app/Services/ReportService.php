@@ -62,8 +62,12 @@ class ReportService
         return VideoTask::query()
             ->with('channel', 'sessions')
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
-            ->where('task_date', '>=', $start)
-            ->where('task_date', '<', $end)
+            ->where(function ($q) use ($start, $end) {
+                $q->whereBetween('task_date', [$start, $end])
+                  ->orWhereHas('sessions', function ($sq) use ($start, $end) {
+                      $sq->whereBetween('date', [$start, $end]);
+                  });
+            })
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get();
@@ -90,6 +94,25 @@ class ReportService
             ->get()
             ->keyBy(fn ($o) => $o->task_date->format('Y-m-d'));
 
+        $sessionsByDate = [];
+        foreach ($tasks as $task) {
+            foreach ($task->sessions as $session) {
+                $sessionKey = $session->date->format('Y-m-d');
+                if ($sessionKey === $task->task_date->format('Y-m-d')) continue;
+                if (!isset($sessionsByDate[$sessionKey])) {
+                    $sessionsByDate[$sessionKey] = [];
+                }
+                $sessionsByDate[$sessionKey][] = [
+                    'time_range' => $session->time_range,
+                    'title' => $task->title,
+                    'status_label' => $session->status === 'completed' ? 'Completado' : 'En progreso',
+                    'youtube_url' => $task->youtube_url,
+                    'type' => 'session',
+                    'channel_name' => $task->channel?->name,
+                ];
+            }
+        }
+
         $days = [];
         $current = $start->copy();
 
@@ -108,19 +131,9 @@ class ReportService
                     'type' => 'video',
                     'channel_name' => $task->channel?->name,
                 ];
-                foreach ($task->sessions as $session) {
-                    $sessionKey = $session->date->format('Y-m-d');
-                    if ($sessionKey === $dateStr && $sessionKey !== $task->task_date->format('Y-m-d')) {
-                        $items[] = [
-                            'time_range' => $session->time_range,
-                            'title' => $task->title,
-                            'status_label' => $session->status === 'completed' ? 'Completado' : 'En progreso',
-                            'youtube_url' => $task->youtube_url,
-                            'type' => 'session',
-                            'channel_name' => $task->channel?->name,
-                        ];
-                    }
-                }
+            }
+            foreach (($sessionsByDate[$dateStr] ?? []) as $session) {
+                $items[] = $session;
             }
             foreach ($dayExtras as $task) {
                 $items[] = [
@@ -131,6 +144,11 @@ class ReportService
                     'type' => 'extra',
                 ];
             }
+            $typeOrder = ['video' => 0, 'session' => 1, 'extra' => 2];
+            usort($items, fn ($a, $b) =>
+                strcmp(explode('-', $a['time_range'])[0] ?? '', explode('-', $b['time_range'])[0] ?? '')
+                ?: ($typeOrder[$a['type']] <=> $typeOrder[$b['type']])
+            );
 
             $days[] = [
                 'date' => $dateStr,

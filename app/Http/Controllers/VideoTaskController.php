@@ -177,15 +177,19 @@ class VideoTaskController extends Controller
             'status' => ['nullable', Rule::in(['in_progress', 'completed'])],
         ]);
 
+        if ($validated['time_range']) {
+            $this->planningValidator->assertSlotAvailable(
+                $validated['date'],
+                $validated['time_range'],
+                $videoTask->id
+            );
+        }
+
         $session = $videoTask->sessions()->create([
             'date' => $validated['date'],
             'time_range' => $validated['time_range'] ?? null,
             'status' => $validated['status'] ?? 'in_progress',
         ]);
-
-        if ($session->status === 'completed') {
-            $videoTask->update(['status' => 'completed']);
-        }
 
         PlanningCalendarService::bustCache();
 
@@ -208,11 +212,18 @@ class VideoTaskController extends Controller
             'status' => ['required', Rule::in(['in_progress', 'completed'])],
         ]);
 
-        $session->update($validated);
+        $timeRange = $validated['time_range'] ?? null;
 
-        if ($validated['status'] === 'completed') {
-            $videoTask->update(['status' => 'completed']);
+        if ($timeRange) {
+            $this->planningValidator->assertSlotAvailable(
+                $validated['date'] ?? $session->date->format('Y-m-d'),
+                $timeRange,
+                $videoTask->id,
+                $session->id
+            );
         }
+
+        $session->update($validated);
 
         PlanningCalendarService::bustCache();
 

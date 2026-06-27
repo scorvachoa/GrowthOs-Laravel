@@ -44,6 +44,8 @@ class UserSettingsController extends Controller
             'default_report_scope' => 'sometimes|string|in:mensual,semanal,dia,anual',
             'dashboard_default_view' => 'sometimes|string|in:week,month,year',
             'youtube_max_recent_videos' => 'sometimes|integer|min:1|max:50',
+            'languages' => 'sometimes|array',
+            'languages.*' => 'string|size:2',
         ]);
 
         $user->settings = array_merge($user->settings ?? [], $validated);

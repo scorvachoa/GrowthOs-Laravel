@@ -7,6 +7,7 @@ use App\Models\TimeOff;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use App\Enums\VideoTaskStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -26,7 +27,7 @@ class DashboardService
         return array_merge(
             $this->userStats($orgId, $today),
             $this->taskCounts(),
-            $this->todayTasks($today, $labels),
+            $this->todayTasks($today, $labels, $orgId),
             $this->periodStats($scope, $today),
             [
                 'recent_activity' => $this->recentActivity(),
@@ -80,7 +81,7 @@ class DashboardService
         ];
     }
 
-    private function todayTasks(Carbon $today, array $labels): array
+    private function todayTasks(Carbon $today, array $labels, ?int $orgId = null): array
     {
         $todayTasks = VideoTask::query()
             ->where('task_date', '>=', $today)
@@ -93,7 +94,25 @@ class DashboardService
                 'time_range' => $t->time_range,
                 'status' => $t->status,
                 'status_label' => $labels[$t->status] ?? $t->status,
+                'is_session' => false,
             ]);
+
+        $todaySessions = WorkSession::query()
+            ->with('videoTask')
+            ->whereHas('videoTask', fn ($q) => $q->when($orgId, fn ($q) => $q->where('organization_id', $orgId)))
+            ->where('date', '>=', $today)
+            ->where('date', '<', $today->copy()->addDay())
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->video_task_id,
+                'title' => $s->videoTask?->title ?? 'Sin título',
+                'time_range' => $s->time_range,
+                'status' => $s->status === 'completed' ? 'completed' : 'in_progress',
+                'status_label' => $s->status === 'completed' ? 'Completado' : 'En progreso',
+                'is_session' => true,
+            ]);
+
+        $todayTasks = $todayTasks->concat($todaySessions)->sortBy('time_range')->values();
 
         $todayExtra = ExtraTask::query()
             ->where('task_date', '>=', $today)

@@ -73,10 +73,10 @@ class IdeaService
     public function bulkUpdate(array $ids, string $action, array $contents = []): int
     {
         if ($action === 'edit') {
+            $ideas = Idea::query()->whereIn('id', $ids)->get()->keyBy('id');
             $count = 0;
             foreach ($contents as $id => $content) {
-                $idea = Idea::query()->find((int) $id);
-                if ($idea && in_array($idea->id, $ids)) {
+                if ($idea = $ideas->get((int) $id)) {
                     $idea->update(['content' => $content]);
                     $count++;
                 }

@@ -37,7 +37,7 @@ class VideoTask extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['title', 'status', 'time_range', 'task_date', 'channel_id', 'youtube_url'])
+            ->logOnly(['title', 'script', 'copy', 'translations', 'key_phrases', 'status', 'time_range', 'task_date', 'channel_id', 'youtube_url'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

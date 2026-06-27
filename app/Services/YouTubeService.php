@@ -69,6 +69,8 @@ class YouTubeService
 
     public function uploadsPlaylistId(string $channelId): ?string
     {
+        if (!$this->available()) return null;
+
         $cacheKey = "youtube_uploads_playlist_{$channelId}";
 
         return Cache::remember($cacheKey, 86400, function () use ($channelId) {

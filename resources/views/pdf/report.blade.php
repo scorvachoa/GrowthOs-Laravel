@@ -35,38 +35,44 @@
 
     @forelse($days as $day)
         @php
-            $videoTasks = array_filter($day['tasks'], fn($t) => $t['type'] === 'video');
+            $mainTasks = array_filter($day['tasks'], fn($t) => $t['type'] !== 'extra');
             $extraTasks = array_filter($day['tasks'], fn($t) => $t['type'] === 'extra');
+            usort($mainTasks, fn($a, $b) => strcmp(explode('-', $a['time_range'])[0], explode('-', $b['time_range'])[0]));
         @endphp
         <div class="day-group">
             <div class="day-title">{{ $day['date'] }}</div>
-            @if(!empty($videoTasks))
-                @foreach($videoTasks as $task)
+            @if(empty($mainTasks) && empty($extraTasks))
+                <div class="no-tasks">Sin tareas</div>
+            @else
+                @foreach($mainTasks as $task)
                     <div class="task-row">
                         <div class="task-time">{{ $task['time_range'] }}</div>
                         @if($task['channel_name'] ?? false)
                             <div class="task-channel">{{ $task['channel_name'] }}</div>
                         @endif
-                        <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:11px;">({{ $task['status_label'] }})</span></div>
+                        <div class="task-title">{{ $task['title'] }}
+                            @if($task['type'] === 'session')
+                                <span style="color:#888;font-size:11px;">({{ $task['status_label'] }} · Sesión)</span>
+                            @else
+                                <span style="color:#888;font-size:11px;">({{ $task['status_label'] }})</span>
+                            @endif
+                        </div>
                         @if($task['youtube_url'])
                             <div class="task-link">{{ $task['youtube_url'] }}</div>
                         @endif
                     </div>
                 @endforeach
-            @endif
-            @if(!empty($extraTasks))
-                <div class="extra-group">
-                    <div class="extra-group-title">Tareas Extras</div>
-                    @foreach($extraTasks as $task)
-                        <div class="extra-item">
-                            <div class="task-time">{{ $task['time_range'] }}</div>
-                            <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:11px;">({{ $task['status_label'] }})</span></div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-            @if(empty($videoTasks) && empty($extraTasks))
-                <div class="no-tasks">Sin tareas</div>
+                @if(!empty($extraTasks))
+                    <div class="extra-group">
+                        <div class="extra-group-title">Tareas Extras</div>
+                        @foreach($extraTasks as $task)
+                            <div class="extra-item">
+                                <div class="task-time">{{ $task['time_range'] }}</div>
+                                <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:11px;">({{ $task['status_label'] }})</span></div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             @endif
             @if($day['observation'])
                 <div class="observation-row">

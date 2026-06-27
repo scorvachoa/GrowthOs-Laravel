@@ -9,9 +9,11 @@ use App\Models\GeneratedVideo;
 use App\Models\Idea;
 use App\Models\Organization;
 use App\Models\ReportHistory;
+use App\Models\TimeOff;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Models\VideoTask;
+use App\Models\WorkSession;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -84,41 +86,46 @@ class BackupService
         fwrite($handle, ',');
         fwrite($handle, '"data":{');
 
+        $firstDataKey = true;
+
         if ($scope === self::SCOPE_ALL) {
-            $this->writeTable($handle, 'organizations', Organization::query());
-            $this->writeTable($handle, 'users', User::query());
-            $this->writeTable($handle, 'roles', Role::query());
-            $this->writeTable($handle, 'permissions', Permission::query());
-            $this->writePivot($handle, 'role_has_permissions', DB::table('role_has_permissions'), 'role_id');
-            $this->writePivot($handle, 'model_has_roles', DB::table('model_has_roles'), 'role_id');
-            $this->writePivot($handle, 'model_has_permissions', DB::table('model_has_permissions'), 'permission_id');
-            $this->writeTable($handle, 'channels', Channel::query());
-            $this->writeTable($handle, 'video_tasks', VideoTask::withTrashed());
-            $this->writeTable($handle, 'extra_tasks', ExtraTask::withTrashed());
-            $this->writeTable($handle, 'ideas', Idea::query());
-            $this->writeTable($handle, 'generated_videos', GeneratedVideo::query());
-            $this->writeTable($handle, 'report_histories', ReportHistory::query());
-            $this->writeTable($handle, 'day_observations', DayObservation::query());
-            $this->writeTable($handle, 'vacations', Vacation::query());
+            $firstDataKey = $this->writeTable($handle, 'organizations', Organization::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'users', User::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'roles', Role::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'permissions', Permission::query(), $firstDataKey);
+            $firstDataKey = $this->writePivot($handle, 'role_has_permissions', DB::table('role_has_permissions'), 'role_id', $firstDataKey);
+            $firstDataKey = $this->writePivot($handle, 'model_has_roles', DB::table('model_has_roles'), 'role_id', $firstDataKey);
+            $firstDataKey = $this->writePivot($handle, 'model_has_permissions', DB::table('model_has_permissions'), 'permission_id', $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'channels', Channel::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'video_tasks', VideoTask::withTrashed(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'extra_tasks', ExtraTask::withTrashed(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'ideas', Idea::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'generated_videos', GeneratedVideo::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'report_histories', ReportHistory::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'day_observations', DayObservation::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'vacations', Vacation::query(), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'work_sessions', WorkSession::query(), $firstDataKey);
+            $this->writeTable($handle, 'time_offs', TimeOff::query(), $firstDataKey);
         } else {
             $orgRoleIds = Role::where('organization_id', $orgId)->pluck('id');
             $allRoleIds = $orgRoleIds->merge(Role::whereNull('organization_id')->pluck('id'));
 
             $org = Organization::find($orgId);
-            $this->rawProp($handle, 'organization', $org ? $org->toJson() : 'null');
-            $this->writeTable($handle, 'users', User::where('organization_id', $orgId));
-            $this->writeTable($handle, 'roles', Role::whereIn('id', $allRoleIds));
-            $this->writeTable($handle, 'permissions', Permission::query());
-            $this->writePivot($handle, 'role_has_permissions', DB::table('role_has_permissions')->whereIn('role_id', $allRoleIds), 'role_id');
-            $this->writePivot($handle, 'model_has_roles', DB::table('model_has_roles')->whereIn('role_id', $orgRoleIds)->orWhereNull('role_id'), 'role_id');
-            $this->writeTable($handle, 'channels', Channel::where('organization_id', $orgId));
-            $this->writeTable($handle, 'video_tasks', VideoTask::withTrashed()->where('organization_id', $orgId));
-            $this->writeTable($handle, 'extra_tasks', ExtraTask::withTrashed()->where('organization_id', $orgId));
-            $this->writeTable($handle, 'ideas', Idea::where('organization_id', $orgId));
-            $this->writeTable($handle, 'generated_videos', GeneratedVideo::where('organization_id', $orgId));
-            $this->writeTable($handle, 'report_histories', ReportHistory::where('organization_id', $orgId));
-            $this->writeTable($handle, 'day_observations', DayObservation::where('organization_id', $orgId));
-            $this->writeTable($handle, 'vacations', Vacation::whereHas('user', fn($q) => $q->where('organization_id', $orgId)));
+            $firstDataKey = $this->rawProp($handle, 'organization', $org ? $org->toJson() : 'null', $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'users', User::where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'roles', Role::whereIn('id', $allRoleIds), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'permissions', Permission::query(), $firstDataKey);
+            $firstDataKey = $this->writePivot($handle, 'role_has_permissions', DB::table('role_has_permissions')->whereIn('role_id', $allRoleIds), 'role_id', $firstDataKey);
+            $firstDataKey = $this->writePivot($handle, 'model_has_roles', DB::table('model_has_roles')->whereIn('role_id', $orgRoleIds)->orWhereNull('role_id'), 'role_id', $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'channels', Channel::where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'video_tasks', VideoTask::withTrashed()->where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'extra_tasks', ExtraTask::withTrashed()->where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'ideas', Idea::where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'generated_videos', GeneratedVideo::where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'report_histories', ReportHistory::where('organization_id', $orgId), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'vacations', Vacation::whereHas('user', fn($q) => $q->where('organization_id', $orgId)), $firstDataKey);
+            $firstDataKey = $this->writeTable($handle, 'work_sessions', WorkSession::whereHas('videoTask', fn($q) => $q->where('organization_id', $orgId)), $firstDataKey);
+            $this->writeTable($handle, 'time_offs', TimeOff::whereHas('user', fn($q) => $q->where('organization_id', $orgId)), $firstDataKey);
         }
 
         fwrite($handle, '}');
@@ -128,8 +135,9 @@ class BackupService
         return $path;
     }
 
-    private function writeTable($handle, string $key, $query, string $orderBy = 'id'): void
+    private function writeTable($handle, string $key, $query, bool $firstKey = true, string $orderBy = 'id'): bool
     {
+        if (!$firstKey) fwrite($handle, ',');
         fwrite($handle, '"' . $key . '":[');
         $first = true;
         $query->orderBy($orderBy)->chunk(self::CHUNK_SIZE, function ($rows) use ($handle, &$first) {
@@ -139,11 +147,13 @@ class BackupService
                 $first = false;
             }
         });
-        fwrite($handle, '],');
+        fwrite($handle, ']');
+        return false;
     }
 
-    private function writePivot($handle, string $key, $query, string $orderBy): void
+    private function writePivot($handle, string $key, $query, string $orderBy, bool $firstKey = true): bool
     {
+        if (!$firstKey) fwrite($handle, ',');
         fwrite($handle, '"' . $key . '":[');
         $first = true;
         $query->orderBy($orderBy)->chunk(self::CHUNK_SIZE, function ($rows) use ($handle, &$first) {
@@ -153,7 +163,8 @@ class BackupService
                 $first = false;
             }
         });
-        fwrite($handle, '],');
+        fwrite($handle, ']');
+        return false;
     }
 
     private function jsonProp($handle, string $key, mixed $value, bool $leadingComma = true): void
@@ -162,9 +173,11 @@ class BackupService
         fwrite($handle, '"' . $key . '":' . json_encode($value));
     }
 
-    private function rawProp($handle, string $key, string $json): void
+    private function rawProp($handle, string $key, string $json, bool $firstKey = true): bool
     {
-        fwrite($handle, '"' . $key . '":' . $json . ',');
+        if (!$firstKey) fwrite($handle, ',');
+        fwrite($handle, '"' . $key . '":' . $json);
+        return false;
     }
 
     public function export(?int $orgId = null, bool $isSuperAdmin = false): array
@@ -196,6 +209,8 @@ class BackupService
                 'report_histories' => ReportHistory::all()->toArray(),
                 'day_observations' => DayObservation::all()->toArray(),
                 'vacations' => Vacation::all()->toArray(),
+                'work_sessions' => WorkSession::all()->toArray(),
+                'time_offs' => TimeOff::all()->toArray(),
             ];
         } else {
             $orgRoleIds = Role::where('organization_id', $orgId)->pluck('id');
@@ -218,6 +233,8 @@ class BackupService
                 'report_histories' => ReportHistory::where('organization_id', $orgId)->get()->toArray(),
                 'day_observations' => DayObservation::where('organization_id', $orgId)->get()->toArray(),
                 'vacations' => Vacation::whereHas('user', fn($q) => $q->where('organization_id', $orgId))->get()->toArray(),
+                'work_sessions' => WorkSession::whereHas('videoTask', fn($q) => $q->where('organization_id', $orgId))->get()->toArray(),
+                'time_offs' => TimeOff::whereHas('user', fn($q) => $q->where('organization_id', $orgId))->get()->toArray(),
             ];
         }
 
@@ -272,6 +289,8 @@ class BackupService
                     'report_histories' => ReportHistory::class,
                     'day_observations' => DayObservation::class,
                     'vacations' => Vacation::class,
+                    'work_sessions' => WorkSession::class,
+                    'time_offs' => TimeOff::class,
                 ];
 
                 foreach ($scopedTables as $key => $modelClass) {
@@ -320,6 +339,8 @@ class BackupService
                     'report_histories' => ReportHistory::class,
                     'day_observations' => DayObservation::class,
                     'vacations' => Vacation::class,
+                    'work_sessions' => WorkSession::class,
+                    'time_offs' => TimeOff::class,
                 ];
 
                 foreach ($scopedTables as $key => $modelClass) {
@@ -351,6 +372,8 @@ class BackupService
                 'report_histories' => ReportHistory::count(),
                 'day_observations' => DayObservation::count(),
                 'vacations' => Vacation::count(),
+                'work_sessions' => WorkSession::count(),
+                'time_offs' => TimeOff::count(),
             ];
         }
 
@@ -364,6 +387,8 @@ class BackupService
             'report_histories' => ReportHistory::where('organization_id', $orgId)->count(),
             'day_observations' => DayObservation::where('organization_id', $orgId)->count(),
             'vacations' => Vacation::whereHas('user', fn($q) => $q->where('organization_id', $orgId))->count(),
+            'work_sessions' => WorkSession::whereHas('videoTask', fn($q) => $q->where('organization_id', $orgId))->count(),
+            'time_offs' => TimeOff::whereHas('user', fn($q) => $q->where('organization_id', $orgId))->count(),
         ];
     }
 

@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, respaldo de datos exportable, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales y tareas del día, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, e integración con YouTube API.
 
 ---
 
@@ -165,9 +165,10 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - DaySidebar: secciones colapsables (Tareas de video, Tareas extra, Observaciones) con iconos ChevronDown/ChevronRight
 - DaySidebar: selectores de estado más anchos (`min-w-[130px]`)
 - **Ideas**: paginación (50 por página), filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, barra de acciones masivas (Marcar como usadas, pendientes, eliminar, editar contenido)
-- **Vacaciones y Permisos**: listado con mismo formato que Usuarios (tabla con búsqueda, paginación, hover), formulario modal, aprobación/rechazo
+- **Vacaciones y Permisos**: listado con mismo formato que Usuarios (tabla con búsqueda, paginación, hover), formulario modal, aprobación/rechazo, modal de detalle con botón ojo
 - **Respaldo de datos**: exportación de todas las tablas del sistema en JSON comprimido, restauración con validación por empresa, programación semanal desde Configuración
 - **Dashboard adaptativo**: grid de columnas se ajusta dinámicamente si el usuario no tiene permiso `view users`
+- **Dashboard sesiones del día**: muestra las sesiones de trabajo activas de hoy con indicador ámbar "Sesión"
 - **Sidebar reordenado**: por flujo de trabajo (Dashboard → Planificación → Tareas → YouTube → Ideas → AI → Historial → Usuarios → Roles → Vacaciones → Permisos → Empresa → Configuración → Manual)
 - **Planning mes**: tareas extra visibles como barras ámbar individuales lado a lado
 - **YouTube**: gráficos con Chart.js (vue-chartjs) en vez de SVG custom
@@ -177,7 +178,7 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **Sesiones de trabajo multi-día**: tabla `work_sessions` permite continuar tareas en días posteriores. Las tareas se muestran en el calendario tanto en su fecha original como en las fechas de sesión, cada una con su propio bloque horario y estado.
 - **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; todo sin salir del calendario.
 - **Edición/eliminación de sesiones**: desde el formulario de editar tarea, sección "Sesiones de trabajo" con opciones de editar fecha/bloque/estado y eliminar con confirmación modal.
-- **Multi-idioma en VideoTasks**: columna `translations` JSON que almacena título/guion/copy en EN y PT. Pestañas de idioma en crear, editar y ver tarea con indicador visual del idioma activo.
+- **Multi-idioma configurable en VideoTasks**: columna `translations` JSON para título/guion/copy/youtube_url en múltiples idiomas. Idiomas configurables desde `/settings` (ES siempre presente). Pestañas de idioma en crear, editar y ver tarea — solo se muestras las que tienen contenido.
 - **Leyenda de colores en planificación**: todos los estados de tarea y sesión visibles con indicador de color, agrupados por sección (Tareas / Sesiones).
 
 ---
@@ -348,7 +349,7 @@ resources/js/
 - **Policies + middleware `can`** — autorización en backend (no solo en UI)
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
-- **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User` y `VideoTask` (quién, qué, cuándo)
+- **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
 - **Permisos granulares** — cada acción CRUD tiene su propio permiso (34 permisos en 12 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
@@ -477,6 +478,14 @@ php artisan test     # Tests PHPUnit
 - [x] Leyenda de colores unificada en planificación con todos los estados de tarea y sesión
 - [x] Gestión de sesiones desde sidebar: crear sesión en fecha actual, completar sesión
 - [x] Edición y eliminación de sesiones con modal de confirmación desde el formulario de tarea
+- [x] Activity log expandido: seguimiento de cambios en `script`, `copy`, `translations`, `key_phrases` de VideoTask + logging propio en WorkSession
+- [x] Idiomas configurables desde `/settings` con add/remove (ES siempre presente)
+- [x] `youtube_url` por idioma (ES en columna directa, otros en `translations[lang].youtube_url`)
+- [x] Modal de detalle (ojo) en Vacaciones y Permisos
+- [x] Sesiones de trabajo incluidas en backup export/import
+- [x] Dashboard muestra sesiones activas del día
+- [x] Orphan sessions: sesiones visibles en calendario aunque la tarea original esté en otra semana
+- [x] PDF incluye sesiones de trabajo con youtube_url
 
 ### Pendiente
 - [ ] Tests de autorización y CRUD

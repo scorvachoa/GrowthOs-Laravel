@@ -287,6 +287,7 @@ export function usePlanning(props) {
             extraTasks.value = extraRes.data
             dayObservation.value = obsRes.data
         } catch (e) {
+            console.error('fetchDayTasks failed for', date, e)
             dayTasks.value = []
             extraTasks.value = []
             dayObservation.value = { notes: '' }
@@ -405,44 +406,54 @@ export function usePlanning(props) {
         })
     }
 
-    function updateTaskStatus(task, status) {
-        axios.patch(`/video-tasks/${task.id}/status`, { status }).then(() => {
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
-        })
+    async function updateTaskStatus(task, status) {
+        try {
+            await axios.patch(`/video-tasks/${task.id}/status`, { status })
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to update task status', e)
+        }
     }
 
-    function updateExtraTaskStatus(task, status) {
-        axios.patch(`/extra-tasks/${task.id}`, {
-            task_date: task.task_date,
-            time_range: task.time_range,
-            title: task.title,
-            status,
-            location: task.location,
-        }).then(() => {
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
-        })
+    async function updateExtraTaskStatus(task, status) {
+        try {
+            await axios.patch(`/extra-tasks/${task.id}`, {
+                task_date: task.task_date,
+                time_range: task.time_range,
+                title: task.title,
+                status,
+                location: task.location,
+            })
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to update extra task status', e)
+        }
     }
 
-    function saveObservation(notes) {
-        axios.post('/planning/observation', {
-            fecha: selectedDate.value,
-            notes,
-        }).then(() => {
+    async function saveObservation(notes) {
+        try {
+            await axios.post('/planning/observation', {
+                fecha: selectedDate.value,
+                notes,
+            })
             dayObservation.value.notes = notes
-            fetchSnapshot()
-        })
+            await fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to save observation', e)
+        }
     }
 
     async function completeSession(task) {
-        if (!task.session_id) return
+        if (!task.session_id) { console.warn('completeSession: no session_id', task); return }
         try {
+            const patchDate = selectedDate.value
             await axios.patch(`/video-tasks/${task.id}/sessions/${task.session_id}`, {
                 status: 'completed',
             })
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
+            if (patchDate) await fetchDayTasks(patchDate)
+            await fetchSnapshot()
         } catch (e) {
             console.error('Failed to complete session', e)
         }
@@ -467,8 +478,8 @@ export function usePlanning(props) {
                 time_range: freeBlock,
                 status: 'in_progress',
             })
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
         } catch (e) {
             console.error('Failed to create session', e)
         }
@@ -500,8 +511,8 @@ export function usePlanning(props) {
                 await axios.post('/extra-tasks', payload)
             }
             closeExtraModal()
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
         } catch (e) {
             console.error('Failed to save extra task', e)
         }
@@ -519,8 +530,8 @@ export function usePlanning(props) {
             await axios.delete(`/extra-tasks/${id}`)
             showExtraDeleteModal.value = false
             extraDeleteTarget.value = null
-            if (selectedDate.value) fetchDayTasks(selectedDate.value)
-            fetchSnapshot()
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
         } catch (e) {
             console.error('Failed to delete extra task', e)
         }

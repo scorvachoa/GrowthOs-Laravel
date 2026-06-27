@@ -97,6 +97,33 @@ class PlanningCalendarService
             }
         }
 
+        $orphanSessions = WorkSession::where('date', '>=', $start)
+            ->where('date', '<', $end)
+            ->with('videoTask.channel')
+            ->whereHas('videoTask', fn ($q) => $q
+                ->where('task_date', '<', $start)
+                ->orWhere('task_date', '>=', $end)
+            )
+            ->get();
+
+        foreach ($orphanSessions as $session) {
+            $sessionKey = $session->date->format('Y-m-d');
+            $task = $session->videoTask;
+            if (!isset($map[$sessionKey])) {
+                $map[$sessionKey] = [];
+            }
+            $map[$sessionKey][] = (object)[
+                'id' => $task->id,
+                'task_date' => $session->date,
+                'time_range' => $session->time_range,
+                'title' => $task->title,
+                'status' => $session->status,
+                'channel' => $task->channel,
+                'sessions' => collect(),
+                'is_session' => true,
+            ];
+        }
+
         return collect($map)->map(fn ($day) => collect($day));
     }
 
@@ -262,6 +289,35 @@ class PlanningCalendarService
             }
         }
 
+        $orphanSessions = WorkSession::where('date', '>=', $weekStart)
+            ->where('date', '<', $weekEnd)
+            ->with('videoTask.channel')
+            ->whereHas('videoTask', fn ($q) => $q
+                ->where('task_date', '<', $weekStart)
+                ->orWhere('task_date', '>=', $weekEnd)
+            )
+            ->get();
+
+        foreach ($orphanSessions as $session) {
+            $sessionKey = $session->date->format('Y-m-d');
+            $task = $session->videoTask;
+
+            if ($session->time_range && isset($weekBlockMap[$sessionKey][$session->time_range])) {
+                $weekBlockMap[$sessionKey][$session->time_range]++;
+            }
+            $weekTasksDetailMap[$sessionKey][] = [
+                'id' => $task->id,
+                'session_id' => $session->id,
+                'time_range' => $session->time_range,
+                'title' => $task->title,
+                'status' => $session->status,
+                'is_session' => true,
+                'channel' => $task->channel
+                    ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                    : null,
+            ];
+        }
+
         foreach ($weekExtraTasks as $task) {
             $iso = $task->task_date->format('Y-m-d');
             if (isset($weekExtraTasksDetailMap[$iso])) {
@@ -280,7 +336,7 @@ class PlanningCalendarService
         return [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap];
     }
 
-    public function tasksForDate(string $date): array
+    public function tasksForDate(string $date, ?int $orgId = null): array
     {
         $tasks = VideoTask::query()
             ->with('channel')
@@ -294,6 +350,7 @@ class PlanningCalendarService
 
         $sessionEntries = WorkSession::where('date', $date)
             ->with('videoTask.channel')
+            ->when($orgId, fn ($q) => $q->whereHas('videoTask', fn ($sq) => $sq->where('organization_id', $orgId)))
             ->get()
             ->filter(fn ($s) => $s->videoTask->task_date->format('Y-m-d') !== $date)
             ->map(fn ($s) => $this->serializeDetailFromSession($s))

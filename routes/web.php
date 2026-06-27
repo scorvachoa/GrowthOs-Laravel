@@ -125,7 +125,7 @@ Route::middleware('auth')->group(function () {
 
     // User Settings (per-user preferences)
     Route::get('/settings', [UserSettingsController::class, 'index'])->middleware('can:view configuracion')->name('settings.index');
-    Route::put('/settings', [UserSettingsController::class, 'update'])->name('settings.update');
+    Route::put('/settings', [UserSettingsController::class, 'update'])->middleware('can:view configuracion')->name('settings.update');
     Route::post('/settings/backup-schedule', [UserSettingsController::class, 'updateBackupSchedule'])->middleware('can:configure backup')->name('settings.backup-schedule');
 
     // YouTube

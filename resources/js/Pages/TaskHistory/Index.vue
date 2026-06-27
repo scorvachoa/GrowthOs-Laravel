@@ -95,9 +95,9 @@ const formatDate = (dateStr) => {
                             <tr class="border-b border-gray-200 dark:border-gray-700">
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px] sm:w-[140px]">Fecha</th>
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden sm:table-cell w-[90px]">Bloque</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Título</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[180px] sm:w-[220px]">Título</th>
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px] sm:w-[130px]">Estado</th>
-                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[140px]">Canal</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[180px]">Canal</th>
                                 <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell w-[130px]">Creado por</th>
                             </tr>
                         </thead>

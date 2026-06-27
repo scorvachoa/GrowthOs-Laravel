@@ -47,12 +47,19 @@ function copyText(text, key) {
     setTimeout(() => { copiedKey.value = null }, 1500)
 }
 
+const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
 const translations = computed(() => props.task.translations || {})
 const langs = computed(() => {
     const keys = Object.keys(translations.value)
-    return ['es', ...keys.filter(k => k !== 'es')]
+    const withContent = keys.filter(k =>
+        translations.value[k]?.title ||
+        translations.value[k]?.script ||
+        translations.value[k]?.copy ||
+        translations.value[k]?.youtube_url
+    )
+    return ['es', ...withContent]
 })
-const langLabels = { es: 'ES', en: 'EN', pt: 'PT' }
+const langLabels = { es: 'ES', en: 'EN', pt: 'PT', fr: 'FR', de: 'DE', it: 'IT', ja: 'JA', ko: 'KO', zh: 'ZH' }
 const currentLang = ref('es')
 
 const currentTitle = computed(() => {
@@ -68,8 +75,13 @@ const currentCopy = computed(() => {
     return translations.value[currentLang.value]?.copy || ''
 })
 
+const currentYoutubeUrl = computed(() => {
+    if (currentLang.value === 'es') return props.task.youtube_url
+    return translations.value[currentLang.value]?.youtube_url || ''
+})
+
 const embedUrl = computed(() => {
-    const url = props.task.youtube_url
+    const url = currentYoutubeUrl.value
     if (!url) return null
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
@@ -153,7 +165,7 @@ const embedUrl = computed(() => {
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 flex flex-col">
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Video</h2>
-                        <button v-if="task.youtube_url" @click="copyText(task.youtube_url, 'url')"
+                        <button v-if="currentYoutubeUrl" @click="copyText(currentYoutubeUrl, 'url')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'url'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
@@ -171,12 +183,12 @@ const embedUrl = computed(() => {
                         frameborder="0"
                         allowfullscreen>
                     </iframe>
-                    <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"
+                    <a v-if="currentYoutubeUrl" :href="currentYoutubeUrl" target="_blank"
                         class="mt-2 text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 truncate inline-flex items-center gap-1">
                         <ExternalLink class="w-3 h-3 flex-shrink-0" />
-                        {{ task.youtube_url }}
+                        {{ currentYoutubeUrl }}
                     </a>
-                    <p v-if="!task.youtube_url" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
+                    <p v-if="!currentYoutubeUrl" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
                 </div>
             </div>
 

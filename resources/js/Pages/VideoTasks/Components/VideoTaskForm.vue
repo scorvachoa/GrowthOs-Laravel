@@ -23,16 +23,19 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
-const langLabels = { es: 'ES', en: 'EN', pt: 'PT' }
-const langNames = { es: 'Español', en: 'English', pt: 'Português' }
-const availableToAdd = computed(() => ['en', 'pt'].filter(l => !languages.value.includes(l)))
+const allLangLabels = { es: 'ES', en: 'EN', pt: 'PT', fr: 'FR', de: 'DE', it: 'IT', ja: 'JA', ko: 'KO', zh: 'ZH' }
+const langNames = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', ja: '日本語', ko: '한국어', zh: '中文' }
+
+const userLangs = computed(() => userSettings.value?.languages || ['es'])
+const availableToAdd = computed(() => userLangs.value.filter(l => !languages.value.includes(l)))
 
 const languages = ref(['es'])
 const currentLang = ref('es')
 
 function initLanguages() {
     const existing = form.translations ? Object.keys(form.translations) : []
-    languages.value = ['es', ...existing.filter(l => l !== 'es')]
+    const fromSettings = userLangs.value.filter(l => l !== 'es' && !existing.includes(l))
+    languages.value = ['es', ...existing.filter(l => l !== 'es'), ...fromSettings]
 }
 
 initLanguages()
@@ -137,7 +140,7 @@ watch(() => form.task_date, async (date) => {
 }, { immediate: true })
 
 const embedUrl = computed(() => {
-    const url = form.youtube_url
+    const url = getVal('youtube_url')
     if (!url) return null
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
@@ -173,15 +176,37 @@ const newSessionDate = ref('')
 const newSessionTimeRange = ref(null)
 const newSessionCompleted = ref(false)
 const savingSession = ref(false)
+const newSessionOccupied = ref([])
 
 const editingSession = ref(null)
 const editSessionDate = ref('')
 const editSessionTimeRange = ref(null)
 const editSessionCompleted = ref(false)
 const savingEditSession = ref(false)
+const editSessionOccupied = ref([])
 
 const confirmDeleteSession = ref(null)
 const deletingSession = ref(false)
+
+watch(newSessionDate, async (date) => {
+    if (!date || !useBlocks.value) { newSessionOccupied.value = []; return }
+    try {
+        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: taskId } })
+        newSessionOccupied.value = res.data.occupied || []
+    } catch { newSessionOccupied.value = [] }
+})
+
+watch(editSessionDate, async (date) => {
+    if (!date || !useBlocks.value) { editSessionOccupied.value = []; return }
+    try {
+        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: taskId } })
+        editSessionOccupied.value = res.data.occupied || []
+    } catch { editSessionOccupied.value = [] }
+})
+
+function sessionBlockDisabled(block, occupied) {
+    return occupied.includes(block)
+}
 
 watch(() => props.sessions, (sessions) => {
     localSessions.value = buildSessionList(sessions)
@@ -286,7 +311,7 @@ function askDeleteSession(session) {
                     ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500'
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
                 <Globe class="w-3 h-3" />
-                {{ langLabels[lang] || lang.toUpperCase() }}
+                {{ allLangLabels[lang] || lang.toUpperCase() }}
                 <span v-if="lang !== 'es'" @click.stop="confirmRemove(lang)" class="ml-0.5 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30"
                     :class="currentLang === lang ? 'text-white/70 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-red-500'">
                     <X class="w-3 h-3" />
@@ -295,7 +320,7 @@ function askDeleteSession(session) {
             <template v-for="lang in availableToAdd" :key="'add-' + lang">
                 <button type="button" @click="addLang(lang)"
                     class="px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <Plus class="w-3 h-3" /> {{ langLabels[lang] || lang.toUpperCase() }}
+                    <Plus class="w-3 h-3" /> {{ allLangLabels[lang] || lang.toUpperCase() }}
                 </button>
             </template>
         </div>
@@ -352,7 +377,7 @@ function askDeleteSession(session) {
                 </div>
 
                 <div>
-                    <TextInput v-model="form.youtube_url" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
+                    <TextInput :model-value="getVal('youtube_url')" @update:model-value="v => setVal('youtube_url', v)" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
                     <div v-if="embedUrl" class="mt-2">
                         <iframe v-if="embedUrl.type === 'youtube' && !embedUrl.shorts" :src="embedUrl.src"
                             class="w-full aspect-video rounded-xl"
@@ -444,8 +469,8 @@ function askDeleteSession(session) {
                         <select v-model="newSessionTimeRange"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             <option :value="null">Sin bloque</option>
-                            <option v-for="block in workBlocks" :key="block" :value="block">
-                                {{ block }}
+                            <option v-for="block in workBlocks" :key="block" :value="block" :disabled="sessionBlockDisabled(block, newSessionOccupied)">
+                                {{ block }}<template v-if="sessionBlockDisabled(block, newSessionOccupied)"> (ocupado)</template>
                             </option>
                         </select>
                     </div>
@@ -483,7 +508,9 @@ function askDeleteSession(session) {
                         <select v-model="editSessionTimeRange"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                             <option :value="null">Sin bloque</option>
-                            <option v-for="block in workBlocks" :key="block" :value="block">{{ block }}</option>
+                            <option v-for="block in workBlocks" :key="block" :value="block" :disabled="sessionBlockDisabled(block, editSessionOccupied)">
+                                {{ block }}<template v-if="sessionBlockDisabled(block, editSessionOccupied)"> (ocupado)</template>
+                            </option>
                         </select>
                     </div>
                     <div class="flex items-center gap-2">

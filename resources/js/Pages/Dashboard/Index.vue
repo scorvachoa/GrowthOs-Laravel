@@ -31,6 +31,8 @@ const statusColor = (status) => {
         scheduled: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
         published: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
         cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        in_progress: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+        completed: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
 }
@@ -106,7 +108,7 @@ const circumference = 2 * Math.PI * 15.5
                         </div>
                         <div>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Tareas de hoy</h2>
-                            <p class="text-sm text-gray-500">{{ stats.today_tasks_count }} tareas de video, {{ stats.today_extra_count }} extras</p>
+                            <p class="text-sm text-gray-500">{{ stats.today_tasks_count }} tareas, {{ stats.today_extra_count }} extras</p>
                         </div>
                     </div>
                     <div class="space-y-3">
@@ -114,11 +116,15 @@ const circumference = 2 * Math.PI * 15.5
                             class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
                             Sin tareas para hoy
                         </div>
-                        <div v-for="task in stats.today_tasks" :key="'v' + task.id"
+                        <div v-for="task in stats.today_tasks" :key="'t' + task.id + (task.is_session ? '-s' : '')"
                             @click="viewTask(task.id)"
                             class="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition">
                             <div class="flex-1 min-w-0">
-                                <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ task.title }}</p>
+                                <p class="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                    {{ task.title }}
+                                    <span v-if="task.is_session"
+                                        class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200 ml-1">Sesión</span>
+                                </p>
                                 <p class="text-xs text-gray-500">{{ task.time_range }}</p>
                             </div>
                             <div class="flex items-center gap-2 ml-2">

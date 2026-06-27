@@ -90,7 +90,7 @@ class PlanningController extends Controller
         ]);
 
         return response()->json(
-            $this->calendar->tasksForDate($request->string('fecha'))
+            $this->calendar->tasksForDate($request->string('fecha'), Auth::user()->activeOrganizationId())
         );
     }
 
@@ -156,6 +156,7 @@ class PlanningController extends Controller
         $sessionOccupied = WorkSession::where('date', $date)
             ->whereNotNull('time_range')
             ->where('status', 'in_progress')
+            ->whereHas('videoTask', fn ($q) => $q->where('organization_id', Auth::user()->activeOrganizationId()))
             ->when($request->filled('except_task_id'), fn ($q) => $q->where('video_task_id', '!=', $request->integer('except_task_id')))
             ->pluck('time_range')
             ->toArray();

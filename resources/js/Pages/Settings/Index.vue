@@ -3,7 +3,7 @@ import { reactive, ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { ToggleLeft, Clock, Eye, BarChart3, Monitor, HardDrive } from 'lucide-vue-next'
+import { ToggleLeft, Clock, Eye, BarChart3, Monitor, HardDrive, Globe, X, Plus } from 'lucide-vue-next'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
@@ -60,9 +60,40 @@ const form = reactive({
     default_report_scope: props.settings.default_report_scope,
     dashboard_default_view: props.settings.dashboard_default_view,
     youtube_max_recent_videos: props.settings.youtube_max_recent_videos,
+    languages: [...(props.settings.languages || ['es'])],
 })
 
 const processing = ref(false)
+
+const allAvailableLangs = [
+    { code: 'en', label: 'English' },
+    { code: 'pt', label: 'Português' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'it', label: 'Italiano' },
+    { code: 'ja', label: '日本語' },
+    { code: 'ko', label: '한국어' },
+    { code: 'zh', label: '中文' },
+]
+
+const availableToAdd = computed(() =>
+    allAvailableLangs.filter(l => !(form.languages || []).includes(l.code))
+)
+
+const newLang = ref('')
+
+function addLanguage() {
+    if (!newLang.value || (form.languages || []).includes(newLang.value)) return
+    form.languages = [...(form.languages || []), newLang.value]
+    newLang.value = ''
+}
+
+function removeLanguage(lang) {
+    if (lang === 'es') return
+    form.languages = (form.languages || []).filter(l => l !== lang)
+}
+
+const langNames = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', ja: '日本語', ko: '한국어', zh: '中文' }
 
 const previewBlocks = computed(() => {
     if (!form.use_blocks) return []
@@ -288,6 +319,47 @@ function submit() {
                                 <option value="anual">Anual</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Idiomas -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2 rounded-lg bg-sky-100 dark:bg-sky-900/50">
+                            <Globe class="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Idiomas</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Idiomas disponibles para traducciones en las tareas</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span v-for="lang in form.languages" :key="lang"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
+                            :class="lang === 'es'
+                                ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
+                            <Globe class="w-3.5 h-3.5" />
+                            {{ langNames[lang] || lang.toUpperCase() }}
+                            <button v-if="lang !== 'es'" type="button" @click="removeLanguage(lang)"
+                                class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                <X class="w-3 h-3" />
+                            </button>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <select v-model="newLang"
+                            class="rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="" disabled>Seleccionar idioma...</option>
+                            <option v-for="l in availableToAdd" :key="l.code" :value="l.code">{{ l.label }} ({{ l.code.toUpperCase() }})</option>
+                        </select>
+                        <button type="button" @click="addLanguage" :disabled="!newLang"
+                            class="p-2 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/20 text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Agregar idioma">
+                            <Plus class="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 

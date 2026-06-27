@@ -25,6 +25,7 @@ const sections = [
             'Calendario mensual y semanal para planificar tareas de video y tareas extra.',
             'Vista mensual: cada dia muestra barras apiladas (indigo = tareas de video, amber = tareas extra). Las tareas extra se muestran como barras individuales una al lado de la otra para ver cuantas hay.',
             'Vista semanal: grilla horaria con las tareas ubicadas segun su hora de inicio y duracion. Las tareas superpuestas se muestran lado a lado.',
+            'Las sesiones de trabajo (dias de continuacion de una tarea) aparecen en el calendario semanal aunque la tarea original este en otra semana.',
             'Las tareas extra aparecen con borde punteado (teal en oficina, naranja fuera de oficina). Los feriados se muestran en rojo.',
         ],
     },
@@ -36,6 +37,8 @@ const sections = [
             'Historial completo de tareas de video con filtros por fecha, estado, canal y usuario.',
             'Cada tarea tiene: titulo, script, copy, estado, canal asignado, rango horario y enlace a YouTube.',
             'Estados: Pendiente, Script Listo, Editando, Revision, Programado, Publicado, Cancelado.',
+            'Las tareas pueden tener sesiones de trabajo (dias de continuacion) con sus propios rangos horarios y estados. Las sesiones se gestionan desde la vista de detalle de la tarea.',
+            'Soporta traducciones por idioma: cada tarea puede tener titulo, script, copy y youtube_url en varios idiomas. Al ver una tarea, solo se muestran las pestanas de idiomas que tienen contenido.',
         ],
     },
     {
@@ -105,6 +108,7 @@ const sections = [
         content: [
             'Gestion de solicitudes de vacaciones. Los usuarios pueden solicitar vacaciones y los administradores pueden aprobar o rechazar.',
             'Las vacaciones aprobadas se muestran en el calendario de planificacion como ausencias.',
+            'Usa el icono de ojo para ver los detalles completos de una solicitud en un modal.',
         ],
     },
     {
@@ -115,6 +119,7 @@ const sections = [
             'Solicitud de permisos personales, medicos, tramites u otros. Incluye hora de inicio y fin opcional.',
             'Puedes marcar "Todo el dia" para que tome automaticamente el horario laboral configurado (inicio y fin de jornada).',
             'Los administradores pueden aprobar o rechazar solicitudes desde la misma pantalla.',
+            'Usa el icono de ojo para ver los detalles completos de una solicitud en un modal.',
         ],
     },
     {
@@ -136,6 +141,7 @@ const sections = [
             'Horario laboral: define hora de inicio y fin de jornada, duracion de bloques (1h, 2h), dias laborables y bloques fijos o personalizados.',
             'YouTube: configuracion del grafico y maximo de videos recientes a mostrar.',
             'Dashboard: vista por defecto (semana/mes/ano) y alcance de reporte predeterminado.',
+            'Idiomas: configura los idiomas disponibles para traducir titulo, script, copy y enlace de YouTube en las tareas de video. El espanol siempre esta presente.',
             'Backup: programacion de backup automatico (hora y dia de la semana). Solo visible con permiso "configure backup".',
         ],
     },
@@ -145,7 +151,7 @@ const sections = [
         title: 'Backup',
         content: [
             'Respaldo y restauracion de datos. Accesible desde el icono de disco en el topbar.',
-            'Exporta todas las tablas del sistema a un archivo JSON descargable, con soporte para grandes volumenes de datos mediante streaming y chunking.',
+            'Exporta todas las tablas del sistema (incluyendo sesiones de trabajo y permisos) a un archivo JSON descargable, con soporte para grandes volumenes de datos mediante streaming y chunking.',
             'Restauracion: sube un archivo JSON de backup previo para restaurar los datos. El proceso valida que los datos correspondan a la organizacion correcta.',
             'Backups programados: se generan automaticamente segun la configuracion de horario en Ajustes. Descarga o elimina backups desde la misma pagina.',
         ],
