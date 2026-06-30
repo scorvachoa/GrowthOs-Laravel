@@ -51,9 +51,9 @@ function toggleAllDay() {
 }
 
 const typeOptions = [
-    { value: 'medico', label: 'Medico' },
+    { value: 'medico', label: 'Médico' },
     { value: 'personal', label: 'Personal' },
-    { value: 'tramite', label: 'Tramite' },
+    { value: 'tramite', label: 'Trámite' },
     { value: 'otro', label: 'Otro' },
 ]
 
@@ -151,7 +151,7 @@ const statusColors = {
 }
 
 const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' }
-const typeLabels = { medico: 'Medico', personal: 'Personal', tramite: 'Tramite', otro: 'Otro' }
+const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite', otro: 'Otro' }
 </script>
 
 <template>
@@ -433,7 +433,7 @@ const typeLabels = { medico: 'Medico', personal: 'Personal', tramite: 'Tramite',
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Aprobar permiso</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
@@ -464,7 +464,7 @@ const typeLabels = { medico: 'Medico', personal: 'Personal', tramite: 'Tramite',
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Rechazar permiso</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
@@ -495,7 +495,7 @@ const typeLabels = { medico: 'Medico', personal: 'Personal', tramite: 'Tramite',
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar solicitud</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">

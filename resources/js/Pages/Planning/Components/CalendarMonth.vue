@@ -9,7 +9,7 @@ defineProps({
 
 const emit = defineEmits(['openDay', 'createTask'])
 
-const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado']
+const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 const statusColors = {
     pending: 'bg-yellow-500',
@@ -98,7 +98,7 @@ function allBlocksFull(day, blocks) {
                     </div>
                     <div v-if="day.tasks.length > 4"
                         class="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-tight pl-0.5">
-                        +{{ day.tasks.length - 4 }} mas
+                        +{{ day.tasks.length - 4 }} más
                     </div>
                     <div v-if="day.hasExtraTasks" class="flex items-center gap-[2px] mt-1">
                         <span v-for="n in Math.min(day.extraTasksCount, 5)" :key="n"

@@ -20,7 +20,7 @@ const statusColors = {
 }
 
 const statusLabel = (value) => {
-    const labels = { pending: 'Pendiente', script_ready: 'Guion listo', editing: 'Editando', review: 'Revision', scheduled: 'Programado', published: 'Publicado', cancelled: 'Cancelado' }
+    const labels = { pending: 'Pendiente', script_ready: 'Guion listo', editing: 'Editando', review: 'Revisión', scheduled: 'Programado', published: 'Publicado', cancelled: 'Cancelado' }
     return labels[value] || value
 }
 
@@ -33,9 +33,9 @@ function readableChanges(props) {
     if (!props || !props.attributes) return null
     const changes = []
     const labels = {
-        title: 'Titulo',
+        title: 'Título',
         script: 'Guion',
-        copy: 'Copy / Descripcion',
+        copy: 'Copy / Descripción',
         status: 'Estado',
         time_range: 'Bloque horario',
         task_date: 'Fecha',

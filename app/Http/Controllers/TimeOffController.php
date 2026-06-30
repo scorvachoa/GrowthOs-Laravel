@@ -24,7 +24,7 @@ class TimeOffController extends Controller
             )
             ->when(
                 !$isSuperAdmin && $user->can('edit planning'),
-                fn ($q) => $q->whereHas('user', fn ($q) => $q->where('organization_id', $user->organization_id))
+                fn ($q) => $q->whereHas('user', fn ($q) => $q->where('organization_id', $user->activeOrganizationId()))
             )
             ->orderBy('created_at', 'desc')
             ->get()
@@ -154,6 +154,6 @@ class TimeOffController extends Controller
 
     private function canManageOrg($user, ?int $orgId): bool
     {
-        return $orgId && $user->organization_id === $orgId && ($user->can('approve time off') || $user->can('edit planning'));
+        return $orgId && $user->activeOrganizationId() === $orgId && ($user->can('approve time off') || $user->can('edit planning'));
     }
 }

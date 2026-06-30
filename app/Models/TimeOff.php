@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 
 class TimeOff extends Model
 {
+    use BelongsToOrganization;
+
     protected $table = 'time_off';
 
     protected $fillable = [
@@ -18,6 +21,7 @@ class TimeOff extends Model
         'status',
         'approved_by',
         'approved_at',
+        'organization_id',
     ];
 
     protected function casts(): array

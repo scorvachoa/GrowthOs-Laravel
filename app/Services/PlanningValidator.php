@@ -34,6 +34,7 @@ class PlanningValidator
                 ->where('date', '<', Carbon::parse($date)->addDay())
                 ->where('time_range', $block)
                 ->when($exceptSessionId, fn ($q) => $q->where('id', '!=', $exceptSessionId))
+                ->when($exceptVideoTaskId, fn ($q) => $q->where('video_task_id', '!=', $exceptVideoTaskId))
                 ->exists();
             $exists = $sessionExists;
         }

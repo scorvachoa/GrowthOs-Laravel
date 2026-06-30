@@ -66,19 +66,19 @@ const groups = computed(() => {
         'view reports': 'Reportes',
         'download reports': 'Reportes',
         'view youtube': 'YouTube',
-        'generate ai': 'AI Generator',
-        'view ai history': 'AI Generator',
-        'download ai': 'AI Generator',
+        'generate ai': 'Generador IA',
+        'view ai history': 'Generador IA',
+        'download ai': 'Generador IA',
         'view empresa': 'Empresa',
         'create empresa': 'Empresa',
         'edit empresa': 'Empresa',
         'delete empresa': 'Empresa',
 
-        'view configuracion': 'Configuracion',
-        'configure work hours': 'Configuracion',
-        'configure youtube': 'Configuracion',
-        'configure dashboard': 'Configuracion',
-        'configure backup': 'Configuracion',
+        'view configuracion': 'Configuración',
+        'configure work hours': 'Configuración',
+        'configure youtube': 'Configuración',
+        'configure dashboard': 'Configuración',
+        'configure backup': 'Configuración',
         'view vacations': 'Vacaciones',
         'create vacations': 'Vacaciones',
         'edit vacations': 'Vacaciones',
@@ -95,7 +95,7 @@ const groups = computed(() => {
         'create backup': 'Backup',
     }
 
-    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'AI Generator', 'Empresa', 'Configuracion', 'Vacaciones', 'Permisos', 'Backup']
+    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos', 'Backup']
     const grouped = {}
 
     for (const p of props.permissions || []) {

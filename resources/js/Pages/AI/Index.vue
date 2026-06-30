@@ -91,9 +91,9 @@ function buildExportContent() {
         script.value.trim() || 'Sin guion.',
         '',
         'COPY',
-        `Titulo: ${copyTitle.value || 'Sin título.'}`,
+        `Título: ${copyTitle.value || 'Sin título.'}`,
         '',
-        'Descripcion',
+        'Descripción',
         descText || 'Sin descripción.',
         '',
         'Tags',
@@ -251,9 +251,9 @@ async function copyText(text, emptyMessage, successMessage) {
         <div class="max-w-7xl mx-auto">
             <div class="mb-6 flex items-start justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">AI Shorts Script Generator - BETA</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Generador de guiones IA - BETA</h1>
                     <p class="text-gray-600 dark:text-gray-400 mt-1">
-                        Genera guiones, copy y frases para YouTube Shorts usando Gemini AI.
+                        Genera guiones, copy y frases para YouTube Shorts con Gemini IA.
                     </p>
                 </div>
                 <button v-if="can('view ai history')" @click="router.get('/ai/history')"

@@ -118,7 +118,7 @@ function cancelEdit() {
                         </div>
 
                         <div v-if="task.is_session" class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">Sesion</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">Sesión</span>
                             <span v-if="task.status === 'completed'"
                                 class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 font-medium">
                                 Completado
@@ -147,7 +147,7 @@ function cancelEdit() {
                             </button>
                             <button v-if="canEdit && task.status !== 'published' && task.status !== 'cancelled'" @click="emit('createSession', task)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition whitespace-nowrap">
-                                + Sesion
+                                + Sesión
                             </button>
                             <button v-if="canDelete" @click="emit('deleteTask', task)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">

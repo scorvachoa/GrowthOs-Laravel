@@ -33,18 +33,18 @@ function saveSchedule() {
 }
 
 const dayLabels = {
-    monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miercoles',
-    thursday: 'Jueves', friday: 'Viernes', saturday: 'Sabado', sunday: 'Domingo',
+    monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
+    thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo',
 }
 
 const days = [
     { value: 0, label: 'Dom' },
     { value: 1, label: 'Lun' },
     { value: 2, label: 'Mar' },
-    { value: 3, label: 'Mie' },
+    { value: 3, label: 'Mié' },
     { value: 4, label: 'Jue' },
     { value: 5, label: 'Vie' },
-    { value: 6, label: 'Sab' },
+    { value: 6, label: 'Sáb' },
 ]
 
 const form = reactive({
@@ -135,7 +135,7 @@ function submit() {
     <AppLayout>
         <div class="max-w-4xl mx-auto space-y-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuracion</h1>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuración</h1>
                 <p class="text-gray-500 dark:text-gray-400 mt-1">Preferencias personales</p>
             </div>
 
@@ -150,7 +150,7 @@ function submit() {
                         </div>
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Horario laboral</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Define el horario base para la planificacion</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Define el horario base para la planificación</p>
                         </div>
                     </div>
 
@@ -181,7 +181,7 @@ function submit() {
                     </div>
 
                     <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dias laborables</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Días laborables</label>
                         <div class="flex flex-wrap gap-2">
                             <button v-for="d in days" :key="d.value" type="button"
                                 @click="toggleWorkingDay(d.value)"
@@ -204,7 +204,7 @@ function submit() {
                                 </div>
                                 <div>
                                     <p class="font-medium text-gray-900 dark:text-white">Horario por bloques</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Al desactivar, el bloque horario sera un campo de texto libre</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Al desactivar, el bloque horario será un campo de texto libre</p>
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
@@ -214,7 +214,7 @@ function submit() {
                         </div>
 
                         <div v-if="form.use_blocks">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duracion del bloque (horas)</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duración del bloque (horas)</label>
                             <select v-model="form.block_hours"
                                 class="w-full max-w-xs rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                 <option :value="1">1 hora</option>
@@ -238,7 +238,7 @@ function submit() {
                         </div>
 
                         <div v-if="!form.use_blocks" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
-                            Con el horario libre, podras escribir cualquier rango horario al crear o editar tareas.
+                            Con el horario libre, podrás escribir cualquier rango horario al crear o editar tareas.
                         </div>
                     </div>
                 </div>
@@ -251,7 +251,7 @@ function submit() {
                         </div>
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">YouTube</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Configuracion de la pagina de YouTube</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Configuración de la página de YouTube</p>
                         </div>
                     </div>
 
@@ -262,8 +262,8 @@ function submit() {
                                     <BarChart3 class="w-5 h-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <div>
-                                    <p class="font-medium text-gray-900 dark:text-white">Grafico de rendimiento</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Muestra el grafico de lineas de vistas</p>
+                                    <p class="font-medium text-gray-900 dark:text-white">Gráfico de rendimiento</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Muestra el gráfico de líneas de vistas</p>
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
@@ -273,7 +273,7 @@ function submit() {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Maximos videos recientes</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Máximos videos recientes</label>
                             <select v-model="form.youtube_max_recent_videos"
                                 class="w-full max-w-xs rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                 <option :value="5">5 videos</option>
@@ -370,8 +370,8 @@ function submit() {
                             <HardDrive class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup automatico</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Programa la generacion automatica de backups</p>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup automático</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Programa la generación automática de backups</p>
                         </div>
                     </div>
 
@@ -382,7 +382,7 @@ function submit() {
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dia</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día</label>
                             <select v-model="scheduleForm.day"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                 <option v-for="(label, key) in dayLabels" :key="key" :value="key">{{ label }}</option>
@@ -392,12 +392,12 @@ function submit() {
                             {{ scheduleProcessing ? 'Guardando...' : 'Guardar horario' }}
                         </PrimaryButton>
                     </div>
-                    <p class="text-xs text-gray-400 mt-3">Los backups se guardan en el servidor y estan disponibles en la pagina de Backup.</p>
+                    <p class="text-xs text-gray-400 mt-3">Los backups se guardan en el servidor y están disponibles en la página de Backup.</p>
                 </div>
 
                 <div class="flex justify-end lg:col-span-2">
                     <PrimaryButton v-if="can('configure work hours') || can('configure youtube') || can('configure dashboard')" type="submit" :disabled="processing">
-                        Guardar configuracion
+                        Guardar configuración
                     </PrimaryButton>
                 </div>
             </form>

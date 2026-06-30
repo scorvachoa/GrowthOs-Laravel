@@ -109,7 +109,7 @@ const {
                         <span class="font-medium text-gray-600 dark:text-gray-300 mr-1">Tareas:</span>
                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-yellow-500"></span> Pendiente</span>
                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-blue-500"></span> Guion</span>
-                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-purple-500"></span> Edicion</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-purple-500"></span> Edición</span>
                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-orange-500"></span> Revision</span>
                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-indigo-500"></span> Programado</span>
                         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-green-500"></span> Publicado</span>
@@ -167,13 +167,13 @@ const {
 
         <ConfirmDeleteModal
             :show="showDeleteModal" title="Eliminar tarea"
-            :message="'Se eliminara la tarea: ' + (deleteTarget?.title || '')"
+            :message="'Se eliminará la tarea: ' + (deleteTarget?.title || '')"
             @close="showDeleteModal = false"
             @confirm="executeDelete" />
 
         <ConfirmDeleteModal
             :show="showExtraDeleteModal" title="Eliminar tarea extra"
-            :message="'Se eliminara la tarea extra: ' + (extraDeleteTarget?.title || '')"
+            :message="'Se eliminará la tarea extra: ' + (extraDeleteTarget?.title || '')"
             @close="showExtraDeleteModal = false"
             @confirm="executeExtraDelete" />
 

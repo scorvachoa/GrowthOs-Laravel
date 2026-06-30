@@ -28,8 +28,8 @@ const totalRecords = computed(() =>
 const can = (perm) => page.props.auth?.user?.permissions?.includes(perm)
 
 const dayLabels = {
-    monday: 'los lunes', tuesday: 'los martes', wednesday: 'los miercoles',
-    thursday: 'los jueves', friday: 'los viernes', saturday: 'los sabados', sunday: 'los domingos',
+    monday: 'los lunes', tuesday: 'los martes', wednesday: 'los miércoles',
+    thursday: 'los jueves', friday: 'los viernes', saturday: 'los sábados', sunday: 'los domingos',
 }
 
 function changeScope(scope) {
@@ -153,7 +153,7 @@ function deleteScheduled(filename) {
                     <div class="flex items-center gap-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-4">
                         <AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                         <p class="text-sm text-amber-700 dark:text-amber-300">
-                            La restauracion sobrescribira los registros existentes con los datos del archivo.
+                            La restauración sobrescribirá los registros existentes con los datos del archivo.
                         </p>
                     </div>
 
@@ -210,8 +210,8 @@ function deleteScheduled(filename) {
                 class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 text-sm text-indigo-700 dark:text-indigo-300 flex items-start gap-3">
                 <Clock class="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
-                    <p class="font-medium">Backup automatico programado</p>
-                    <p class="mt-0.5 opacity-80">El sistema genera un backup completo {{ dayLabels[props.backup_schedule?.day] || 'los domingos' }} a las {{ props.backup_schedule?.time || '03:00' }}. Los archivos se almacenan en el servidor y puedes descargarlos desde aqui.</p>
+                    <p class="font-medium">Backup automático programado</p>
+                    <p class="mt-0.5 opacity-80">El sistema genera un backup completo {{ dayLabels[props.backup_schedule?.day] || 'los domingos' }} a las {{ props.backup_schedule?.time || '03:00' }}. Los archivos se almacenan en el servidor y puedes descargarlos desde aquí.</p>
                 </div>
             </div>
         </div>

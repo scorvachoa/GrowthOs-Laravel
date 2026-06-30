@@ -17,14 +17,14 @@ import {
 
 export default [
     {
-        title: 'Dashboard',
+        title: 'Panel',
         icon: LayoutDashboard,
         route: '/dashboard',
         permission: 'view dashboard',
     },
 
     {
-        title: 'Planificacion',
+        title: 'Planificación',
         icon: CalendarDays,
         route: '/planning',
         permission: 'view planning',
@@ -52,7 +52,7 @@ export default [
     },
 
     {
-        title: 'AI Generator',
+        title: 'Generador IA',
         icon: Sparkles,
         route: '/ai',
         permission: 'generate ai',
@@ -66,7 +66,7 @@ export default [
     },
 
     {
-        title: 'Users',
+        title: 'Usuarios',
         icon: Users,
         route: '/users',
         permission: 'view users',
@@ -101,7 +101,7 @@ export default [
     },
 
     {
-        title: 'Configuracion',
+        title: 'Configuración',
         icon: Settings,
         route: '/settings',
         permission: 'view configuracion',

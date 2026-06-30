@@ -115,7 +115,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/company/{company}', [CompanyController::class, 'destroy'])->middleware('can:delete empresa')->name('company.destroy');
 
     // Company switcher (Super Admin only)
-    Route::post('/company/switch', [CompanyController::class, 'switchCompany'])->middleware('can:view empresa');
+    Route::post('/company/switch', [CompanyController::class, 'switchCompany'])->middleware('can:view empresa')->name('company.switch');
 
     // Company channels & invites (keep specific routes before wildcards)
     Route::post('/company/channels', [CompanyController::class, 'storeChannel'])->middleware('can:create empresa');

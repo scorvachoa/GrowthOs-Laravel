@@ -21,7 +21,7 @@ const emit = defineEmits(['confirm', 'close'])
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ title }}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                         </div>
                     </div>
                     <p v-if="message" class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">{{ message }}</p>

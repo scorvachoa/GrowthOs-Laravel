@@ -29,7 +29,7 @@ class UpdateUserRequest extends FormRequest
                 'required',
                 'email',
                 Rule::unique('users', 'email')
-                    ->ignore($this->user),
+                    ->ignore($this->route('user')),
             ],
             'password' => ['nullable', 'min:8'],
             'role' => ['nullable'],

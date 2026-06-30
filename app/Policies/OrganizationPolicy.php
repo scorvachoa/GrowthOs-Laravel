@@ -35,6 +35,9 @@ class OrganizationPolicy
 
     public function delete(User $user, Organization $organization): bool
     {
-        return $user->can('delete empresa');
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+        return $user->organization_id === $organization->id && $user->can('delete empresa');
     }
 }

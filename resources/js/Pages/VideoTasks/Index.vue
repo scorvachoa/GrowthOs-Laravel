@@ -132,7 +132,7 @@ const nextMonth = () => {
                     @click="previousMonth"
                     class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700"
                 >
-                    Prev
+                    Anterior
                 </button>
 
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white capitalize">
@@ -143,7 +143,7 @@ const nextMonth = () => {
                     @click="nextMonth"
                     class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700"
                 >
-                    Next
+                    Siguiente
                 </button>
 
             </div>
@@ -151,7 +151,7 @@ const nextMonth = () => {
             <div class="grid grid-cols-7 gap-4">
 
                 <div
-                    v-for="dayName in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']"
+                    v-for="dayName in                 ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']"
                     :key="dayName"
                     class="font-semibold text-center text-gray-500"
                 >
@@ -198,7 +198,7 @@ const nextMonth = () => {
                     <div class="flex items-center justify-between mb-4">
 
                         <h2 class="text-xl font-bold">
-                            Tasks
+                            Tareas
                         </h2>
 
                         <button
@@ -231,13 +231,13 @@ const nextMonth = () => {
                                 <button
                                     class="px-3 py-1 rounded bg-amber-500 text-white"
                                 >
-                                    Edit
+                                    Editar
                                 </button>
 
                                 <button
                                     class="px-3 py-1 rounded bg-red-600 text-white"
                                 >
-                                    Delete
+                                    Eliminar
                                 </button>
 
                             </div>

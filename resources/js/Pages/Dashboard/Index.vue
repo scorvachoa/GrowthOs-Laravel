@@ -81,7 +81,7 @@ const circumference = 2 * Math.PI * 15.5
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de produccion de video</p>
+                    <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de producción de video</p>
                 </div>
                 <button @click="showPdfModal = true"
                     class="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2 text-sm">
@@ -228,7 +228,7 @@ const circumference = 2 * Math.PI * 15.5
                         </div>
                         <div>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Tareas por estado</h2>
-                            <p class="text-sm text-gray-500">Distribucion de todas las tareas</p>
+                            <p class="text-sm text-gray-500">Distribución de todas las tareas</p>
                         </div>
                     </div>
                     <div class="space-y-4">
@@ -255,7 +255,7 @@ const circumference = 2 * Math.PI * 15.5
                         </div>
                         <div>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Actividad reciente</h2>
-                            <p class="text-sm text-gray-500">Ultimas acciones en el sistema</p>
+                            <p class="text-sm text-gray-500">Últimas acciones en el sistema</p>
                         </div>
                     </div>
                     <div class="space-y-3">
@@ -287,7 +287,7 @@ const circumference = 2 * Math.PI * 15.5
                         </div>
                         <div>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Ausencias de hoy</h2>
-                            <p class="text-sm text-gray-500">Vacaciones y permisos del dia</p>
+                            <p class="text-sm text-gray-500">Vacaciones y permisos del día</p>
                         </div>
                     </div>
                     <div v-if="!stats.today_absences?.vacations?.length && !stats.today_absences?.time_offs?.length"
@@ -340,7 +340,7 @@ const circumference = 2 * Math.PI * 15.5
                                 <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ item.user_name }}</p>
                             </div>
                             <p class="text-xs text-gray-500 mt-0.5">
-                                Vacaciones {{ item.days_used }} dias ({{ item.start_date }} a {{ item.end_date }})
+                                Vacaciones {{ item.days_used }} días ({{ item.start_date }} a {{ item.end_date }})
                             </p>
                             <p v-if="item.reason" class="text-xs text-gray-400 truncate">{{ item.reason }}</p>
                         </div>

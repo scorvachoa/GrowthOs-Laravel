@@ -41,7 +41,7 @@ const scopeOptions = [
     { value: 'anual', label: 'Anual' },
     { value: 'mensual', label: 'Mensual' },
     { value: 'semanal', label: 'Semanal' },
-    { value: 'dia', label: 'Dia' },
+    { value: 'dia', label: 'Día' },
 ]
 
 watch(() => props.show, (v) => {
@@ -97,7 +97,7 @@ function exportPdf() {
                     </div>
 
                     <div v-if="scope === 'anual' || scope === 'mensual'">
-                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Ano</label>
+                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Año</label>
                         <input v-model.number="reportYear" type="number" min="2000" max="2100"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                     </div>

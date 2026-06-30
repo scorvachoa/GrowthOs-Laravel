@@ -37,15 +37,24 @@ class HandleInertiaRequests extends Middleware
 
         if ($user) {
             if ($user->hasRole('Super Admin')) {
+                $activeId = session('active_company_id');
+
+                if ($activeId) {
+                    $org = Organization::find($activeId, ['id', 'name', 'primary_color', 'logo_path']);
+                    $activeCompany = $org ? [
+                        'id' => $org->id,
+                        'name' => $org->name,
+                        'primary_color' => $org->primary_color,
+                        'logo_url' => $org->logo_path ? \Illuminate\Support\Facades\Storage::url($org->logo_path) : null,
+                    ] : null;
+                }
+
                 $companies = Organization::orderBy('name')->get(['id', 'name', 'primary_color', 'logo_path'])->map(fn ($o) => [
                     'id' => $o->id,
                     'name' => $o->name,
                     'primary_color' => $o->primary_color,
                     'logo_url' => $o->logo_path ? \Illuminate\Support\Facades\Storage::url($o->logo_path) : null,
                 ]);
-
-                $activeId = session('active_company_id');
-                $activeCompany = $activeId ? $companies->firstWhere('id', $activeId) : null;
             } else {
                 $org = $user->organization;
                 if ($org) {

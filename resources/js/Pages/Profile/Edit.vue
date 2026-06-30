@@ -32,11 +32,11 @@ const submit = () => {
             <div class="mb-8">
 
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                    My Profile
+                    Mi Perfil
                 </h1>
 
                 <p class="text-gray-500 mt-2">
-                    Manage your account settings
+                    Gestiona la configuración de tu cuenta
                 </p>
 
             </div>
@@ -50,20 +50,20 @@ const submit = () => {
 
                     <TextInput
                         v-model="form.name"
-                        label="Name"
+                        label="Nombre"
                         :error="form.errors.name"
                     />
 
                     <TextInput
                         v-model="form.email"
-                        label="Email"
+                        label="Correo electrónico"
                         type="email"
                         :error="form.errors.email"
                     />
 
                     <TextInput
                         v-model="form.password"
-                        label="New Password"
+                        label="Nueva contraseña"
                         type="password"
                         :error="form.errors.password"
                     />
@@ -71,7 +71,7 @@ const submit = () => {
                     <PrimaryButton
                         :disabled="form.processing"
                     >
-                        Save Changes
+                        Guardar cambios
                     </PrimaryButton>
 
                 </form>

@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
 class WorkSession extends Model
 {
-    use LogsActivity;
+    use LogsActivity, BelongsToOrganization;
 
     protected $fillable = [
         'video_task_id',
         'date',
         'time_range',
         'status',
+        'organization_id',
     ];
 
     protected function casts(): array

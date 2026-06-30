@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 
 class Vacation extends Model
 {
+    use BelongsToOrganization;
+
     protected $fillable = [
         'user_id',
         'start_date',
@@ -17,6 +20,7 @@ class Vacation extends Model
         'reason',
         'approved_by',
         'approved_at',
+        'organization_id',
     ];
 
     protected function casts(): array

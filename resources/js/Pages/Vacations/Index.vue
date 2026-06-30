@@ -49,8 +49,8 @@ const previewEndDate = computed(() => {
 })
 
 const typeOptions = [
-    { value: 'parcial', label: 'Parcial (15 dias)' },
-    { value: 'completa', label: 'Completa (30 dias)' },
+    { value: 'parcial', label: 'Parcial (15 días)' },
+    { value: 'completa', label: 'Completa (30 días)' },
 ]
 
 function openForm() {
@@ -171,7 +171,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                     </p>
                     <div v-if="remaining_days === 0"
                         class="mt-3 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-                        Ya has utilizado los 30 dias de vacaciones de este año. Contacta con el administrador si deseas vacaciones anticipadas.
+                        Ya has utilizado los 30 días de vacaciones de este año. Contacta con el administrador si deseas vacaciones anticipadas.
                     </div>
                 </div>
                 <div class="flex gap-3">
@@ -272,7 +272,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                             </div>
                             <div v-if="form.start_date" class="rounded-xl bg-gray-50 dark:bg-gray-900/50 p-3 text-sm text-gray-600 dark:text-gray-400">
-                                Fin estimado: <span class="font-semibold text-gray-900 dark:text-white">{{ previewEndDate }}</span> ({{ typeDays[form.type] }} dias)
+                                Fin estimado: <span class="font-semibold text-gray-900 dark:text-white">{{ previewEndDate }}</span> ({{ typeDays[form.type] }} días)
                             </div>
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Motivo (opcional)</label>
@@ -319,7 +319,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                             </div>
                             <div v-if="editForm.start_date" class="rounded-xl bg-gray-50 dark:bg-gray-900/50 p-3 text-sm text-gray-600 dark:text-gray-400">
-                                Fin estimado: <span class="font-semibold text-gray-900 dark:text-white">{{ editPreviewEndDate }}</span> ({{ typeDays[editForm.type] }} dias)
+                                Fin estimado: <span class="font-semibold text-gray-900 dark:text-white">{{ editPreviewEndDate }}</span> ({{ typeDays[editForm.type] }} días)
                             </div>
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Motivo (opcional)</label>
@@ -419,7 +419,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Aprobar vacaciones</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
@@ -450,7 +450,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Rechazar vacaciones</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
@@ -481,7 +481,7 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                             </div>
                             <div>
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar solicitud</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                             </div>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">

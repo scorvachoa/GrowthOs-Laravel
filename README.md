@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales y tareas del día, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales y tareas del día, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, interfaz 100 % en español latino, e integración con YouTube API.
 
 ---
 
@@ -9,7 +9,7 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 ### Backend
 | Tecnología | Uso |
 |------------|-----|
-| PHP 8.2+ | Runtime |
+| PHP 8.3+ | Runtime |
 | Laravel 12 | Framework |
 | MySQL | Base de datos |
 | [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles y permisos |
@@ -84,7 +84,9 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 | Permisos (editar) | — | `edit time off` |
 | Permisos (aprobar/rechazar) | — | `approve time off`, `reject time off` |
 | Permisos (eliminar) | — | `delete time off` |
-| Respaldo de datos | `/backup` | Super Admin |
+| Respaldo de datos (ver) | `/backup` | `view backup` |
+| Respaldo de datos (crear) | — | `create backup` |
+| Respaldo de datos (eliminar) | — | `delete backup` |
 | Manual | `/manual` | Todos los autenticados |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -101,7 +103,7 @@ Roles por defecto tras `db:seed`:
 | **Super Admin** | Todos |
 | **Employee** | Sin permisos asignados (extensible) |
 
-Permisos del sistema (34 en total, agrupados por módulo):
+Permisos del sistema (53 en total, agrupados por módulo):
 
 ```
 Dashboard:       view dashboard
@@ -117,6 +119,7 @@ Empresa:         view empresa, create empresa, edit empresa, delete empresa
 Canales:         create channels, edit channels, delete channels
 AI:              view ai, view ai history, download ai
 Config:          view configuracion, configure work hours, configure youtube, configure dashboard, configure backup
+Respaldos:       view backup, create backup, delete backup
 Vacaciones:      view vacations, create vacations, edit vacations, approve vacations, reject vacations, delete vacations
 Permisos:        view time off, create time off, edit time off, approve time off, reject time off, delete time off
 ```
@@ -185,7 +188,7 @@ Permisos:        view time off, create time off, edit time off, approve time off
 
 ## Requisitos previos
 
-- PHP >= 8.2 con extensiones: `mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`
+- PHP >= 8.3 con extensiones: `mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`
 - Composer
 - Node.js >= 18 y npm
 - MySQL 8+ (o MariaDB)
@@ -300,7 +303,8 @@ app/
 database/
 ├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history,
 │                           # organizations, channels, ideas, generated_videos, day_observations,
-│                           # vacations, time_offs
+│                           # vacations, time_offs, work_sessions,
+│                           # add_organization_id_to_org_bound_tables
 └── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
 
 resources/views/pdf/         # report.blade.php (template PDF con logo, color empresa y footer)
@@ -352,7 +356,7 @@ resources/js/
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
-- **Permisos granulares** — cada acción CRUD tiene su propio permiso (34 permisos en 12 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (53 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 - **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
 - **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
@@ -403,6 +407,15 @@ php artisan test     # Tests PHPUnit
 | `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
 | `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
 | `APP_TIMEZONE` | Zona horaria de la aplicación (`America/Lima`) |
+| `APP_PREVIOUS_KEYS` | Claves de cifrado anteriores (rotación) |
+| `DB_CHARSET` | Charset de base de datos (`utf8mb4`) |
+| `DB_COLLATION` | Collation de base de datos (`utf8mb4_unicode_ci`) |
+| `SESSION_DRIVER` | Driver de sesión (`file`, `database`) |
+| `SESSION_SECURE_COOKIE` | Cookie segura para sesión en producción (`true`) |
+| `LOG_DAILY_DAYS` | Días de retención de logs (`14`) |
+| `DB_QUEUE_CONNECTION` | Conexión de cola (`database`) |
+| `DB_QUEUE_TABLE` | Tabla de cola (`jobs`) |
+| `APP_MAINTENANCE_STORE` | Almacén de mantenimiento (`file`) |
 
 ---
 
@@ -486,10 +499,32 @@ php artisan test     # Tests PHPUnit
 - [x] Dashboard muestra sesiones activas del día
 - [x] Orphan sessions: sesiones visibles en calendario aunque la tarea original esté en otra semana
 - [x] PDF incluye sesiones de trabajo con youtube_url
+- [x] Interfaz completa traducida a español latino con tildes y ortografía correctas
+- [x] Archivos de localización Laravel (auth, pagination, passwords, validation) en `lang/es/`
+- [x] `locale` configurado a `es` por defecto en `config/app.php`
+- [x] `OrganizationPolicy::delete` validación de pertenencia + bypass Super Admin
+- [x] `UpdateUserRequest` corrección de referencia `$this->user` → `$this->route('user')`
+- [x] TimeOffController/VacationController usan `activeOrganizationId()` en vez de `organization_id`
+- [x] `VideoTask` cast `key_phrases` como `array`
+- [x] `@tailwindcss/vite` versionado a `^3.0.0` (compatible con Tailwind v3)
+- [x] `organization_id` añadido a tablas `work_sessions`, `time_off`, `vacations` con migración retroactiva
+- [x] `BelongsToOrganization` trait aplicado a modelos `WorkSession`, `TimeOff`, `Vacation`
+- [x] `BackupService::import` excluye `created_at`, `updated_at`, `deleted_at` del restore
+- [x] `HandleInertiaRequests` lazy load de compañía activa para Super Admin
+- [x] `PlanningValidator` excluye sesiones de la misma tarea al validar slot
+- [x] `phpunit.xml` SQLite en memoria para tests
+- [x] `composer.json` versiones fijas (sin `*`)
 
 ### Pendiente
-- [ ] Tests de autorización y CRUD
-- [ ] Multi-tenancy y suscripciones
+- [ ] Tests de autorización, CRUD y servicios
+- [ ] 2FA (autenticación de dos factores)
+- [ ] Notificaciones in-app y por email
+- [ ] Búsqueda global (Cmd+K / Ctrl+K)
+- [ ] Arrastrar y soltar en calendario semanal
+- [ ] Atajos de teclado (Ctrl+Enter, Escape)
+- [ ] Reportes PDF programados vía cron
+- [ ] Backups automáticos a cloud (S3, Dropbox)
+- [ ] Dependencias y bloqueos entre tareas
 
 ---
 

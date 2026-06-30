@@ -296,13 +296,15 @@ class BackupService
                 foreach ($scopedTables as $key => $modelClass) {
                     if (!isset($data[$key])) continue;
                     foreach ($data[$key] as $row) {
-                        $modelClass::withTrashed()->updateOrCreate(['id' => $row['id']], $row);
+                        $restore = \Illuminate\Support\Arr::except($row, ['created_at', 'updated_at', 'deleted_at']);
+                        $modelClass::withTrashed()->updateOrCreate(['id' => $row['id']], $restore);
                     }
                     $logs[] = count($data[$key]) . " registros en {$key}";
                 }
             } else {
                 if (isset($data['organization'])) {
-                    Organization::updateOrCreate(['id' => $data['organization']['id']], $data['organization']);
+                    $orgData = \Illuminate\Support\Arr::except($data['organization'], ['created_at', 'updated_at']);
+                    Organization::updateOrCreate(['id' => $data['organization']['id']], $orgData);
                     $logs[] = "1 registro en organization";
                 }
 
@@ -346,7 +348,8 @@ class BackupService
                 foreach ($scopedTables as $key => $modelClass) {
                     if (!isset($data[$key])) continue;
                     foreach ($data[$key] as $row) {
-                        $modelClass::withTrashed()->updateOrCreate(['id' => $row['id']], $row);
+                        $restore = \Illuminate\Support\Arr::except($row, ['created_at', 'updated_at', 'deleted_at']);
+                        $modelClass::withTrashed()->updateOrCreate(['id' => $row['id']], $restore);
                     }
                     $logs[] = count($data[$key]) . " registros en {$key}";
                 }

@@ -125,7 +125,7 @@ const embedUrl = computed(() => {
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo del video</h2>
+                    <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título del video</h2>
                     <button @click="copyText(currentTitle, 'title')"
                         class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                         <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
@@ -151,7 +151,7 @@ const embedUrl = computed(() => {
 
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Copy / Descripcion</h2>
+                        <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Copy / Descripción</h2>
                         <button v-if="currentCopy" @click="copyText(currentCopy, 'copy')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'copy'" class="w-4 h-4 text-green-500" />
@@ -230,7 +230,7 @@ const embedUrl = computed(() => {
             <ConfirmDeleteModal
                 :show="showDeleteModal"
                 title="Eliminar tarea"
-                message="¿Eliminar esta tarea de planificacion?"
+                message="¿Eliminar esta tarea de planificación?"
                 @close="showDeleteModal = false"
                 @confirm="confirmDelete"
             />

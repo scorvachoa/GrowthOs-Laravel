@@ -425,7 +425,7 @@ const statusOptions = [
                         </button>
                     </div>
                     <form @submit.prevent="submitIdeas" class="space-y-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Una idea por linea</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Una idea por línea</label>
                         <textarea v-model="newIdeasText" rows="16" placeholder="Idea 1&#10;Idea 2&#10;Idea 3"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-amber-500 focus:border-amber-500"
                             required></textarea>

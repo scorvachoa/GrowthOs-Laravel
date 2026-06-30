@@ -35,8 +35,8 @@ const statusLabel = (status) => {
     const labels = {
         pending: 'Pendiente',
         script_ready: 'Guion listo',
-        editing: 'Edicion',
-        review: 'Revision',
+        editing: 'Edición',
+        review: 'Revisión',
         scheduled: 'Programada',
         published: 'Publicada',
         cancelled: 'Cancelada',
@@ -260,7 +260,7 @@ const formatNumber = (n) => {
                                 </div>
                                 <div>
                                     <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ activeChannel.country || '—' }}</p>
-                                    <p class="text-xs text-gray-500">Pais</p>
+                                    <p class="text-xs text-gray-500">País</p>
                                 </div>
                             </div>
                         </div>
@@ -276,7 +276,7 @@ const formatNumber = (n) => {
                                 </div>
                                 <div>
                                     <h3 class="font-semibold text-gray-900 dark:text-white text-sm">Rendimiento de videos</h3>
-                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Vistas por video en orden cronologico</p>
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Vistas por video en orden cronológico</p>
                                 </div>
                             </div>
                             <div class="relative" style="height: 220px">
@@ -285,7 +285,7 @@ const formatNumber = (n) => {
                         </div>
 
                         <div class="flex items-center gap-4 mb-6">
-                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Ultimos videos</h2>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Últimos videos</h2>
                             <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                                 <button @click="viewMode = 'cards'"
                                     class="p-1.5 rounded-md transition"
@@ -340,7 +340,7 @@ const formatNumber = (n) => {
                                 <thead>
                                     <tr class="border-b border-gray-200 dark:border-gray-700">
                                         <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Video</th>
-                                        <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Titulo</th>
+                                        <th class="text-left py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Título</th>
                                         <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Vistas</th>
                                         <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Comentarios</th>
                                         <th class="text-right py-3 px-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Publicado</th>
@@ -380,14 +380,14 @@ const formatNumber = (n) => {
 
                         <div v-if="recent_published.length === 0"
                             class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
-                            Aun no hay videos publicados
+                            Aún no hay videos publicados
                         </div>
 
                         <div v-else class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="border-b border-gray-200 dark:border-gray-700">
-                                        <th class="text-left py-3 px-2 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Titulo</th>
+                                        <th class="text-left py-3 px-2 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Título</th>
                                         <th class="text-left py-3 px-2 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Fecha</th>
                                         <th class="text-left py-3 px-2 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Publicado</th>
                                         <th class="text-right py-3 px-2 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[10px]">Link</th>

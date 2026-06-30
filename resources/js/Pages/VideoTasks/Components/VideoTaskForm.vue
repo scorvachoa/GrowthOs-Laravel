@@ -248,7 +248,7 @@ async function saveSession() {
         newSessionTimeRange.value = null
         newSessionCompleted.value = false
     } catch {
-        alert('Error al guardar la sesion')
+        alert('Error al guardar la sesión')
     } finally {
         savingSession.value = false
     }
@@ -263,7 +263,7 @@ async function deleteSession(session) {
         localSessions.value = buildSessionList(remaining)
         confirmDeleteSession.value = null
     } catch {
-        alert('Error al eliminar la sesion')
+        alert('Error al eliminar la sesión')
     } finally {
         deletingSession.value = false
     }
@@ -291,7 +291,7 @@ async function saveEditSession() {
         localSessions.value = buildSessionList(updated)
         editingSession.value = null
     } catch {
-        alert('Error al actualizar la sesion')
+        alert('Error al actualizar la sesión')
     } finally {
         savingEditSession.value = false
     }
@@ -354,7 +354,7 @@ function askDeleteSession(session) {
                     </div>
                 </div>
 
-                <TextInput :model-value="getVal('title')" @update:model-value="v => setVal('title', v)" label="Titulo del video" :error="form.errors.title" />
+                <TextInput :model-value="getVal('title')" @update:model-value="v => setVal('title', v)" label="Título del video" :error="form.errors.title" />
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -403,7 +403,7 @@ function askDeleteSession(session) {
                 </div>
 
                 <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Copy / Descripcion</label>
+                    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Copy / Descripción</label>
                     <textarea :value="getVal('copy')" @input="e => setVal('copy', e.target.value)" rows="6"
                         class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                     <div v-if="form.errors.copy" class="mt-1 text-sm text-red-500">{{ form.errors.copy }}</div>
@@ -415,8 +415,8 @@ function askDeleteSession(session) {
         <div v-if="taskId" class="border-t border-gray-200 dark:border-gray-700 pt-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sesiones de trabajo</h3>
             <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                La sesion inicial se crea al generar la tarea en la fecha: <strong>{{ taskDate }}</strong>.
-                Agrega sesiones adicionales si el trabajo continuo en otros dias.
+                La sesión inicial se crea al generar la tarea en la fecha: <strong>{{ taskDate }}</strong>.
+                Agrega sesiones adicionales si el trabajo continúa en otros días.
             </p>
             <div v-if="localSessions.length > 0" class="space-y-2 mb-4">
                 <div v-for="(session, idx) in localSessions" :key="session.id || idx"
@@ -451,13 +451,13 @@ function askDeleteSession(session) {
             </div>
             <button type="button" @click="showAddSession = true"
                 class="px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400 transition text-sm font-medium">
-                + Agregar sesion
+                + Agregar sesión
             </button>
         </div>
 
         <div v-if="showAddSession" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showAddSession = false">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nueva sesion de trabajo</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nueva sesión de trabajo</h3>
                 <div class="space-y-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</label>
@@ -488,7 +488,7 @@ function askDeleteSession(session) {
                     <button type="button" @click="saveSession"
                         class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition"
                         :disabled="savingSession">
-                        {{ savingSession ? 'Guardando...' : 'Guardar sesion' }}
+                        {{ savingSession ? 'Guardando...' : 'Guardar sesión' }}
                     </button>
                 </div>
             </div>
@@ -496,7 +496,7 @@ function askDeleteSession(session) {
 
         <div v-if="editingSession" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="editingSession = null">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar sesion</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar sesión</h3>
                 <div class="space-y-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</label>
@@ -540,12 +540,12 @@ function askDeleteSession(session) {
                         <X class="w-5 h-5 text-red-600 dark:text-red-400" />
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar sesion</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar sesión</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                     </div>
                 </div>
                 <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
-                    ¿Eliminar la sesion del <strong>{{ confirmDeleteSession.date }}</strong>?
+                    ¿Eliminar la sesión del <strong>{{ confirmDeleteSession.date }}</strong>?
                 </p>
                 <div class="flex justify-end gap-3">
                     <button @click="confirmDeleteSession = null"
@@ -569,11 +569,11 @@ function askDeleteSession(session) {
                     </div>
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar idioma</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Esta accion no se puede deshacer</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                     </div>
                 </div>
                 <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
-                    ¿Eliminar el idioma <strong>{{ langNames[confirmRemoveLang] || confirmRemoveLang.toUpperCase() }}</strong>? Los datos se perderan.
+                    ¿Eliminar el idioma <strong>{{ langNames[confirmRemoveLang] || confirmRemoveLang.toUpperCase() }}</strong>? Los datos se perderán.
                 </p>
                 <div class="flex justify-end gap-3">
                     <button @click="confirmRemoveLang = null"

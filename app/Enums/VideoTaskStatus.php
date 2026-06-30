@@ -17,8 +17,8 @@ enum VideoTaskStatus: string
         return match ($this) {
             self::Pending => 'Pendiente',
             self::ScriptReady => 'Guion listo',
-            self::Editing => 'Edicion',
-            self::Review => 'Revision',
+            self::Editing => 'Edición',
+            self::Review => 'Revisión',
             self::Scheduled => 'Programado',
             self::Published => 'Publicado',
             self::Cancelled => 'Cancelado',

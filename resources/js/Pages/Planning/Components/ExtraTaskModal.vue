@@ -77,7 +77,7 @@ function submit() {
                 </div>
                 <form @submit.prevent="submit" class="space-y-4">
                     <div>
-                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Titulo</label>
+                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
                         <input v-model="form.title" type="text" required
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
@@ -108,7 +108,7 @@ function submit() {
                             </select>
                         </div>
                         <div>
-                            <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Ubicacion</label>
+                            <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Ubicación</label>
                             <select v-model="form.location"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="oficina">Dentro de la oficina</option>

@@ -39,7 +39,7 @@ const submit = () => form.put(route('users.update', props.user.id))
                 <form @submit.prevent="submit" class="space-y-5">
                     <TextInput v-model="form.name" label="Nombre" :error="form.errors.name" />
                     <TextInput v-model="form.email" label="Email" type="email" :error="form.errors.email" />
-                    <TextInput v-model="form.password" label="Nueva contraseña (dejar vacio para mantener)" type="password" :error="form.errors.password" />
+                    <TextInput v-model="form.password" label="Nueva contraseña (dejar vacío para mantener)" type="password" :error="form.errors.password" />
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Rol</label>
                         <select v-model="form.role"

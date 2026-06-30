@@ -96,7 +96,7 @@ provide('closeMobileSidebar', closeMobileSidebar)
                             </div>
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Selecciona una empresa</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                Elegi con que empresa deseas trabajar en esta sesion
+                                Elige con qué empresa deseas trabajar en esta sesión
                             </p>
                         </div>
                         <div class="p-4 space-y-2 max-h-80 overflow-y-auto">

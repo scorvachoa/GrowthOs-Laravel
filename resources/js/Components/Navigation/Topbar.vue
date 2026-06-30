@@ -151,7 +151,7 @@ if (typeof document !== 'undefined') {
             <button
                 @click="logout"
                 class="px-3 sm:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition text-sm"
-                :title="'Cerrar sesion'"
+                :title="'Cerrar sesión'"
             >
                 <span class="hidden sm:inline">Cerrar sesión</span>
                 <LogOut class="w-4 h-4 sm:hidden" />

@@ -31,6 +31,7 @@ class VideoTask extends Model
         return [
             'task_date' => 'date',
             'translations' => 'array',
+            'key_phrases' => 'array',
         ];
     }
 
