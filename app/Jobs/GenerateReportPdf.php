@@ -37,7 +37,7 @@ class GenerateReportPdf implements ShouldQueue
         $company = $reportService->buildCompanyData($this->user);
 
         $filename = $reportService->generateAndSave(
-            $scope, $start, $title, $days, $company, config('app.name')
+            $scope, $start, $title, $days, $company, config('app.name'), $this->user->name
         );
 
         $reportService->createHistory($orgId, $this->user, $scope, $filename, $this->filters);

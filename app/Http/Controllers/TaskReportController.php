@@ -43,11 +43,11 @@ class TaskReportController extends Controller
         $company = $this->reportService->buildCompanyData($user);
 
         $filename = $this->reportService->generateAndSave(
-            $scope, $start, $title, $days, $company, config('app.name')
+            $scope, $start, $title, $days, $company, config('app.name'), $user->name
         );
 
         $this->reportService->createHistory($orgId, $user, $scope, $filename, $validated);
 
-        return Storage::disk('public')->download('reports/' . $filename, $filename);
+        return Storage::disk('public')->download('reports/'.$filename, $filename);
     }
 }

@@ -23,6 +23,7 @@
         .observation-row-title { color: {{ $company['primary_color'] }}; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
         .observation-row-text { font-size: 12px; color: #6b7280; font-style: italic; }
         .footer { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-size: 10px; color: {{ $company['primary_color'] }}; }
+        .generated-by { text-align: center; font-size: 12px; color: #6b7280; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -31,6 +32,9 @@
             <img src="{{ $company['logo_base64'] }}" alt="{{ $company['name'] }}" />
         @endif
         <h1>{{ $title }}</h1>
+        @if(!empty($userName))
+            <div class="generated-by">Generado por {{ $userName }}</div>
+        @endif
     </div>
 
     @forelse($days as $day)

@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\VideoTaskStatus;
 use App\Models\DayObservation;
 use App\Models\ExtraTask;
 use App\Models\Organization;
 use App\Models\ReportHistory;
 use App\Models\User;
 use App\Models\VideoTask;
-use App\Enums\VideoTaskStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -30,7 +30,7 @@ class ReportService
 
         if ($scope === 'mensual') {
             return [
-                "Reporte mensual {$year}-" . str_pad((string) $month, 2, '0', STR_PAD_LEFT),
+                "Reporte mensual {$year}-".str_pad((string) $month, 2, '0', STR_PAD_LEFT),
                 Carbon::create($year, $month, 1)->startOfDay(),
                 Carbon::create($year, $month, 1)->endOfMonth()->endOfDay(),
             ];
@@ -38,6 +38,7 @@ class ReportService
 
         if ($scope === 'semanal') {
             $start = $weekStart ? Carbon::parse($weekStart)->startOfDay() : $today->copy()->startOfWeek(Carbon::MONDAY);
+
             return [
                 "Reporte semanal {$start->format('Y-m-d')} a {$start->copy()->addDays(6)->format('Y-m-d')}",
                 $start->copy(),
@@ -47,6 +48,7 @@ class ReportService
 
         if ($scope === 'dia') {
             $d = $day ? Carbon::parse($day) : $today->copy();
+
             return [
                 "Reporte diario {$d->format('Y-m-d')}",
                 $d->copy()->startOfDay(),
@@ -64,9 +66,9 @@ class ReportService
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where(function ($q) use ($start, $end) {
                 $q->whereBetween('task_date', [$start, $end])
-                  ->orWhereHas('sessions', function ($sq) use ($start, $end) {
-                      $sq->whereBetween('date', [$start, $end]);
-                  });
+                    ->orWhereHas('sessions', function ($sq) use ($start, $end) {
+                        $sq->whereBetween('date', [$start, $end]);
+                    });
             })
             ->orderBy('task_date')
             ->orderBy('time_range')
@@ -98,8 +100,10 @@ class ReportService
         foreach ($tasks as $task) {
             foreach ($task->sessions as $session) {
                 $sessionKey = $session->date->format('Y-m-d');
-                if ($sessionKey === $task->task_date->format('Y-m-d')) continue;
-                if (!isset($sessionsByDate[$sessionKey])) {
+                if ($sessionKey === $task->task_date->format('Y-m-d')) {
+                    continue;
+                }
+                if (! isset($sessionsByDate[$sessionKey])) {
                     $sessionsByDate[$sessionKey] = [];
                 }
                 $sessionsByDate[$sessionKey][] = [
@@ -145,8 +149,7 @@ class ReportService
                 ];
             }
             $typeOrder = ['video' => 0, 'session' => 1, 'extra' => 2];
-            usort($items, fn ($a, $b) =>
-                strcmp(explode('-', $a['time_range'])[0] ?? '', explode('-', $b['time_range'])[0] ?? '')
+            usort($items, fn ($a, $b) => strcmp(explode('-', $a['time_range'])[0] ?? '', explode('-', $b['time_range'])[0] ?? '')
                 ?: ($typeOrder[$a['type']] <=> $typeOrder[$b['type']])
             );
 
@@ -170,7 +173,7 @@ class ReportService
             'name' => $org->name,
             'primary_color' => $org->primary_color ?: '#4f46e5',
             'logo_base64' => $org->logo_path && Storage::disk('public')->exists($org->logo_path)
-                ? 'data:image/' . pathinfo($org->logo_path, PATHINFO_EXTENSION) . ';base64,' . base64_encode(Storage::disk('public')->get($org->logo_path))
+                ? 'data:image/'.pathinfo($org->logo_path, PATHINFO_EXTENSION).';base64,'.base64_encode(Storage::disk('public')->get($org->logo_path))
                 : null,
         ] : [
             'name' => 'GrowthOS',
@@ -179,15 +182,15 @@ class ReportService
         ];
     }
 
-    public function generateAndSave(string $scope, Carbon $start, string $title, array $days, array $company, string $systemName): string
+    public function generateAndSave(string $scope, Carbon $start, string $title, array $days, array $company, string $systemName, ?string $userName = null): string
     {
         $generatedAt = now()->format('Y-m-d H:i');
 
-        $pdf = Pdf::loadView('pdf.report', compact('title', 'days', 'generatedAt', 'company', 'systemName'));
+        $pdf = Pdf::loadView('pdf.report', compact('title', 'days', 'generatedAt', 'company', 'systemName', 'userName'));
         $pdf->setPaper('letter');
 
-        $filename = 'reporte_' . $scope . '_' . $start->format('Y-m-d') . '_' . now()->timestamp . '.pdf';
-        Storage::disk('public')->put('reports/' . $filename, $pdf->output());
+        $filename = 'reporte_'.$scope.'_'.$start->format('Y-m-d').'_'.now()->timestamp.'.pdf';
+        Storage::disk('public')->put('reports/'.$filename, $pdf->output());
 
         return $filename;
     }
