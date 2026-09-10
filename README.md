@@ -2,7 +2,33 @@
 
 GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales y tareas del día, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, interfaz 100 % en español latino, e integración con YouTube API.
 
+> **Repositorio:** [https://github.com/scorvachoa/GrowthOs-Laravel](https://github.com/scorvachoa/GrowthOs-Laravel)
+
 ---
+
+## Inicio rápido
+
+### Opción 1 — Sin consolas (recomendado)
+
+Haz doble clic en `GrowthOS.vbs` y esperar ~6 segundos. El navegador se abrirá automáticamente.
+
+### Opción 2 — Composer
+
+```bash
+composer dev
+```
+
+Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
+
+### Opción 3 — Dos terminales
+
+```bash
+# Terminal 1
+php artisan serve
+
+# Terminal 2
+npm run dev
+```
 
 ## Stack tecnológico
 
@@ -167,7 +193,7 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - Nombre de app desde variable de entorno (`VITE_APP_NAME`)
 - DaySidebar: secciones colapsables (Tareas de video, Tareas extra, Observaciones) con iconos ChevronDown/ChevronRight
 - DaySidebar: selectores de estado más anchos (`min-w-[130px]`)
-- **Ideas**: paginación (50 por página), filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, barra de acciones masivas (Marcar como usadas, pendientes, eliminar, editar contenido)
+- **Ideas**: paginación (50 por página), filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, barra de acciones masivas (Marcar como usadas, pendientes, eliminar, editar contenido), paginación mantiene filtros (channel_id, búsqueda, sort, status)
 - **Vacaciones y Permisos**: listado con mismo formato que Usuarios (tabla con búsqueda, paginación, hover), formulario modal, aprobación/rechazo, modal de detalle con botón ojo
 - **Respaldo de datos**: exportación de todas las tablas del sistema en JSON comprimido, restauración con validación por empresa, programación semanal desde Configuración
 - **Dashboard adaptativo**: grid de columnas se ajusta dinámicamente si el usuario no tiene permiso `view users`
@@ -183,6 +209,7 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **Edición/eliminación de sesiones**: desde el formulario de editar tarea, sección "Sesiones de trabajo" con opciones de editar fecha/bloque/estado y eliminar con confirmación modal.
 - **Multi-idioma configurable en VideoTasks**: columna `translations` JSON para título/guion/copy/youtube_url en múltiples idiomas. Idiomas configurables desde `/settings` (ES siempre presente). Pestañas de idioma en crear, editar y ver tarea — solo se muestras las que tienen contenido.
 - **Leyenda de colores en planificación**: todos los estados de tarea y sesión visibles con indicador de color, agrupados por sección (Tareas / Sesiones).
+- **Tareas extra con descripción**: campo opcional de descripción para detallar lo realizado en cada tarea extra. Visible en el sidebar del calendario y en los reportes PDF.
 
 ---
 
@@ -201,8 +228,8 @@ Permisos:        view time off, create time off, edit time off, approve time off
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/TU-USUARIO/growthos.git
-cd growthos
+git clone https://github.com/scorvachoa/GrowthOs-Laravel.git
+cd GrowthOs-Laravel
 ```
 
 ### 2. Dependencias
@@ -248,7 +275,19 @@ php artisan db:seed
 
 ### 5. Ejecutar en desarrollo
 
-**Opción A — dos terminales**
+**Opción A — Sin consolas (recomendado)**
+
+Haz doble clic en `GrowthOS.vbs`. El script iniciará el servidor PHP, Vite y abrirá el navegador automáticamente.
+
+**Opción B — Composer (una terminal)**
+
+```bash
+composer dev
+```
+
+Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
+
+**Opción C — Dos terminales**
 
 ```bash
 # Terminal 1
@@ -257,14 +296,6 @@ php artisan serve
 # Terminal 2
 npm run dev
 ```
-
-**Opción B — un solo comando (Composer)**
-
-```bash
-composer dev
-```
-
-Levanta servidor Laravel, cola, logs (Pail) y Vite en paralelo.
 
 ### 6. Acceder
 
@@ -329,7 +360,7 @@ resources/js/
     ├── Backup/              # Index (exportación, restauración, programación, scope selector)
     ├── Dashboard/           # KPIs reales con statcards + gráficos Chart.js + Exportar PDF
     ├── Error/               # 403.vue (página personalizada SPA)
-    ├── Ideas/               # Index (tabs por canal, búsqueda, sort, paginación, filtro estado, selección múltiple, edición en masa, CRUD, import/export txt)
+    ├── Ideas/               # Index (tabs por canal, búsqueda, sort, paginación con filtros, filtro estado, selección múltiple, edición en masa, CRUD, import/export txt)
     ├── Manual/              # Manual.vue (documentación del sistema)
     ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal + Exportar PDF
     ├── Profile/
@@ -342,6 +373,10 @@ resources/js/
     ├── Vacations/           # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
     ├── VideoTasks/          # Create, Edit, Show (3 columnas + video embed), VideoTaskForm
     └── Youtube/             # Index (tabs canal, gráficos Chart.js, cards/lista videos)
+
+GrowthOS.vbs                  # Inicio rápido sin consolas (doble clic)
+start-growthos.bat            # Alternativa batch para inicio rápido
+INICIAR.txt                   # Instrucciones de uso del script de inicio
 ```
 
 ---
@@ -354,12 +389,13 @@ resources/js/
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
-- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema
+- **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema. Incluye tareas extra con descripción detallada.
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
 - **Permisos granulares** — cada acción CRUD tiene su propio permiso (53 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 - **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
 - **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
+- **Inicio rápido** — script `GrowthOS.vbs` para iniciar el entorno de desarrollo sin consolas (servidor PHP + Vite + navegador)
 
 ---
 
@@ -514,6 +550,11 @@ php artisan test     # Tests PHPUnit
 - [x] `PlanningValidator` excluye sesiones de la misma tarea al validar slot
 - [x] `phpunit.xml` SQLite en memoria para tests
 - [x] `composer.json` versiones fijas (sin `*`)
+- [x] Paginación en Ideas mantiene filtros (channel_id, búsqueda, sort, status) al navegar páginas
+- [x] Tareas extra con campo de descripción (detalle de lo realizado)
+- [x] Descripción de tareas extra visible en sidebar del calendario y en reportes PDF
+- [x] Página de bienvenida mejorada (nuevas secciones: features, cómo funciona, flujo de trabajo, por qué GrowthOS)
+- [x] Inicio rápido sin consolas (`GrowthOS.vbs`)
 
 ### Pendiente
 - [ ] Tests de autorización, CRUD y servicios

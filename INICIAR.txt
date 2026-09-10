@@ -1,0 +1,28 @@
+========================================
+  GrowthOS - Inicio Rápido
+========================================
+
+Para iniciar GrowthOS sin abrir consolas:
+
+1. Haz doble clic en "GrowthOS.vbs"
+2. Espera unos segundos
+3. Se abrirá automáticamente en tu navegador
+
+========================================
+  Cómo funciona:
+========================================
+
+- Inicia el servidor PHP (php artisan serve)
+- Inicia el servidor de desarrollo Vite (npm run dev)
+- Abre http://localhost:8000 en tu navegador
+
+========================================
+  Para detener:
+========================================
+
+Cierra las ventanas minimadas en la barra de tareas
+o abre el Administrador de Tareas y termina los procesos:
+- cmd.exe (php artisan serve)
+- cmd.exe (npm run dev)
+
+========================================
