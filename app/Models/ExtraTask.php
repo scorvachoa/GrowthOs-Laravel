@@ -14,6 +14,7 @@ class ExtraTask extends Model
         'task_date',
         'time_range',
         'title',
+        'description',
         'status',
         'location',
         'created_by',

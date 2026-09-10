@@ -14,6 +14,7 @@ class ExtraTaskResource extends JsonResource
             'task_date' => $this->task_date->format('Y-m-d'),
             'time_range' => $this->time_range,
             'title' => $this->title,
+            'description' => $this->description,
             'status' => $this->status,
             'location' => $this->location,
             'is_extra' => true,

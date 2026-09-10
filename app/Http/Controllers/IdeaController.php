@@ -35,7 +35,7 @@ class IdeaController extends Controller
         }
 
         $ideas = $channelId
-            ? $this->ideaService->list($channelId, $search, $sort, $status)
+            ? $this->ideaService->list($channelId, $search, $sort, $status)->withQueryString()
             : collect();
 
         return Inertia::render('Ideas/Index', [

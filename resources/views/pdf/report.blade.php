@@ -19,6 +19,7 @@
         .extra-group { margin-left: 12px; margin-top: 8px; padding: 8px 10px; background: #f9fafb; border-left: 3px solid #6b7280; border-radius: 4px; }
         .extra-group-title { color: #6b7280; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
         .extra-item { margin-bottom: 4px; }
+        .extra-description { font-size: 12px; color: #6b7280; font-style: italic; margin-top: 2px; }
         .observation-row { margin-left: 12px; margin-top: 8px; padding: 8px 10px; background: #f9fafb; border-left: 3px solid {{ $company['primary_color'] }}; border-radius: 4px; }
         .observation-row-title { color: {{ $company['primary_color'] }}; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
         .observation-row-text { font-size: 12px; color: #6b7280; font-style: italic; }
@@ -73,6 +74,9 @@
                             <div class="extra-item">
                                 <div class="task-time">{{ $task['time_range'] }}</div>
                                 <div class="task-title">{{ $task['title'] }} <span style="color:#888;font-size:11px;">({{ $task['status_label'] }})</span></div>
+                                @if(!empty($task['description']))
+                                    <div class="extra-description">{{ $task['description'] }}</div>
+                                @endif
                             </div>
                         @endforeach
                     </div>

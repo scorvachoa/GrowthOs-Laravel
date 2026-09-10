@@ -20,6 +20,7 @@ class StoreExtraTaskRequest extends FormRequest
             'task_date' => ['required', 'date'],
             'time_range' => ['required', 'string', 'max:32'],
             'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:65535'],
             'status' => ['required', 'string', 'max:24'],
             'location' => ['required', Rule::in(['oficina', 'fuera'])],
         ];

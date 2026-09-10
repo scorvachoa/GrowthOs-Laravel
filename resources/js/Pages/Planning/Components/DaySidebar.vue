@@ -176,6 +176,7 @@ function cancelEdit() {
                             class="rounded-xl border border-dashed border-teal-300 dark:border-teal-700 p-3 mb-2 hover:shadow-sm transition bg-teal-50 dark:bg-teal-900/10">
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900 dark:text-white text-sm truncate">{{ task.title }}</h4>
+                                <p v-if="task.description" class="text-xs text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">{{ task.description }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ task.time_range }}</p>
                             </div>
                             <div class="flex items-center gap-2 mt-1">

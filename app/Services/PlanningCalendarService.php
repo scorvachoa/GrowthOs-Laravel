@@ -326,6 +326,7 @@ class PlanningCalendarService
                     'task_date' => $task->task_date->format('Y-m-d'),
                     'time_range' => $task->time_range,
                     'title' => $task->title,
+                    'description' => $task->description,
                     'status' => $task->status,
                     'location' => $task->location,
                     'is_extra' => true,

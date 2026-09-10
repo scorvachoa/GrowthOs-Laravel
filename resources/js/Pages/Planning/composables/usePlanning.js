@@ -422,6 +422,7 @@ export function usePlanning(props) {
                 task_date: task.task_date,
                 time_range: task.time_range,
                 title: task.title,
+                description: task.description || '',
                 status,
                 location: task.location,
             })
@@ -500,6 +501,7 @@ export function usePlanning(props) {
             task_date: form.task_date,
             time_range: form.time_range,
             title: form.title,
+            description: form.description || '',
             status: form.status,
             location: form.location,
         }

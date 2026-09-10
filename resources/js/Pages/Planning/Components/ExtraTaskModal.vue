@@ -15,6 +15,7 @@ const form = ref({
     task_date: '',
     time_range: '',
     title: '',
+    description: '',
     status: 'pending',
     location: 'oficina',
 })
@@ -34,6 +35,7 @@ watch(() => props.show, (val) => {
             task_date: props.editingExtra.task_date,
             time_range: props.editingExtra.time_range,
             title: props.editingExtra.title,
+            description: props.editingExtra.description || '',
             status: props.editingExtra.status,
             location: props.editingExtra.location,
         }
@@ -45,6 +47,7 @@ watch(() => props.show, (val) => {
             task_date: props.selectedDate || '',
             time_range: '09:00-10:00',
             title: '',
+            description: '',
             status: 'pending',
             location: 'oficina',
         }
@@ -80,6 +83,11 @@ function submit() {
                         <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
                         <input v-model="form.title" type="text" required
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
+                        <textarea v-model="form.description" rows="3" placeholder="Detalla lo que se hizo..."
+                            class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>

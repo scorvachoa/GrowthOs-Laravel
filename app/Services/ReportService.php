@@ -143,6 +143,7 @@ class ReportService
                 $items[] = [
                     'time_range' => $task->time_range,
                     'title' => $task->title,
+                    'description' => $task->description,
                     'status_label' => $task->status,
                     'youtube_url' => null,
                     'type' => 'extra',
