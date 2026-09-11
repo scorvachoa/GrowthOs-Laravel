@@ -162,8 +162,8 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Vacaciones</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -174,10 +174,10 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                         Ya has utilizado los 30 días de vacaciones de este año. Contacta con el administrador si deseas vacaciones anticipadas.
                     </div>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex flex-col sm:flex-row gap-3">
                     <SearchInput v-model="search" />
                     <button @click="openForm" :disabled="remaining_days === 0"
-                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <Plus class="w-4 h-4" /> Solicitar
                     </button>
                 </div>
@@ -188,61 +188,110 @@ const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 
                     <Umbrella class="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p class="text-sm">Sin solicitudes de vacaciones</p>
                 </div>
-                <table v-else class="w-full text-sm table-fixed">
-                    <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700">
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400" v-if="can('edit vacations')">Usuario</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Periodo</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Tipo</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[80px]">Dias</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Estado</th>
-                            <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="v in vacations" :key="v.id"
-                            class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <td class="px-4 py-4 text-gray-900 dark:text-white text-sm" v-if="can('edit vacations')">{{ v.user_name }}</td>
-                            <td class="px-4 py-4 text-gray-900 dark:text-white text-sm">{{ v.start_date }} al {{ v.end_date }}</td>
-                            <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-sm capitalize">{{ v.type === 'completa' ? 'Completa' : 'Parcial' }}</td>
-                            <td class="px-4 py-4 text-gray-900 dark:text-white font-medium text-sm">{{ v.days_used }}</td>
-                            <td class="px-4 py-4">
-                                <span class="text-[11px] font-medium px-2.5 py-1 rounded-full" :class="statusColors[v.status]">
+                <template v-else>
+                    <!-- Vista tarjetas (mobile) -->
+                    <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                        <div v-for="v in vacations" :key="'m-' + v.id" class="p-4 space-y-3">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p v-if="can('edit vacations')" class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ v.user_name }}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ v.start_date }} al {{ v.end_date }}</p>
+                                </div>
+                                <span class="text-[11px] font-medium px-2.5 py-1 rounded-full ml-2 flex-shrink-0" :class="statusColors[v.status]">
                                     {{ statusLabels[v.status] }}
                                 </span>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-1">
-                                    <button @click="openDetail(v)"
-                                        class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
-                                        title="Ver detalle">
-                                        <Eye class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('approve vacations') && v.status === 'pendiente'" @click="confirmApprove(v)"
-                                        class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
-                                        title="Aprobar">
-                                        <Check class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('reject vacations') && v.status === 'pendiente'" @click="confirmReject(v)"
-                                        class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
-                                        title="Rechazar">
-                                        <X class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('edit vacations') && v.status === 'pendiente'" @click="openEdit(v)"
-                                        class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
-                                        title="Editar">
-                                        <Pencil class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('delete vacations') && v.status !== 'aprobado'" @click="confirmDelete(v)"
-                                        class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
-                                        title="Eliminar">
-                                        <AlertTriangle class="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span class="capitalize">{{ v.type === 'completa' ? 'Completa' : 'Parcial' }}</span>
+                                <span>·</span>
+                                <span>{{ v.days_used }} días</span>
+                            </div>
+                            <div class="flex items-center gap-1 pt-1 border-t border-gray-100 dark:border-gray-700">
+                                <button @click="openDetail(v)"
+                                    class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                    title="Ver detalle">
+                                    <Eye class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('approve vacations') && v.status === 'pendiente'" @click="confirmApprove(v)"
+                                    class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+                                    title="Aprobar">
+                                    <Check class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('reject vacations') && v.status === 'pendiente'" @click="confirmReject(v)"
+                                    class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                    title="Rechazar">
+                                    <X class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('edit vacations') && v.status === 'pendiente'" @click="openEdit(v)"
+                                    class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+                                    title="Editar">
+                                    <Pencil class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('delete vacations') && v.status !== 'aprobado'" @click="confirmDelete(v)"
+                                    class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                    title="Eliminar">
+                                    <AlertTriangle class="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Vista tabla (desktop) -->
+                    <table class="w-full text-sm table-fixed hidden md:table">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400" v-if="can('edit vacations')">Usuario</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Periodo</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Tipo</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[80px]">Dias</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Estado</th>
+                                <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="v in vacations" :key="'d-' + v.id"
+                                class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                <td class="px-4 py-4 text-gray-900 dark:text-white text-sm" v-if="can('edit vacations')">{{ v.user_name }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white text-sm">{{ v.start_date }} al {{ v.end_date }}</td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-sm capitalize">{{ v.type === 'completa' ? 'Completa' : 'Parcial' }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white font-medium text-sm">{{ v.days_used }}</td>
+                                <td class="px-4 py-4">
+                                    <span class="text-[11px] font-medium px-2.5 py-1 rounded-full" :class="statusColors[v.status]">
+                                        {{ statusLabels[v.status] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button @click="openDetail(v)"
+                                            class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                            title="Ver detalle">
+                                            <Eye class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('approve vacations') && v.status === 'pendiente'" @click="confirmApprove(v)"
+                                            class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+                                            title="Aprobar">
+                                            <Check class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('reject vacations') && v.status === 'pendiente'" @click="confirmReject(v)"
+                                            class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                            title="Rechazar">
+                                            <X class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('edit vacations') && v.status === 'pendiente'" @click="openEdit(v)"
+                                            class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+                                            title="Editar">
+                                            <Pencil class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('delete vacations') && v.status !== 'aprobado'" @click="confirmDelete(v)"
+                                            class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                            title="Eliminar">
+                                            <AlertTriangle class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
             </div>
 
             <ConfirmDelete :show="showDelete" @close="showDelete = false" @confirm="executeDelete" />

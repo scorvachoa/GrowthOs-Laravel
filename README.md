@@ -10,7 +10,7 @@ GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, 
 
 ### Opción 1 — Sin consolas (recomendado)
 
-Haz doble clic en `GrowthOS.vbs` y esperar ~6 segundos. El navegador se abrirá automáticamente.
+Haz doble clic en `GrowthOS.vbs`. El script verificará si MySQL está corriendo, iniciará Laragon si es necesario, luego arrancará el servidor PHP, Vite y abrirá el navegador automáticamente.
 
 ### Opción 2 — Composer
 

@@ -83,18 +83,20 @@ const steps = [
 <template>
     <Head title="GrowthOS" />
     <div class="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-gray-900">
-        <header class="flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">G</div>
-                <span class="text-white font-bold text-lg">GrowthOS</span>
+        <header class="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-white/10">
+            <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">G</div>
+                    <span class="text-white font-bold text-lg">GrowthOS</span>
+                </div>
+                <nav class="flex items-center gap-4">
+                    <Link v-if="$page.props.auth?.user" :href="route('dashboard')" class="px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition">Dashboard</Link>
+                    <template v-else>
+                        <Link :href="route('login')" class="px-4 py-2 text-white/80 text-sm hover:text-white transition">Iniciar sesión</Link>
+                        <Link :href="route('register')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition">Registrarse</Link>
+                    </template>
+                </nav>
             </div>
-            <nav class="flex items-center gap-4">
-                <Link v-if="$page.props.auth?.user" :href="route('dashboard')" class="px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition">Dashboard</Link>
-                <template v-else>
-                    <Link :href="route('login')" class="px-4 py-2 text-white/80 text-sm hover:text-white transition">Iniciar sesión</Link>
-                    <Link :href="route('register')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition">Registrarse</Link>
-                </template>
-            </nav>
         </header>
 
         <main class="max-w-7xl mx-auto px-6">

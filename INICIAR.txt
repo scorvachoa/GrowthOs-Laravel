@@ -4,17 +4,28 @@
 
 Para iniciar GrowthOS sin abrir consolas:
 
-1. Haz doble clic en "GrowthOS.vbs"
-2. Espera unos segundos
-3. Se abrirá automáticamente en tu navegador
+1. Asegúrate de tener Laragon instalado
+2. Haz doble clic en "GrowthOS.vbs"
+3. Espera unos segundos (el script verifica MySQL)
+4. Se abrirá automáticamente en tu navegador
 
 ========================================
   Cómo funciona:
 ========================================
 
-- Inicia el servidor PHP (php artisan serve)
-- Inicia el servidor de desarrollo Vite (npm run dev)
-- Abre http://localhost:8000 en tu navegador
+1. Verifica si MySQL está corriendo
+2. Si no está, intenta iniciar Laragon automáticamente
+3. Inicia el servidor PHP (php artisan serve)
+4. Inicia el servidor de desarrollo Vite (npm run dev)
+5. Abre http://localhost:8000 en tu navegador
+
+========================================
+  Si Laragon no se inicia automáticamente:
+========================================
+
+1. Abre Laragon manualmente
+2. Haz clic en "Start All" para iniciar MySQL y Apache
+3. Luego ejecuta GrowthOS.vbs
 
 ========================================
   Para detener:

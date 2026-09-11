@@ -156,15 +156,15 @@ const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Permisos</h1>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex flex-col sm:flex-row gap-3">
                     <SearchInput v-model="search" />
                     <button @click="openForm"
-                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 transition">
+                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition">
                         <Plus class="w-4 h-4" /> Solicitar permiso
                     </button>
                 </div>
@@ -175,64 +175,112 @@ const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite
                     <CalendarClock class="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p class="text-sm">Sin solicitudes de permiso</p>
                 </div>
-                <table v-else class="w-full text-sm table-fixed">
-                    <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700">
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400" v-if="can('edit time off')">Usuario</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Fecha</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Tipo</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 hidden lg:table-cell">Motivo</th>
-                            <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Estado</th>
-                            <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="t in timeOffs" :key="t.id"
-                            class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <td class="px-4 py-4 text-gray-900 dark:text-white text-sm" v-if="can('edit time off')">{{ t.user_name }}</td>
-                            <td class="px-4 py-4 text-gray-900 dark:text-white text-sm">
-                                {{ t.date }}
-                                <span v-if="t.start_time" class="text-gray-500 text-xs block">{{ t.start_time }}{{ t.end_time ? ' - ' + t.end_time : '' }}</span>
-                            </td>
-                            <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-sm">{{ typeLabels[t.type] || t.type }}</td>
-                            <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-sm truncate hidden lg:table-cell max-w-[200px]">{{ t.reason }}</td>
-                            <td class="px-4 py-4">
-                                <span class="text-[11px] font-medium px-2.5 py-1 rounded-full" :class="statusColors[t.status]">
+                <template v-else>
+                    <!-- Vista tarjetas (mobile) -->
+                    <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                        <div v-for="t in timeOffs" :key="'m-' + t.id" class="p-4 space-y-3">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p v-if="can('edit time off')" class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ t.user_name }}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ t.date }}</p>
+                                    <p v-if="t.start_time" class="text-xs text-gray-500 dark:text-gray-400">{{ t.start_time }}{{ t.end_time ? ' - ' + t.end_time : '' }}</p>
+                                </div>
+                                <span class="text-[11px] font-medium px-2.5 py-1 rounded-full ml-2 flex-shrink-0" :class="statusColors[t.status]">
                                     {{ statusLabels[t.status] }}
                                 </span>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-1">
-                                    <button @click="openDetail(t)"
-                                        class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
-                                        title="Ver detalle">
-                                        <Eye class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('approve time off') && t.status === 'pendiente'" @click="confirmApprove(t)"
-                                        class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
-                                        title="Aprobar">
-                                        <Check class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('reject time off') && t.status === 'pendiente'" @click="confirmReject(t)"
-                                        class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
-                                        title="Rechazar">
-                                        <X class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('edit time off') && t.status === 'pendiente'" @click="openEdit(t)"
-                                        class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
-                                        title="Editar">
-                                        <Pencil class="w-4 h-4" />
-                                    </button>
-                                    <button v-if="can('delete time off') && t.status !== 'aprobado'" @click="confirmDelete(t)"
-                                        class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
-                                        title="Eliminar">
-                                        <AlertTriangle class="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{{ typeLabels[t.type] || t.type }}</span>
+                                <span v-if="t.reason">·</span>
+                                <span class="truncate">{{ t.reason }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 pt-1 border-t border-gray-100 dark:border-gray-700">
+                                <button @click="openDetail(t)"
+                                    class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                    title="Ver detalle">
+                                    <Eye class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('approve time off') && t.status === 'pendiente'" @click="confirmApprove(t)"
+                                    class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+                                    title="Aprobar">
+                                    <Check class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('reject time off') && t.status === 'pendiente'" @click="confirmReject(t)"
+                                    class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                    title="Rechazar">
+                                    <X class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('edit time off') && t.status === 'pendiente'" @click="openEdit(t)"
+                                    class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+                                    title="Editar">
+                                    <Pencil class="w-4 h-4" />
+                                </button>
+                                <button v-if="can('delete time off') && t.status !== 'aprobado'" @click="confirmDelete(t)"
+                                    class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                    title="Eliminar">
+                                    <AlertTriangle class="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Vista tabla (desktop) -->
+                    <table class="w-full text-sm table-fixed hidden md:table">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400" v-if="can('edit time off')">Usuario</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Fecha</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[100px]">Tipo</th>
+                                <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Estado</th>
+                                <th class="text-right px-4 py-4 font-semibold text-gray-500 dark:text-gray-400 w-[120px]">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="t in timeOffs" :key="'d-' + t.id"
+                                class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                <td class="px-4 py-4 text-gray-900 dark:text-white text-sm" v-if="can('edit time off')">{{ t.user_name }}</td>
+                                <td class="px-4 py-4 text-gray-900 dark:text-white text-sm">
+                                    {{ t.date }}
+                                    <span v-if="t.start_time" class="text-gray-500 text-xs block">{{ t.start_time }}{{ t.end_time ? ' - ' + t.end_time : '' }}</span>
+                                </td>
+                                <td class="px-4 py-4 text-gray-600 dark:text-gray-400 text-sm">{{ typeLabels[t.type] || t.type }}</td>
+                                <td class="px-4 py-4">
+                                    <span class="text-[11px] font-medium px-2.5 py-1 rounded-full" :class="statusColors[t.status]">
+                                        {{ statusLabels[t.status] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button @click="openDetail(t)"
+                                            class="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                            title="Ver detalle">
+                                            <Eye class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('approve time off') && t.status === 'pendiente'" @click="confirmApprove(t)"
+                                            class="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/20 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition"
+                                            title="Aprobar">
+                                            <Check class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('reject time off') && t.status === 'pendiente'" @click="confirmReject(t)"
+                                            class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                            title="Rechazar">
+                                            <X class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('edit time off') && t.status === 'pendiente'" @click="openEdit(t)"
+                                            class="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
+                                            title="Editar">
+                                            <Pencil class="w-4 h-4" />
+                                        </button>
+                                        <button v-if="can('delete time off') && t.status !== 'aprobado'" @click="confirmDelete(t)"
+                                            class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition"
+                                            title="Eliminar">
+                                            <AlertTriangle class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
             </div>
 
             <ConfirmDelete :show="showDelete" @close="showDelete = false" @confirm="executeDelete" />
