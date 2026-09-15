@@ -27,6 +27,9 @@ const sections = [
             'Vista semanal: grilla horaria con las tareas ubicadas según su hora de inicio y duración. Las tareas superpuestas se muestran lado a lado.',
             'Las sesiones de trabajo (días de continuación de una tarea) aparecen en el calendario semanal aunque la tarea original esté en otra semana.',
             'Las tareas extra aparecen con borde punteado (teal en oficina, naranja fuera de oficina). Los feriados se muestran en rojo.',
+            'Tareas pendientes: las tareas que no están listas para programar se pueden mover a "Pendientes" usando el icono de reloj en el sidebar del día. Estas tareas desaparecen del calendario y se muestran en la vista dedicada de Pendientes.',
+            'Vista Pendientes: accede desde el botón "Pendientes" en la barra de navegación del calendario. Muestra todas las tareas pendientes en formato de tarjetas (4 columnas en desktop).',
+            'Restaurar tarea pendiente: haz clic en "Restaurar" para seleccionar una nueva fecha y bloque horario. La validación verifica que el bloque esté libre y que sea un día laborable.',
         ],
     },
     {

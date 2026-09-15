@@ -63,6 +63,9 @@ export function usePlanning(props) {
     const dragging = ref(null)
     const showExtraModal = ref(false)
     const editingExtra = ref(null)
+    const pendingTasks = ref([])
+    const showRestoreModal = ref(false)
+    const restoringTask = ref(null)
 
     const statusLabels = computed(() => {
         const map = {}
@@ -301,6 +304,9 @@ export function usePlanning(props) {
         const weekStart = new Date(today)
         weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7))
         currentWeekStart.value = formatDate(weekStart)
+        if (viewMode.value === 'pending') {
+            viewMode.value = 'month'
+        }
         updateUrl()
         fetchSnapshot()
     }
@@ -352,7 +358,11 @@ export function usePlanning(props) {
     function setView(mode) {
         viewMode.value = mode
         updateUrl()
-        fetchSnapshot()
+        if (mode === 'pending') {
+            fetchPendingTasks()
+        } else {
+            fetchSnapshot()
+        }
     }
 
     function updateUrl() {
@@ -539,18 +549,70 @@ export function usePlanning(props) {
         }
     }
 
+    async function fetchPendingTasks() {
+        try {
+            const res = await axios.get('/video-tasks/pending')
+            pendingTasks.value = res.data
+        } catch (e) {
+            console.error('Failed to fetch pending tasks', e)
+        }
+    }
+
+    async function moveToPending(task) {
+        try {
+            await axios.patch(`/video-tasks/${task.id}/pending`)
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            if (viewMode.value === 'pending') {
+                await fetchPendingTasks()
+            } else {
+                await fetchSnapshot()
+            }
+        } catch (e) {
+            console.error('Failed to move task to pending', e)
+        }
+    }
+
+    function openRestoreModal(task) {
+        restoringTask.value = task
+        showRestoreModal.value = true
+    }
+
+    function closeRestoreModal() {
+        showRestoreModal.value = false
+        restoringTask.value = null
+    }
+
+    async function restoreFromPending(form) {
+        if (!restoringTask.value) return
+        try {
+            await axios.patch(`/video-tasks/${restoringTask.value.id}/restore`, {
+                task_date: form.task_date,
+                time_range: form.time_range,
+            })
+            closeRestoreModal()
+            await fetchPendingTasks()
+            if (viewMode.value !== 'pending') {
+                await fetchSnapshot()
+            }
+        } catch (e) {
+            console.error('Failed to restore task', e)
+        }
+    }
+
     return {
         can,
         statusColors,
         statusLabels,
+        workingDays,
         currentYear, currentMonth, currentWeekStart, viewMode,
         snapshot, selectedDate, dayTasks, extraTasks, dayObservation,
         showSidebar, showDeleteModal, showExtraDeleteModal,
         deleteTarget, extraDeleteTarget, loading, showPdfModal,
         showExtraModal, editingExtra,
+        pendingTasks, showRestoreModal, restoringTask,
         monthName, daysInMonth, firstDayOfMonth, calendarDays,
         weekDays, weekName, hours, weekTaskPlacements,
-        fetchSnapshot, fetchDayTasks,
+        fetchSnapshot, fetchDayTasks, fetchPendingTasks,
         goToday, prevMonth, nextMonth, prevWeek, nextWeek, setView,
         openDay, closeSidebar,
         createTask, viewTask, editTask,
@@ -559,5 +621,6 @@ export function usePlanning(props) {
         openExtraModal, closeExtraModal, saveExtraTask,
         confirmDeleteExtra, executeExtraDelete,
         createSession, completeSession,
+        moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
     }
 }

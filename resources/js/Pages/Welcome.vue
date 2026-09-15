@@ -205,6 +205,10 @@ const steps = [
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span class="text-gray-300">Tareas pendientes: mueve tareas del calendario a una vista dedicada</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <span class="text-gray-300">Tareas extra con detalle de actividades realizadas</span>
                             </li>
                             <li class="flex items-start gap-3">
@@ -330,6 +334,7 @@ const steps = [
         <footer class="border-t border-white/10 py-8 text-center text-sm text-gray-500">
             <p>GrowthOS &mdash; Plataforma de gestión de contenido audiovisual</p>
             <p class="mt-2">Creado por <a href="https://github.com/scorvachoa" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">scorvachoa</a></p>
+            <p class="mt-1">Licencia Elastic License 2.0 — Uso gratuito, prohibido ofrecer como servicio</p>
         </footer>
     </div>
 </template>

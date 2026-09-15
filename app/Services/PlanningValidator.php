@@ -26,6 +26,7 @@ class PlanningValidator
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
             ->where('time_range', $block)
+            ->where('is_pending', false)
             ->when($exceptVideoTaskId, fn ($q) => $q->where('id', '!=', $exceptVideoTaskId))
             ->exists();
 

@@ -78,6 +78,7 @@ npm run dev
 | Planificación (editar) | — | `edit planning` |
 | Planificación (eliminar) | — | `delete planning` |
 | Planificación (exportar PDF) | — | `export planning` |
+| Planificación (tareas pendientes) | `/planning` (vista Pendientes) | `view planning` |
 | Tareas extra (ver) | — | `view extra tasks` |
 | Tareas extra (crear) | — | `create extra tasks` |
 | Tareas extra (editar) | — | `edit extra tasks` |
@@ -555,6 +556,12 @@ php artisan test     # Tests PHPUnit
 - [x] Descripción de tareas extra visible en sidebar del calendario y en reportes PDF
 - [x] Página de bienvenida mejorada (nuevas secciones: features, cómo funciona, flujo de trabajo, por qué GrowthOS)
 - [x] Inicio rápido sin consolas (`GrowthOS.vbs`)
+- [x] Tareas pendientes: mover tareas del calendario a una vista dedicada de pendientes
+- [x] Vista Pendientes: tarjetas 4-columnas con lista de tareas pendientes
+- [x] Restaurar tarea pendiente: modal con selector de fecha y bloque horario
+- [x] Botones de acciones con iconos (ver, editar, pendiente, eliminar) en sidebar del día
+- [x] Toggle MES / SEMANA / PENDIENTES como grupo único de selección
+- [x] Modal de tareas extra mejorado: selector de rango horario con hora y minuto individuales
 
 ### Pendiente
 - [ ] Tests de autorización, CRUD y servicios
@@ -571,4 +578,15 @@ php artisan test     # Tests PHPUnit
 
 ## Licencia
 
-MIT
+[Elastic License 2.0 (ELv2)](https://www.elastic.co/licensing/elastic-license) — Gratis para uso, modificación y distribución.
+
+**Prohibido:**
+- Ofrecer GrowthOS como servicio SaaS o managed (hosting de terceros)
+- Vender el software o versiones modificadas como producto
+
+**Permitido:**
+- Usar internamente en tu empresa/organización
+- Modificar y distribuir el código fuente
+- Crear y publicar mejoras
+
+Ver [LICENSE.txt](LICENSE.txt) para los términos completos.

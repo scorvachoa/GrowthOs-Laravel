@@ -2,13 +2,15 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
-import { ChevronLeft, ChevronRight, FileDown } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, FileDown, Clock } from 'lucide-vue-next'
 
 import CalendarMonth from './Components/CalendarMonth.vue'
 import CalendarWeek from './Components/CalendarWeek.vue'
 import DaySidebar from './Components/DaySidebar.vue'
 import ExtraTaskModal from './Components/ExtraTaskModal.vue'
+import RestorePendingModal from './Components/RestorePendingModal.vue'
 import { usePlanning } from './composables/usePlanning.js'
+import { onMounted } from 'vue'
 
 const props = defineProps({
     calendar: Object,
@@ -16,15 +18,16 @@ const props = defineProps({
 })
 
 const {
-    can, statusColors, statusLabels,
+    can, statusColors, statusLabels, workingDays,
     currentYear, currentMonth, currentWeekStart, viewMode,
     snapshot, selectedDate, dayTasks, extraTasks, dayObservation,
     showSidebar, showDeleteModal, showExtraDeleteModal,
     deleteTarget, extraDeleteTarget, loading, showPdfModal,
     showExtraModal, editingExtra,
+    pendingTasks, showRestoreModal, restoringTask,
     monthName, calendarDays,
     weekDays, weekName, hours, weekTaskPlacements,
-    fetchSnapshot, fetchDayTasks,
+    fetchSnapshot, fetchDayTasks, fetchPendingTasks,
     goToday, prevMonth, nextMonth, prevWeek, nextWeek, setView,
     openDay, closeSidebar,
     createTask, viewTask, editTask,
@@ -33,7 +36,12 @@ const {
     createSession, completeSession,
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
+    moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
 } = usePlanning(props)
+
+onMounted(() => {
+    if (viewMode.value === 'pending') fetchPendingTasks()
+})
 </script>
 
 <template>
@@ -52,6 +60,15 @@ const {
                                 class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition"
                                 :class="viewMode === 'week' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
                                 Semana
+                            </button>
+                            <button @click="setView('pending')"
+                                class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition flex items-center gap-1.5"
+                                :class="viewMode === 'pending' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
+                                <Clock class="w-4 h-4" />
+                                Pendientes
+                                <span v-if="snapshot.pending_count" class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                                    {{ snapshot.pending_count }}
+                                </span>
                             </button>
                         </div>
                         <button @click="goToday"
@@ -102,6 +119,38 @@ const {
                         @createTask="createTask"
                         @openExtraModal="openExtraModal"
                         @viewTask="viewTask" />
+
+                    <div v-if="viewMode === 'pending'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div v-if="pendingTasks.length === 0" class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                            No hay tareas pendientes
+                        </div>
+                        <div v-for="task in pendingTasks" :key="task.id"
+                            class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 dark:text-white text-sm line-clamp-2">{{ task.title }}</h4>
+                                <span class="w-3 h-3 rounded-full shrink-0 ml-2" :class="statusColors[task.status]"></span>
+                            </div>
+                            <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                <p v-if="task.channel">
+                                    <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: task.channel.color }"></span>
+                                    {{ task.channel.name }}
+                                </p>
+                                <p>Original: {{ task.original_date }}</p>
+                                <p>Bloque: {{ task.time_range }}</p>
+                                <p>Creado: {{ task.created_at }}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="openRestoreModal(task)"
+                                    class="flex-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition">
+                                    Restaurar
+                                </button>
+                                <button @click="viewTask(task.id)"
+                                    class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                                    Ver
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </template>
 
                 <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -153,7 +202,8 @@ const {
                 @openExtraModal="openExtraModal"
                 @deleteExtra="confirmDeleteExtra"
                 @updateExtraStatus="updateExtraTaskStatus"
-                @saveObservation="saveObservation" />
+                @saveObservation="saveObservation"
+                @moveToPending="moveToPending" />
         </transition>
 
         <ExtraTaskModal
@@ -178,6 +228,14 @@ const {
             @confirm="executeExtraDelete" />
 
         <ExportPdfModal :show="showPdfModal" @close="showPdfModal = false" />
+
+        <RestorePendingModal
+            :show="showRestoreModal"
+            :task="restoringTask"
+            :work-blocks="snapshot.work_blocks"
+            :working-days="workingDays"
+            @close="closeRestoreModal"
+            @restore="restoreFromPending" />
     </AppLayout>
 </template>
 

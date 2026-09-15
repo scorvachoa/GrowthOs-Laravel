@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/video-tasks/create', [VideoTaskController::class, 'create'])->middleware('can:create planning')->name('video-tasks.create');
     Route::post('/video-tasks', [VideoTaskController::class, 'store'])->middleware('can:create planning')->name('video-tasks.store');
+    Route::get('/video-tasks/pending', [VideoTaskController::class, 'pending'])->middleware('can:view planning')->name('video-tasks.pending.index');
     Route::get('/video-tasks/{video_task}', [VideoTaskController::class, 'show'])->middleware('can:view planning')->name('video-tasks.show');
     Route::get('/video-tasks/{video_task}/edit', [VideoTaskController::class, 'edit'])->middleware('can:edit planning')->name('video-tasks.edit');
     Route::put('/video-tasks/{video_task}', [VideoTaskController::class, 'update'])->middleware('can:edit planning')->name('video-tasks.update');
@@ -77,6 +78,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'updateSession'])->middleware('can:edit planning')->name('video-tasks.sessions.update');
     Route::delete('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'destroySession'])->middleware('can:delete planning')->name('video-tasks.sessions.destroy');
     Route::post('/video-tasks/{video_task}/move', [VideoTaskController::class, 'move'])->middleware('can:edit planning')->name('video-tasks.move');
+    Route::patch('/video-tasks/{video_task}/pending', [VideoTaskController::class, 'moveToPending'])->middleware('can:edit planning')->name('video-tasks.pending');
+    Route::patch('/video-tasks/{video_task}/restore', [VideoTaskController::class, 'restorePending'])->middleware('can:edit planning')->name('video-tasks.restore');
     Route::delete('/video-tasks/{video_task}', [VideoTaskController::class, 'destroy'])->middleware('can:delete planning')->name('video-tasks.destroy');
     Route::get('/extra-tasks', [ExtraTaskController::class, 'index'])->middleware('can:view planning')->name('extra-tasks.index');
     Route::post('/extra-tasks', [ExtraTaskController::class, 'store'])->middleware('can:create planning')->name('extra-tasks.store');

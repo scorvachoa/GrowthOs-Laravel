@@ -19,14 +19,21 @@ const form = ref({
     status: 'pending',
     location: 'oficina',
 })
+
 const timeStart = ref('09:00')
 const timeEnd = ref('10:00')
 
-watch([timeStart, timeEnd], ([s, e]) => {
-    if (s && e) {
-        form.value.time_range = `${s}-${e}`
-    }
-})
+function toMinutes(t) {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+}
+
+function buildTimeRange() {
+    form.value.time_range = `${timeStart.value}-${timeEnd.value}`
+}
+
+watch(timeStart, () => buildTimeRange())
+watch(timeEnd, () => buildTimeRange())
 
 watch(() => props.show, (val) => {
     if (!val) return
@@ -57,13 +64,23 @@ watch(() => props.show, (val) => {
 })
 
 function parseTimeRange(range) {
-    if (!range) return { start: '08:00', end: '09:00' }
-    const parts = range.split('-')
-    if (parts.length !== 2) return { start: '08:00', end: '09:00' }
-    return { start: parts[0], end: parts[1] }
+    if (!range) return { start: '09:00', end: '10:00' }
+    const [s, e] = range.split('-')
+    return { start: s || '09:00', end: e || '10:00' }
+}
+
+function validateTimes() {
+    if (timeStart.value && timeEnd.value && toMinutes(timeEnd.value) <= toMinutes(timeStart.value)) {
+        const sm = toMinutes(timeStart.value) + 10
+        const nh = Math.floor(sm / 60)
+        const nm = sm % 60
+        timeEnd.value = `${String(Math.min(nh, 23)).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+        form.value.time_range = `${timeStart.value}-${timeEnd.value}`
+    }
 }
 
 function submit() {
+    validateTimes()
     emit('save', { ...form.value })
 }
 </script>
@@ -98,10 +115,10 @@ function submit() {
                         <div>
                             <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Rango horario</label>
                             <div class="flex items-center gap-2">
-                                <input v-model="timeStart" type="time" required
+                                <input v-model="timeStart" type="time" required @blur="validateTimes"
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
                                 <span class="text-gray-400 font-medium">a</span>
-                                <input v-model="timeEnd" type="time" required
+                                <input v-model="timeEnd" type="time" required @blur="validateTimes"
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:[color-scheme:dark]" />
                             </div>
                         </div>

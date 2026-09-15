@@ -24,6 +24,7 @@ class VideoTask extends Model
         'created_by',
         'channel_id',
         'key_phrases',
+        'is_pending',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class VideoTask extends Model
             'task_date' => 'date',
             'translations' => 'array',
             'key_phrases' => 'array',
+            'is_pending' => 'boolean',
         ];
     }
 

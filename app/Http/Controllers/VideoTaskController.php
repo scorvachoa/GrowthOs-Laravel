@@ -246,6 +246,80 @@ class VideoTaskController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function pending()
+    {
+        $tasks = VideoTask::query()
+            ->where('is_pending', true)
+            ->with('channel')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn (VideoTask $task) => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'status' => $task->status,
+                'original_date' => $task->task_date->format('Y-m-d'),
+                'time_range' => $task->time_range,
+                'channel' => $task->channel ? ['name' => $task->channel->name, 'color' => $task->channel->color] : null,
+                'created_at' => $task->created_at->format('Y-m-d'),
+            ]);
+
+        return response()->json($tasks);
+    }
+
+    public function moveToPending(VideoTask $videoTask)
+    {
+        $videoTask->update(['is_pending' => true]);
+        PlanningCalendarService::bustCache();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function restorePending(Request $request, VideoTask $videoTask)
+    {
+        $settings = Auth::user()->merged_settings;
+        $useBlocks = $settings['use_blocks'];
+        $blockHours = $settings['block_hours'];
+        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
+        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
+        $workingDays = $settings['working_days'] ?? [1,2,3,4,5];
+
+        $rules = [
+            'task_date' => ['required', 'date', 'after_or_equal:today'],
+        ];
+
+        if ($useBlocks) {
+            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $rules['time_range'] = ['required', Rule::in($blocks)];
+        } else {
+            $rules['time_range'] = ['required', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
+
+        if ($useBlocks) {
+            $this->planningValidator->assertSlotAvailable(
+                $validated['task_date'],
+                $validated['time_range'],
+                $videoTask->id
+            );
+        }
+
+        $videoTask->update([
+            'task_date' => $validated['task_date'],
+            'time_range' => $validated['time_range'],
+            'is_pending' => false,
+        ]);
+
+        PlanningCalendarService::bustCache();
+
+        return response()->json([
+            'ok' => true,
+            'task_id' => $videoTask->id,
+        ]);
+    }
+
     private function serializeTask(VideoTask $task): array
     {
         return VideoTaskResource::make($task->load('sessions'))->resolve();

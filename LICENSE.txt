@@ -1,0 +1,20 @@
+ELASTIC LICENSE AGREEMENT
+
+Copyright 2024-2026 scorvachoa
+
+This Elastic License Agreement (the "Agreement") sets forth the terms and conditions for "Use," modification, and redistribution of the Software. For purposes of this Agreement:
+
+"Use" means any use of the Software other than on a Third-Party Product.
+"Third-Party Product" means any product, project, or work that is (i) developed by a third party and that makes available the Software, in whole or in part, as part of its product; or (ii) uses the Software, in whole or in part, to provide a managed or hosted service to third parties.
+"Software" means the software licensed under this Agreement.
+
+Subject to the terms of this Agreement, Elastic grants you a limited, non-exclusive, non-transferable, revocable license to Use, modify, and redistribute the Software, provided that you may NOT:
+
+1. Offer the Software as a managed or hosted service (e.g., SaaS, PaaS);
+2. Sell the Software or modified versions of the Software as a product;
+3. Circumvent any license key mechanism in the Software;
+4. Remove or obscure any proprietary notices or labels in the Software.
+
+You may redistribute the Software in source and binary forms, with or without modification, provided that you include a copy of this Agreement and the copyright notice.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

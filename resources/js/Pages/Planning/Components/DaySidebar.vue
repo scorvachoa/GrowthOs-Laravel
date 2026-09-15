@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { Plus, ExternalLink, Trash2, X, StickyNote, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Plus, ExternalLink, Trash2, X, StickyNote, ChevronDown, ChevronRight, Clock, Eye, Pencil } from 'lucide-vue-next'
 
 const props = defineProps({
     selectedDate: String,
@@ -29,6 +29,7 @@ const emit = defineEmits([
     'deleteExtra',
     'updateExtraStatus',
     'saveObservation',
+    'moveToPending',
 ])
 
 const notes = ref(props.observation?.notes || '')
@@ -138,20 +139,28 @@ function cancelEdit() {
                                 <option v-for="s in statuses || []" :key="s.value" :value="s.value">{{ s.label }}</option>
                             </select>
                             <button @click="emit('viewTask', task.id)"
-                                class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
-                                Ver
+                                class="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition"
+                                title="Ver tarea">
+                                <Eye class="w-4 h-4" />
                             </button>
                             <button v-if="canEdit" @click="emit('editTask', task.id)"
-                                class="text-xs px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition">
-                                Editar
+                                class="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition"
+                                title="Editar tarea">
+                                <Pencil class="w-4 h-4" />
+                            </button>
+                            <button v-if="canEdit" @click="emit('moveToPending', task)"
+                                class="p-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition"
+                                title="Mover a pendiente">
+                                <Clock class="w-4 h-4" />
+                            </button>
+                            <button v-if="canDelete" @click="emit('deleteTask', task)"
+                                class="p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+                                title="Eliminar tarea">
+                                <Trash2 class="w-4 h-4" />
                             </button>
                             <button v-if="canEdit && task.status !== 'published' && task.status !== 'cancelled'" @click="emit('createSession', task)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition whitespace-nowrap">
                                 + Sesión
-                            </button>
-                            <button v-if="canDelete" @click="emit('deleteTask', task)"
-                                class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">
-                                <Trash2 class="w-3 h-3" />
                             </button>
                         </div>
                     </div>

@@ -44,6 +44,8 @@ class PlanningCalendarService
 
         [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap] = $this->buildWeekMaps($weekStart, $workBlocks);
 
+        $pendingCount = VideoTask::where('is_pending', true)->count();
+
         return [
             'year' => $year,
             'month' => $month,
@@ -61,6 +63,7 @@ class PlanningCalendarService
             'holidays_map' => $this->holidays->forYear($year),
             'work_blocks' => $workBlocks,
             'statuses' => VideoTaskStatus::options(),
+            'pending_count' => $pendingCount,
         ];
     }
 
@@ -70,6 +73,7 @@ class PlanningCalendarService
             ->with('channel', 'sessions')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
+            ->where('is_pending', false)
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get();
@@ -235,6 +239,7 @@ class PlanningCalendarService
             ->with('channel', 'sessions')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
+            ->where('is_pending', false)
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get();
@@ -343,6 +348,7 @@ class PlanningCalendarService
             ->with('channel')
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
+            ->where('is_pending', false)
             ->orderBy('time_range')
             ->get()
             ->map(fn (VideoTask $task) => $this->serializeDetail($task))
