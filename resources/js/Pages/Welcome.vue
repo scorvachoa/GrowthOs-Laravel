@@ -20,7 +20,7 @@ const features = [
     {
         icon: Calendar,
         title: 'Planificación visual',
-        description: 'Calendario semanal y mensual con bloques de tiempo configurables. Arrastra y suelta tareas, gestiona ausencias y visualiza la carga de trabajo de tu equipo en tiempo real.',
+        description: 'Calendario semanal y mensual con bloques de tiempo configurables. Gestiona tareas, sesiones de trabajo, ausencias y tareas pendientes en tiempo real.',
         color: 'indigo',
     },
     {
@@ -37,7 +37,7 @@ const features = [
     },
     {
         icon: Lightbulb,
-        title: 'Bank de ideas',
+        title: 'Banco de ideas',
         description: 'Captura y organiza ideas por canal. Marca las usadas, importa desde TXT y exporta para compartir con tu equipo.',
         color: 'amber',
     },
@@ -50,7 +50,7 @@ const features = [
     {
         icon: Users,
         title: 'Gestión de equipo',
-        description: 'Roles y permisos granulares por organización. Super Admin, Admin y Employee con control total sobre quién puede ver, crear, editar o eliminar.',
+        description: 'Roles y permisos granulares por organización. Compartir tareas con otros usuarios asignando roles de editor o lector.',
         color: 'cyan',
     },
     {
@@ -112,8 +112,8 @@ const steps = [
                 </h1>
                 <p class="mt-6 text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
                     Planifica, organiza y da seguimiento a tus videos, tareas e ideas.
-                    GrowthOS centraliza toda tu producción audiovisual en un solo lugar,
-                    potenciado con inteligencia artificial.
+                    Comparte tareas con tu equipo, gestiona sesiones de trabajo multi-día
+                    y potencia tu producción con inteligencia artificial.
                 </p>
                 <div class="mt-10 flex items-center justify-center gap-4">
                     <Link :href="route('register')" class="px-8 py-4 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition flex items-center gap-2 shadow-lg shadow-indigo-600/25 text-lg">
@@ -127,12 +127,12 @@ const steps = [
                 <!-- Stats -->
                 <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
                     <div class="text-center">
-                        <div class="text-3xl font-bold text-white">9+</div>
+                        <div class="text-3xl font-bold text-white">14+</div>
                         <div class="text-sm text-gray-500 mt-1">Módulos</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-3xl font-bold text-white">IA</div>
-                        <div class="text-sm text-gray-500 mt-1">Integrada</div>
+                        <div class="text-3xl font-bold text-white">52</div>
+                        <div class="text-sm text-gray-500 mt-1">Permisos</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-white">24/7</div>
@@ -193,7 +193,7 @@ const steps = [
                         <ul class="space-y-4">
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                <span class="text-gray-300">Calendario visual con bloques de tiempo y drag & drop</span>
+                                <span class="text-gray-300">Calendario visual con bloques de tiempo configurables</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -201,7 +201,11 @@ const steps = [
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                <span class="text-gray-300">Gestión de ideas por canal con importación y exportación</span>
+                                <span class="text-gray-300">Compartir tareas con usuarios y asignar roles (editor/lector)</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span class="text-gray-300">Sesiones de trabajo multi-día con gestión desde el calendario</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -209,7 +213,7 @@ const steps = [
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                <span class="text-gray-300">Tareas extra con detalle de actividades realizadas</span>
+                                <span class="text-gray-300">Historial de cambios por tarea con detalles expandibles</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
