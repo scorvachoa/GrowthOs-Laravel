@@ -1,5 +1,6 @@
 # Dependencies
 /node_modules
+/package-lock.json
 
 # Build files
 /public/build
@@ -9,6 +10,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/backups
 
 # Environment
 .env
@@ -41,3 +43,7 @@ Homestead.yaml
 *.sqlite
 *.sqlite3
 *.db
+
+# OS
+.DS_Store
+Thumbs.db
