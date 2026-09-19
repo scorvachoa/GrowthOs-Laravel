@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Channel;
-use App\Models\VideoTask;
 use App\Enums\VideoTaskStatus;
+use App\Models\VideoTask;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -13,6 +12,7 @@ class TaskHistoryController extends Controller
     public function index(Request $request)
     {
         $query = VideoTask::query()
+            ->visibleTo()
             ->with('creator', 'channel')
             ->orderBy('task_date', 'desc')
             ->orderBy('time_range');
@@ -52,32 +52,57 @@ class TaskHistoryController extends Controller
 
     public function show(VideoTask $videoTask)
     {
-        $videoTask->load('creator', 'channel');
+        $videoTask->load('channel', 'shares.sharedByUser', 'shares.sharedWithUser');
 
         $activities = $videoTask->activities()
             ->with('causer')
-            ->orderBy('created_at', 'desc')
+            ->latest()
+            ->take(30)
             ->get()
-            ->map(fn ($activity) => [
-                'id' => $activity->id,
-                'description' => $activity->description,
-                'properties' => $activity->properties,
-                'causer' => $activity->causer?->name,
-                'created_at' => $activity->created_at->format('Y-m-d H:i'),
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'description' => $a->description,
+                'causer_name' => $a->causer?->name ?? 'Sistema',
+                'created_at' => $a->created_at->format('d/m/Y H:i'),
+                'properties' => $a->changes,
             ]);
 
-        return Inertia::render('TaskHistory/Show', [
-            'task' => [
-                'id' => $videoTask->id,
-                'task_date' => $videoTask->task_date->format('Y-m-d'),
-                'time_range' => $videoTask->time_range,
-                'title' => $videoTask->title,
-                'status' => $videoTask->status,
-                'channel' => $videoTask->channel
-                    ? ['name' => $videoTask->channel->name, 'color' => $videoTask->channel->color]
-                    : null,
-                'created_by' => $videoTask->creator?->name,
-            ],
+        $serialize = fn ($task) => [
+            'id' => $task->id,
+            'title' => $task->title,
+            'task_date' => $task->task_date->format('Y-m-d'),
+            'time_range' => $task->time_range,
+            'status' => $task->status,
+            'script' => $task->script,
+            'copy' => $task->copy,
+            'youtube_url' => $task->youtube_url,
+            'key_phrases' => $task->key_phrases,
+            'created_by' => $task->created_by,
+            'channel' => $task->channel ? [
+                'id' => $task->channel->id,
+                'name' => $task->channel->name,
+                'color' => $task->channel->color,
+            ] : null,
+            'translations' => $task->translations ?? [],
+            'sessions' => $task->sessions->map(fn ($s) => [
+                'id' => $s->id,
+                'date' => $s->date,
+                'time_range' => $s->time_range,
+                'status' => $s->status,
+            ]),
+            'shared_by_user_name' => $task->shares->first()?->sharedByUser?->name,
+            'shared_with_users' => $task->shares->map(fn ($s) => [
+                'id' => $s->sharedWithUser->id,
+                'name' => $s->sharedWithUser->name,
+                'accepted' => $s->isAccepted(),
+                'role' => $s->role,
+            ]),
+        ];
+
+        return Inertia::render('VideoTasks/Show', [
+            'task' => $serialize($videoTask),
+            'statuses' => \App\Enums\VideoTaskStatus::options(),
+            'channels' => \App\Models\Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
             'activities' => $activities,
         ]);
     }

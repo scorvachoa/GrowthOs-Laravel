@@ -23,7 +23,7 @@ class PhraseCleaner
                 continue;
             }
 
-            $normalized = mb_strtolower(trim($line, " ¡!¿?:.-*"));
+            $normalized = mb_strtolower(trim($line, ' ¡!¿?:.-*'));
 
             $shouldSkip = false;
             foreach (self::SKIP_PREFIXES as $prefix) {
@@ -59,7 +59,7 @@ class PhraseCleaner
 
             if ($line !== '' && mb_strlen($line) <= 90) {
                 $upper = mb_strtoupper($line);
-                if (!isset($seen[$upper])) {
+                if (! isset($seen[$upper])) {
                     $seen[$upper] = true;
                     $cleanLines[] = $upper;
                 }

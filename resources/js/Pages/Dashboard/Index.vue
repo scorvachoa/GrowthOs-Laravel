@@ -53,7 +53,7 @@ const statusBarColor = (status) => {
 const statusLabel = (status) => props.stats.status_labels?.[status] || status
 
 const goToPlanning = () => router.get('/planning')
-const viewTask = (id) => router.get(`/video-tasks/${id}`)
+const viewTask = (id) => router.get(`/tasks/${id}`)
 const approveAbsence = (type, id) => router[type === 'vacation' ? 'patch' : 'patch'](`/${type === 'vacation' ? 'vacations' : 'time-off'}/${id}/approve`)
 const rejectAbsence = (type, id) => router[type === 'vacation' ? 'patch' : 'patch'](`/${type === 'vacation' ? 'vacations' : 'time-off'}/${id}/reject`)
 const showPdfModal = ref(false)

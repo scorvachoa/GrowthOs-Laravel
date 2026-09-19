@@ -15,6 +15,7 @@ class AIContentService
     {
         $prompt = Prompts::buildScriptPrompt($idea);
         $rawScript = $this->gemini->generateContent($prompt);
+
         return $this->scriptCleaner->clean($rawScript);
     }
 
@@ -22,6 +23,7 @@ class AIContentService
     {
         $prompt = Prompts::buildCopyPrompt($script);
         $rawCopy = $this->gemini->generateContent($prompt);
+
         return $this->copyParser->parse($rawCopy);
     }
 
@@ -29,6 +31,7 @@ class AIContentService
     {
         $prompt = Prompts::buildPhrasesPrompt($script);
         $rawPhrases = $this->gemini->generateContent($prompt);
+
         return $this->phraseCleaner->clean($rawPhrases);
     }
 }

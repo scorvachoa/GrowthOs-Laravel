@@ -88,7 +88,9 @@ npm run dev
 | Ideas (editar) | — | `edit ideas` |
 | Ideas (eliminar) | — | `delete ideas` |
 | Ideas (importar/exportar) | — | `import ideas`, `export ideas` |
-| Historial de tareas (auditoría) | `/task-history` | `view task history` |
+| Historial de tareas (ver) | `/tasks` | `view tasks` |
+| Historial de tareas (detalle) | `/tasks/{id}` | `view tasks` |
+| Compartir tareas | — | `edit planning` |
 | Reportes PDF (ver) | `/dashboard`, `/planning` | `view reports` |
 | Reportes PDF (exportar) | — | `download reports` |
 | Historial de reportes (ver) | `/report-history` | `view reports` |
@@ -139,7 +141,7 @@ Roles:           view roles, create roles, edit roles, delete roles
 Planificación:   view planning, create planning, edit planning, delete planning, export planning
 Tareas extra:    view extra tasks, create extra tasks, edit extra tasks, delete extra tasks
 Ideas:           view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
-Historial:       view task history
+Historial:       view tasks
 Reportes:        view reports, download reports, delete reports
 YouTube:         view youtube
 Empresa:         view empresa, create empresa, edit empresa, delete empresa
@@ -207,10 +209,13 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **Respaldo en topbar**: icono `HardDrive` fijo en la topbar, eliminado del sidebar
 - **Sesiones de trabajo multi-día**: tabla `work_sessions` permite continuar tareas en días posteriores. Las tareas se muestran en el calendario tanto en su fecha original como en las fechas de sesión, cada una con su propio bloque horario y estado.
 - **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; todo sin salir del calendario.
-- **Edición/eliminación de sesiones**: desde el formulario de editar tarea, sección "Sesiones de trabajo" con opciones de editar fecha/bloque/estado y eliminar con confirmación modal.
+- **Edición/eliminación de sesiones**: desde el sidebar del calendario o desde la vista de detalle `/tasks/{id}`. Selector de bloque horario con verificación de disponibilidad. Botón Cancelar (rojo) en el formulario de edición.
 - **Multi-idioma configurable en VideoTasks**: columna `translations` JSON para título/guion/copy/youtube_url en múltiples idiomas. Idiomas configurables desde `/settings` (ES siempre presente). Pestañas de idioma en crear, editar y ver tarea — solo se muestras las que tienen contenido.
 - **Leyenda de colores en planificación**: todos los estados de tarea y sesión visibles con indicador de color, agrupados por sección (Tareas / Sesiones).
 - **Tareas extra con descripción**: campo opcional de descripción para detallar lo realizado en cada tarea extra. Visible en el sidebar del calendario y en los reportes PDF.
+- **Compartir tareas**: desde el sidebar del calendario o la vista de detalle, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve). Gestión desde `/tasks/{id}`.
+- **Historial de cambios en tareas**: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Las entradas personalizadas muestran "Movido a pendiente" y "Restaurado desde pendiente". Haz clic en una entrada para ver los detalles completos.
+- **URLs generalizadas**: rutas unificadas bajo `/tasks/*` para tareas de video, `/tasks/extra/*` para tareas extra, y `/tasks/history` para el historial. Las URLs antiguas (`/video-tasks`, `/extra-tasks`, `/task-history`) siguen funcionando como redirects.
 
 ---
 
@@ -317,8 +322,8 @@ app/
 ├── Enums/                   # VideoTaskStatus (backed string enum PHP 8)
 ├── Http/
 │   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory,
-│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, TaskHistory, AI,
-│   │                        # Backup, Vacation, TimeOff, Manual
+│   │                        # Settings, Users, Roles, Profile, Youtube, Idea, AI,
+│   │                        # Backup, Vacation, TimeOff, Manual, Company, Notification
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
 ├── Models/                  # User, VideoTask, WorkSession, ExtraTask, ReportHistory, Organization, Channel,
@@ -346,10 +351,9 @@ resources/js/
 │   ├── AI/                  # UseTaskModal (envío al planificador desde AI Generator)
 │   ├── ExportPdfModal.vue   # Modal reutilizable para exportar PDF (Dashboard + Planning)
 │   ├── Forms/               # TextInput, SearchInput
-│   ├── Modals/              # Modal, ConfirmDelete
+│   ├── Modals/              # Modal, ConfirmDelete, ShareModal
 │   ├── Navigation/          # Sidebar, Topbar, SidebarItem
-│   ├── Notifications/       # Toast, ToastContainer
-│   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard, ErrorModal
+│   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard
 ├── Composables/             # useTheme (modo claro/oscuro)
 ├── config/
 │   └── navigation.js        # Menú lateral filtrado por permiso
@@ -360,19 +364,18 @@ resources/js/
     ├── Auth/
     ├── Backup/              # Index (exportación, restauración, programación, scope selector)
     ├── Dashboard/           # KPIs reales con statcards + gráficos Chart.js + Exportar PDF
-    ├── Error/               # 403.vue (página personalizada SPA)
     ├── Ideas/               # Index (tabs por canal, búsqueda, sort, paginación con filtros, filtro estado, selección múltiple, edición en masa, CRUD, import/export txt)
     ├── Manual/              # Manual.vue (documentación del sistema)
-    ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal + Exportar PDF
+    ├── Notifications/       # Index (tabs Notificaciones + Shares)
+    ├── Planning/            # Calendario mes/semana + sidebar tareas del día + extra tasks modal + Exportar PDF + Pendientes
     ├── Profile/
     ├── Reports/             # History.vue (historial de reportes PDF)
     ├── Roles/               # Index + Create + Edit + RoleForm
     ├── Settings/            # Index (horario laboral, YouTube, dashboard, respaldo, empresa + canales inline)
-    ├── TaskHistory/         # Index (lista tareas con estado) + Show (timeline de cambios)
     ├── TimeOff/             # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
     ├── Users/               # Index + Create + Edit
     ├── Vacations/           # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
-    ├── VideoTasks/          # Create, Edit, Show (3 columnas + video embed), VideoTaskForm
+    ├── VideoTasks/          # Create, Edit, Show (historial de cambios + sesiones + compartir), Components/VideoTaskForm
     └── Youtube/             # Index (tabs canal, gráficos Chart.js, cards/lista videos)
 
 GrowthOS.vbs                  # Inicio rápido sin consolas (doble clic)
@@ -392,7 +395,7 @@ INICIAR.txt                   # Instrucciones de uso del script de inicio
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema. Incluye tareas extra con descripción detallada.
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
-- **Permisos granulares** — cada acción CRUD tiene su propio permiso (53 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (52 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 - **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
 - **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
@@ -562,6 +565,16 @@ php artisan test     # Tests PHPUnit
 - [x] Botones de acciones con iconos (ver, editar, pendiente, eliminar) en sidebar del día
 - [x] Toggle MES / SEMANA / PENDIENTES como grupo único de selección
 - [x] Modal de tareas extra mejorado: selector de rango horario con hora y minuto individuales
+- [x] URLs generalizadas: `/tasks/*`, `/tasks/extra/*`, `/tasks/history` (redirecciones desde URLs antiguas)
+- [x] Notificaciones + Shares unificados en `/notifications` con tabs
+- [x] Compartir tareas desde sidebar del calendario y vista de detalle
+- [x] Gestión de sesiones desde sidebar: editar y eliminar con modal inline
+- [x] Edición/eliminación de sesiones desde vista de detalle `/tasks/{id}`
+- [x] Botón Cancelar (rojo) en formulario de edición de tareas
+- [x] Historial de cambios en tareas con entradas personalizadas (Movido a pendiente, Restaurado desde pendiente)
+- [x] Activity log mejorado: layout timeline, avatar gradiente, español, expandible/collapse, fechas formateadas
+- [x] Diseño consistente entre Edit.vue y Show.vue (mismo header, card, sesión, botones)
+- [x] Limpieza de archivos no utilizados (9 componentes Vue, directorio vacío)
 
 ### Pendiente
 - [ ] Tests de autorización, CRUD y servicios

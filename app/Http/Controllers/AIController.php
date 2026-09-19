@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\VideoTaskStatus;
 use App\Http\Requests\GenerateScriptRequest;
 use App\Http\Resources\GeneratedVideoResource;
 use App\Models\Channel;
@@ -10,7 +11,6 @@ use App\Models\VideoTask;
 use App\Services\AI\AIContentService;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
-use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -43,9 +43,9 @@ class AIController extends Controller
             ->map(fn ($v) => [
                 'id' => $v->id,
                 'idea' => $v->idea,
-                'has_script' => !empty($v->script),
-                'has_copy' => !empty($v->copy_title),
-                'has_phrases' => !empty($v->video_phrases),
+                'has_script' => ! empty($v->script),
+                'has_copy' => ! empty($v->copy_title),
+                'has_phrases' => ! empty($v->video_phrases),
                 'created_at' => $v->created_at?->format('Y-m-d H:i'),
             ]);
 
@@ -62,9 +62,22 @@ class AIController extends Controller
             : GeneratedVideo::query();
     }
 
+    private function ensureVisible(GeneratedVideo $video): void
+    {
+        $user = auth()->user();
+        if ($user->hasRole(['Super Admin', 'Admin'])) {
+            return;
+        }
+        if ($video->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para acceder a este video');
+        }
+    }
+
     public function show(int $id)
     {
         $video = GeneratedVideo::findOrFail($id);
+        $this->ensureVisible($video);
+
         return response()->json(
             GeneratedVideoResource::make($video)->resolve()
         );
@@ -73,7 +86,9 @@ class AIController extends Controller
     public function destroy(int $id)
     {
         $video = GeneratedVideo::findOrFail($id);
+        $this->ensureVisible($video);
         $video->delete();
+
         return response()->json(['ok' => true]);
     }
 
@@ -111,9 +126,9 @@ class AIController extends Controller
                 'id' => $v->id,
                 'idea' => $v->idea,
                 'script_preview' => mb_substr($v->script, 0, 120),
-                'has_script' => !empty($v->script),
-                'has_copy' => !empty($v->copy_title),
-                'has_phrases' => !empty($v->video_phrases),
+                'has_script' => ! empty($v->script),
+                'has_copy' => ! empty($v->copy_title),
+                'has_phrases' => ! empty($v->video_phrases),
                 'used_in_planner' => $v->used_in_planner,
                 'created_at' => $v->created_at?->format('Y-m-d H:i'),
             ]);
@@ -133,6 +148,7 @@ class AIController extends Controller
     public function downloadTxt(int $id)
     {
         $video = GeneratedVideo::findOrFail($id);
+        $this->ensureVisible($video);
 
         $lines = [
             'IDEA',
@@ -142,7 +158,7 @@ class AIController extends Controller
             $video->script ?: 'Sin guion.',
             '',
             'COPY',
-            'Titulo: ' . ($video->copy_title ?: 'Sin titulo.'),
+            'Titulo: '.($video->copy_title ?: 'Sin titulo.'),
             '',
             'Descripcion',
             $video->copy_description ?: 'Sin descripcion.',
@@ -165,7 +181,7 @@ class AIController extends Controller
 
         return response($content, 200, [
             'Content-Type' => 'text/plain; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '.txt"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'.txt"',
         ]);
     }
 
@@ -174,6 +190,7 @@ class AIController extends Controller
         $idea = trim($request->validated()['idea']);
 
         $video = GeneratedVideo::create([
+            'organization_id' => auth()->user()->activeOrganizationId(),
             'idea' => $idea,
             'status' => GeneratedVideo::STATUS_PROCESSING,
             'script' => '',
@@ -223,6 +240,13 @@ class AIController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        if (! $useBlocks && isset($validated['time_range']) && str_contains($validated['time_range'], '-')) {
+            [$start, $end] = explode('-', $validated['time_range'], 2);
+            if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
+                return response()->json(['errors' => ['time_range' => ['La hora fin debe ser mayor a la hora de inicio']]], 422);
+            }
+        }
 
         $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
         $this->planningValidator->assertSlotAvailable($validated['task_date'], $validated['time_range']);

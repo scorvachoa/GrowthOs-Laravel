@@ -121,9 +121,65 @@ class WorkBlocksTest extends TestCase
             $startH = (int) explode(':', $start)[0];
             $endH = (int) explode(':', $end)[0];
 
-            if ($startH >= 13 && $endH <= 14) {
-                $this->fail("Block {$block} falls within lunch break (13-14)");
-            }
+            $this->assertFalse(
+                $startH >= 13 && $endH <= 14,
+                "Block {$block} falls within lunch break (13-14)"
+            );
         }
+    }
+
+    public function test_generate_returns_empty_for_large_blocks(): void
+    {
+        $blocks = WorkBlocks::generate(10);
+
+        $this->assertCount(0, $blocks);
+    }
+
+    public function test_generate_blocks_are_chronological(): void
+    {
+        $blocks = WorkBlocks::generate(2);
+
+        for ($i = 1; $i < count($blocks); $i++) {
+            $prevEnd = WorkBlocks::parseHour(explode('-', $blocks[$i - 1])[1]);
+            $currStart = WorkBlocks::parseHour(explode('-', $blocks[$i])[0]);
+            $this->assertGreaterThanOrEqual($prevEnd, $currStart);
+        }
+    }
+
+    public function test_from_settings_custom_lunch(): void
+    {
+        $blocks = WorkBlocks::fromSettings([
+            'block_hours' => 2,
+            'lunch_start' => '12:00',
+            'lunch_end' => '13:00',
+        ]);
+
+        $this->assertContains('09:00-11:00', $blocks);
+        $this->assertContains('13:00-15:00', $blocks);
+    }
+
+    public function test_empty_counts_values_are_zero(): void
+    {
+        $counts = WorkBlocks::emptyCounts();
+
+        foreach ($counts as $count) {
+            $this->assertEquals(0, $count);
+        }
+    }
+
+    public function test_is_valid_with_custom_blocks(): void
+    {
+        $custom = ['08:00-10:00', '10:00-12:00'];
+
+        $this->assertTrue(WorkBlocks::isValid('08:00-10:00', $custom));
+        $this->assertFalse(WorkBlocks::isValid('09:00-11:00', $custom));
+    }
+
+    public function test_parse_hour_various_formats(): void
+    {
+        $this->assertEquals(0, WorkBlocks::parseHour('00:00'));
+        $this->assertEquals(9, WorkBlocks::parseHour('09:30'));
+        $this->assertEquals(12, WorkBlocks::parseHour('12:00'));
+        $this->assertEquals(23, WorkBlocks::parseHour('23:59'));
     }
 }

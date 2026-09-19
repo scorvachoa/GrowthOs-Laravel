@@ -1,6 +1,5 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
@@ -17,7 +16,9 @@ const props = defineProps({
 const form = useForm({
     name: props.user.name,
     email: props.user.email,
+    current_password: '',
     password: '',
+    password_confirmation: '',
 })
 const submit = () => {
     form.patch('/profile')
@@ -27,7 +28,7 @@ const submit = () => {
 <template>
     <AppLayout>
 
-        <div class="max-w-3xl">
+        <div class="">
 
             <div class="mb-8">
 
@@ -35,7 +36,7 @@ const submit = () => {
                     Mi Perfil
                 </h1>
 
-                <p class="text-gray-500 mt-2">
+                <p class="text-gray-500 dark:text-gray-400 mt-2">
                     Gestiona la configuración de tu cuenta
                 </p>
 
@@ -61,12 +62,33 @@ const submit = () => {
                         :error="form.errors.email"
                     />
 
-                    <TextInput
-                        v-model="form.password"
-                        label="Nueva contraseña"
-                        type="password"
-                        :error="form.errors.password"
-                    />
+                    <div class="border-t border-gray-100 dark:border-gray-800 pt-6">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Para cambiar la contraseña, primero ingresa la contraseña actual.
+                        </p>
+
+                        <TextInput
+                            v-model="form.current_password"
+                            label="Contraseña actual"
+                            type="password"
+                            :error="form.errors.current_password"
+                        />
+
+                        <TextInput
+                            v-model="form.password"
+                            label="Nueva contraseña"
+                            type="password"
+                            :error="form.errors.password"
+                            class="mt-4"
+                        />
+
+                        <TextInput
+                            v-model="form.password_confirmation"
+                            label="Confirmar nueva contraseña"
+                            type="password"
+                            class="mt-4"
+                        />
+                    </div>
 
                     <PrimaryButton
                         :disabled="form.processing"

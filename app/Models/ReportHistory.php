@@ -31,6 +31,6 @@ class ReportHistory extends Model
 
     public function fileExists(): bool
     {
-        return $this->filename && Storage::disk('public')->exists('reports/' . $this->filename);
+        return $this->filename && Storage::disk('public')->exists('reports/'.$this->filename);
     }
 }

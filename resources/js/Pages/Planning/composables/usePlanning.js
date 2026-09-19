@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import { calendarStatusColors } from '@/config/statusConstants'
 import axios from 'axios'
 
 export function usePlanning(props) {
@@ -32,17 +33,7 @@ export function usePlanning(props) {
         return parseInt(task.time_range?.split('-')[1]?.split(':')[0]) || 0
     }
 
-    const statusColors = {
-        pending: 'bg-yellow-500',
-        script_ready: 'bg-blue-500',
-        editing: 'bg-purple-500',
-        review: 'bg-orange-500',
-        scheduled: 'bg-indigo-500',
-        published: 'bg-green-500',
-        cancelled: 'bg-red-500',
-        in_progress: 'bg-amber-500',
-        completed: 'bg-teal-500',
-    }
+    const statusColors = calendarStatusColors
 
     const currentYear = ref(props.calendar.year)
     const currentMonth = ref(props.calendar.month)
@@ -283,14 +274,14 @@ export function usePlanning(props) {
         try {
             const [tasksRes, extraRes, obsRes] = await Promise.all([
                 axios.get('/planning/tasks', { params: { fecha: date } }),
-                axios.get('/extra-tasks', { params: { fecha: date } }),
+                axios.get('/tasks/extra', { params: { fecha: date } }),
                 axios.get('/planning/observation', { params: { fecha: date } }),
             ])
             dayTasks.value = tasksRes.data
             extraTasks.value = extraRes.data
             dayObservation.value = obsRes.data
         } catch (e) {
-            console.error('fetchDayTasks failed for', date, e)
+            console.error('Failed to fetch day tasks', e)
             dayTasks.value = []
             extraTasks.value = []
             dayObservation.value = { notes: '' }
@@ -387,15 +378,15 @@ export function usePlanning(props) {
 
     function createTask(fecha, bloque) {
         const params = new URLSearchParams({ fecha, bloque }).toString()
-        router.visit(`/video-tasks/create?${params}`)
+        router.visit(`/tasks/create?${params}`)
     }
 
     function viewTask(id) {
-        router.visit(`/video-tasks/${id}`)
+        router.visit(`/tasks/${id}`)
     }
 
     function editTask(id) {
-        router.visit(`/video-tasks/${id}/edit`)
+        router.visit(`/tasks/${id}/edit`)
     }
 
     function confirmDeleteTask(task) {
@@ -405,7 +396,7 @@ export function usePlanning(props) {
 
     function executeDelete() {
         if (!deleteTarget.value) return
-        router.delete(`/video-tasks/${deleteTarget.value.id}`, {
+        router.delete(`/tasks/${deleteTarget.value.id}`, {
             preserveScroll: true,
             onSuccess: () => {
                 showDeleteModal.value = false
@@ -418,7 +409,7 @@ export function usePlanning(props) {
 
     async function updateTaskStatus(task, status) {
         try {
-            await axios.patch(`/video-tasks/${task.id}/status`, { status })
+            await axios.patch(`/tasks/${task.id}/status`, { status })
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
@@ -428,7 +419,7 @@ export function usePlanning(props) {
 
     async function updateExtraTaskStatus(task, status) {
         try {
-            await axios.patch(`/extra-tasks/${task.id}`, {
+            await axios.patch(`/tasks/extra/${task.id}`, {
                 task_date: task.task_date,
                 time_range: task.time_range,
                 title: task.title,
@@ -460,13 +451,37 @@ export function usePlanning(props) {
         if (!task.session_id) { console.warn('completeSession: no session_id', task); return }
         try {
             const patchDate = selectedDate.value
-            await axios.patch(`/video-tasks/${task.id}/sessions/${task.session_id}`, {
+            await axios.patch(`/tasks/${task.id}/sessions/${task.session_id}`, {
                 status: 'completed',
             })
             if (patchDate) await fetchDayTasks(patchDate)
             await fetchSnapshot()
         } catch (e) {
             console.error('Failed to complete session', e)
+        }
+    }
+
+    async function editSession(data) {
+        try {
+            await axios.patch(`/tasks/${data.task_id}/sessions/${data.session_id}`, {
+                date: data.date,
+                time_range: data.time_range,
+                status: data.status,
+            })
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to edit session', e)
+        }
+    }
+
+    async function deleteSession(data) {
+        try {
+            await axios.delete(`/tasks/${data.task_id}/sessions/${data.session_id}`)
+            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
+            await fetchSnapshot()
+        } catch (e) {
+            console.error('Failed to delete session', e)
         }
     }
 
@@ -484,7 +499,7 @@ export function usePlanning(props) {
             })
             const freeBlock = blocksRes.data.available?.[0] || null
 
-            await axios.post(`/video-tasks/${task.id}/sessions`, {
+            await axios.post(`/tasks/${task.id}/sessions`, {
                 date: today,
                 time_range: freeBlock,
                 status: 'in_progress',
@@ -514,13 +529,14 @@ export function usePlanning(props) {
             description: form.description || '',
             status: form.status,
             location: form.location,
+            shared_user_ids: form.shared_user_ids || [],
         }
         try {
             if (editingExtra.value) {
                 const id = String(editingExtra.value.id).replace(/^e/, '')
-                await axios.patch(`/extra-tasks/${id}`, payload)
+                await axios.patch(`/tasks/extra/${id}`, payload)
             } else {
-                await axios.post('/extra-tasks', payload)
+                await axios.post('/tasks/extra', payload)
             }
             closeExtraModal()
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
@@ -539,7 +555,7 @@ export function usePlanning(props) {
         if (!extraDeleteTarget.value) return
         try {
             const id = String(extraDeleteTarget.value.id).replace(/^e/, '')
-            await axios.delete(`/extra-tasks/${id}`)
+            await axios.delete(`/tasks/extra/${id}`)
             showExtraDeleteModal.value = false
             extraDeleteTarget.value = null
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
@@ -551,7 +567,7 @@ export function usePlanning(props) {
 
     async function fetchPendingTasks() {
         try {
-            const res = await axios.get('/video-tasks/pending')
+            const res = await axios.get('/tasks/pending')
             pendingTasks.value = res.data
         } catch (e) {
             console.error('Failed to fetch pending tasks', e)
@@ -560,7 +576,7 @@ export function usePlanning(props) {
 
     async function moveToPending(task) {
         try {
-            await axios.patch(`/video-tasks/${task.id}/pending`)
+            await axios.patch(`/tasks/${task.id}/pending`)
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             if (viewMode.value === 'pending') {
                 await fetchPendingTasks()
@@ -585,7 +601,7 @@ export function usePlanning(props) {
     async function restoreFromPending(form) {
         if (!restoringTask.value) return
         try {
-            await axios.patch(`/video-tasks/${restoringTask.value.id}/restore`, {
+            await axios.patch(`/tasks/${restoringTask.value.id}/restore`, {
                 task_date: form.task_date,
                 time_range: form.time_range,
             })
@@ -620,7 +636,7 @@ export function usePlanning(props) {
         updateTaskStatus, updateExtraTaskStatus, saveObservation,
         openExtraModal, closeExtraModal, saveExtraTask,
         confirmDeleteExtra, executeExtraDelete,
-        createSession, completeSession,
+        createSession, completeSession, editSession, deleteSession,
         moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
     }
 }

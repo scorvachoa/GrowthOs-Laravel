@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\VideoTaskStatus;
 use App\Models\ExtraTask;
 use App\Models\TimeOff;
 use App\Models\User;
 use App\Models\Vacation;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
-use App\Enums\VideoTaskStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -16,21 +16,24 @@ use Spatie\Activitylog\Models\Activity;
 
 class DashboardService
 {
+    private bool $isManager;
+
     public function stats(string $scope = 'week', ?User $authUser = null): array
     {
         $authUser ??= Auth::user();
         $orgId = $authUser?->activeOrganizationId();
+        $this->isManager = $authUser->hasRole(['Super Admin', 'Admin']);
 
         $today = Carbon::today();
         $labels = VideoTaskStatus::labels();
 
         return array_merge(
             $this->userStats($orgId, $today),
-            $this->taskCounts(),
-            $this->todayTasks($today, $labels, $orgId),
-            $this->periodStats($scope, $today),
+            $this->taskCounts($authUser),
+            $this->todayTasks($today, $labels, $authUser),
+            $this->periodStats($scope, $today, $authUser),
             [
-                'recent_activity' => $this->recentActivity(),
+                'recent_activity' => $this->recentActivity($orgId),
                 'status_labels' => $labels,
                 'period_label' => $this->periodLabel($scope),
                 'today_absences' => $this->todayAbsences($orgId, $today),
@@ -59,31 +62,36 @@ class DashboardService
         ];
     }
 
-    private function taskCounts(): array
+    private function taskCounts(User $authUser): array
     {
-        $statusCounts = VideoTask::query()
-            ->selectRaw("status, count(*) as total")
+        $videoQuery = VideoTask::query()->visibleTo()->where('is_pending', false);
+        $extraQuery = ExtraTask::query()->visibleTo();
+
+        $statusCounts = (clone $videoQuery)
+            ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
         $inProgressStatuses = ['pending', 'script_ready', 'editing', 'review'];
 
         return [
-            'total_video_tasks' => VideoTask::query()->count(),
-            'total_extra_tasks' => ExtraTask::query()->count(),
+            'total_video_tasks' => (clone $videoQuery)->count(),
+            'total_extra_tasks' => (clone $extraQuery)->count(),
             'status_counts' => $statusCounts,
             'in_progress' => $statusCounts->only($inProgressStatuses)->sum(),
             'completed' => $statusCounts->get('published', 0),
-            'overdue' => VideoTask::query()
+            'overdue' => (clone $videoQuery)
                 ->whereNotIn('status', ['published', 'cancelled'])
                 ->where('task_date', '<', Carbon::today())
                 ->count(),
         ];
     }
 
-    private function todayTasks(Carbon $today, array $labels, ?int $orgId = null): array
+    private function todayTasks(Carbon $today, array $labels, User $authUser): array
     {
         $todayTasks = VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
             ->where('task_date', '>=', $today)
             ->where('task_date', '<', $today->copy()->addDay())
             ->orderBy('time_range')
@@ -97,9 +105,10 @@ class DashboardService
                 'is_session' => false,
             ]);
 
+        $orgId = $authUser->activeOrganizationId();
         $todaySessions = WorkSession::query()
             ->with('videoTask')
-            ->whereHas('videoTask', fn ($q) => $q->when($orgId, fn ($q) => $q->where('organization_id', $orgId)))
+            ->whereHas('videoTask', fn ($q) => $q->visibleTo())
             ->where('date', '>=', $today)
             ->where('date', '<', $today->copy()->addDay())
             ->get()
@@ -115,6 +124,7 @@ class DashboardService
         $todayTasks = $todayTasks->concat($todaySessions)->sortBy('time_range')->values();
 
         $todayExtra = ExtraTask::query()
+            ->visibleTo()
             ->where('task_date', '>=', $today)
             ->where('task_date', '<', $today->copy()->addDay())
             ->orderBy('time_range')
@@ -135,7 +145,7 @@ class DashboardService
         ];
     }
 
-    private function periodStats(string $scope, Carbon $today): array
+    private function periodStats(string $scope, Carbon $today, User $authUser): array
     {
         [$start, $end] = match ($scope) {
             'year' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],
@@ -144,6 +154,8 @@ class DashboardService
         };
 
         $periodTasks = VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end->copy()->addDay())
             ->get();
@@ -152,6 +164,7 @@ class DashboardService
         $periodCompleted = $periodTasks->where('status', 'published')->count();
 
         $publishedYesterday = VideoTask::query()
+            ->visibleTo()
             ->where('task_date', '>=', $today->copy()->subDay())
             ->where('task_date', '<', $today)
             ->where('status', 'published')
@@ -163,10 +176,13 @@ class DashboardService
         ];
     }
 
-    private function recentActivity(): Collection
+    private function recentActivity(?int $orgId): Collection
     {
+        $orgUserIds = User::where('organization_id', $orgId)->pluck('id');
+
         return Activity::query()
             ->with('causer')
+            ->whereIn('causer_id', $orgUserIds)
             ->latest()
             ->take(10)
             ->get()

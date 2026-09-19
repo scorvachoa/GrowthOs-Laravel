@@ -13,18 +13,13 @@ class TimeOffController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasRole('Super Admin');
-        $canManage = $isSuperAdmin || $user->can('approve time off') || $user->can('edit planning');
+        $canManage = $user->hasRole(['Super Admin', 'Admin']);
 
         $timeOffs = TimeOff::query()
             ->with('user', 'approver')
             ->when(
-                !$canManage,
+                ! $canManage,
                 fn ($q) => $q->where('user_id', $user->id)
-            )
-            ->when(
-                !$isSuperAdmin && $user->can('edit planning'),
-                fn ($q) => $q->whereHas('user', fn ($q) => $q->where('organization_id', $user->activeOrganizationId()))
             )
             ->orderBy('created_at', 'desc')
             ->get()
@@ -76,7 +71,7 @@ class TimeOffController extends Controller
     public function approve(TimeOff $timeOff)
     {
         $user = request()->user();
-        if (!$user->hasRole('Super Admin') && !$this->canManageOrg($user, $timeOff->user?->organization_id)) {
+        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
             abort(403);
         }
 
@@ -88,13 +83,13 @@ class TimeOffController extends Controller
 
         PlanningCalendarService::bustCache($timeOff->user_id);
 
-        return redirect()->back()->with('warning', 'Permiso aprobado.');
+        return redirect()->back()->with('success', 'Permiso aprobado.');
     }
 
     public function reject(Request $request, TimeOff $timeOff)
     {
         $user = $request->user();
-        if (!$user->hasRole('Super Admin') && !$this->canManageOrg($user, $timeOff->user?->organization_id)) {
+        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
             abort(403);
         }
 
@@ -106,7 +101,7 @@ class TimeOffController extends Controller
     public function update(Request $request, TimeOff $timeOff)
     {
         $user = $request->user();
-        if ($timeOff->user_id !== $user->id && !$user->hasRole('Super Admin') && !$this->canManageOrg($user, $timeOff->user?->organization_id)) {
+        if ($timeOff->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
             abort(403);
         }
 
@@ -138,7 +133,7 @@ class TimeOffController extends Controller
     public function destroy(TimeOff $timeOff)
     {
         $user = request()->user();
-        if ($timeOff->user_id !== $user->id && !$user->hasRole('Super Admin') && !$this->canManageOrg($user, $timeOff->user?->organization_id)) {
+        if ($timeOff->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
             abort(403);
         }
 
@@ -149,11 +144,11 @@ class TimeOffController extends Controller
         $timeOff->delete();
         PlanningCalendarService::bustCache($timeOff->user_id);
 
-        return redirect()->back()->with('error', 'Solicitud eliminada.');
+        return redirect()->back()->with('success', 'Solicitud eliminada.');
     }
 
     private function canManageOrg($user, ?int $orgId): bool
     {
-        return $orgId && $user->activeOrganizationId() === $orgId && ($user->can('approve time off') || $user->can('edit planning'));
+        return $orgId && $user->activeOrganizationId() === $orgId && $user->hasRole(['Super Admin', 'Admin']);
     }
 }

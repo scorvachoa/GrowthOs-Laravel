@@ -13,7 +13,7 @@ const emit = defineEmits(['confirm', 'close'])
 <template>
     <Teleport to="body">
         <Transition name="fade">
-            <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="emit('close')">
+            <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="emit('close')">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
                     <div class="flex items-center gap-3 mb-4">
                         <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">

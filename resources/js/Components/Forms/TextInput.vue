@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
     modelValue: String,
     label: String,
     type: {
@@ -7,20 +9,25 @@ defineProps({
         default: 'text',
     },
     error: String,
+    id: String,
 })
 
 defineEmits(['update:modelValue'])
+
+const inputId = computed(() => props.id || `input-${Math.random().toString(36).slice(2, 9)}`)
 </script>
 
 <template>
     <div>
         <label
+            :for="inputId"
             class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
             {{ label }}
         </label>
 
         <input
+            :id="inputId"
             :type="type"
             :value="modelValue"
             @input="$emit('update:modelValue', $event.target.value)"

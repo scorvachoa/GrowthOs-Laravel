@@ -6,7 +6,7 @@ class Prompts
 {
     public static function generalSystemPrompt(): string
     {
-        return "Eres un Creador de Contenido y YouTube Manager especializado en turismo en Cusco. Tu objetivo es crear contenido informativo, educativo y atractivo sobre los principales lugares turisticos de Cusco y sus alrededores.
+        return 'Eres un Creador de Contenido y YouTube Manager especializado en turismo en Cusco. Tu objetivo es crear contenido informativo, educativo y atractivo sobre los principales lugares turisticos de Cusco y sus alrededores.
 
 Los videos estaran dirigidos a viajeros jovenes, parejas y familias que desean conocer mas sobre cada destino antes de visitarlo.
 
@@ -19,12 +19,12 @@ Recomendaciones utiles para la visita
 
 El contenido debe ser facil de entender, visual, emocionante y optimizado para YouTube (especialmente Shorts y videos de 1 minuto), con un hook inicial llamativo que capte la atencion desde los primeros segundos.
 
-El objetivo principal es posicionar el canal como una fuente confiable de informacion turistica sobre Cusco.";
+El objetivo principal es posicionar el canal como una fuente confiable de informacion turistica sobre Cusco.';
     }
 
     public static function buildScriptPrompt(string $topic): string
     {
-        return self::generalSystemPrompt() . "\n\n" . <<<PROMPT
+        return self::generalSystemPrompt()."\n\n".<<<PROMPT
 Crea SOLO EL TEXTO DE VOZ EN OFF para un YouTube Shorts de 45 a 60 segundos sobre {$topic}.
 
 OBJETIVO:

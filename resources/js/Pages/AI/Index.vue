@@ -248,7 +248,7 @@ async function copyText(text, emptyMessage, successMessage) {
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto">
+        <div class="">
             <div class="mb-6 flex items-start justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Generador de guiones IA - BETA</h1>

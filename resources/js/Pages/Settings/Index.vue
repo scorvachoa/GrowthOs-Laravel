@@ -64,6 +64,24 @@ const form = reactive({
 })
 
 const processing = ref(false)
+const workTimeError = ref('')
+const lunchTimeError = ref('')
+
+function validateWorkTime() {
+    if (form.default_work_start && form.default_work_end && form.default_work_end <= form.default_work_start) {
+        workTimeError.value = 'La hora de fin debe ser mayor a la hora de inicio'
+    } else {
+        workTimeError.value = ''
+    }
+}
+
+function validateLunchTime() {
+    if (form.lunch_start && form.lunch_end && form.lunch_end <= form.lunch_start) {
+        lunchTimeError.value = 'La hora de fin de almuerzo debe ser mayor a la hora de inicio'
+    } else {
+        lunchTimeError.value = ''
+    }
+}
 
 const allAvailableLangs = [
     { code: 'en', label: 'English' },
@@ -122,6 +140,9 @@ function toggleWorkingDay(day) {
 }
 
 function submit() {
+    validateWorkTime()
+    validateLunchTime()
+    if (workTimeError.value || lunchTimeError.value) return
     processing.value = true
     router.put('/settings', { ...form }, {
         preserveScroll: true,
@@ -133,7 +154,7 @@ function submit() {
 
 <template>
     <AppLayout>
-        <div class="max-w-4xl mx-auto space-y-8">
+        <div class="space-y-8">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuración</h1>
                 <p class="text-gray-500 dark:text-gray-400 mt-1">Preferencias personales</p>
@@ -157,28 +178,30 @@ function submit() {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inicio jornada</label>
-                            <input type="time" v-model="form.default_work_start"
+                            <input type="time" v-model="form.default_work_start" @blur="validateWorkTime"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin jornada</label>
-                            <input type="time" v-model="form.default_work_end"
+                            <input type="time" v-model="form.default_work_end" @blur="validateWorkTime"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                     </div>
+                    <p v-if="workTimeError" class="text-sm text-red-500 -mt-4 mb-4">{{ workTimeError }}</p>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inicio almuerzo</label>
-                            <input type="time" v-model="form.lunch_start"
+                            <input type="time" v-model="form.lunch_start" @blur="validateLunchTime"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin almuerzo</label>
-                            <input type="time" v-model="form.lunch_end"
+                            <input type="time" v-model="form.lunch_end" @blur="validateLunchTime"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                     </div>
+                    <p v-if="lunchTimeError" class="text-sm text-red-500 -mt-4 mb-4">{{ lunchTimeError }}</p>
 
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Días laborables</label>

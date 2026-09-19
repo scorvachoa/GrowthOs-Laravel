@@ -7,6 +7,7 @@ use App\Models\VideoTask;
 use App\Services\YouTubeService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -18,34 +19,42 @@ class YoutubeController extends Controller
 
     public function index()
     {
-        $maxVideos = Auth::user()->merged_settings['youtube_max_recent_videos'] ?? 10;
+        $userId = Auth::id();
+        $cacheKey = "youtube_index_{$userId}";
 
-        $channels = Channel::query()->orderBy('name')->get()->map(function ($c) use ($maxVideos) {
-            $data = [
-                'id' => $c->id,
-                'name' => $c->name,
-                'color' => $c->color,
-                'youtube_channel_id' => $c->youtube_channel_id,
-                'channel_url' => $c->channel_url,
-                'videos' => [],
-            ];
+        // Cache the entire page data for 5 minutes to avoid repeated API calls
+        $data = Cache::remember($cacheKey, 300, function () {
+            $maxVideos = Auth::user()->merged_settings['youtube_max_recent_videos'] ?? 10;
 
-            if ($c->youtube_channel_id) {
-                $stats = $this->youtube->channelStats($c->youtube_channel_id);
-                if ($stats) {
-                    $data['live_title'] = $stats['title'];
-                    $data['thumbnail'] = $stats['thumbnail'];
-                    $data['custom_url'] = $stats['custom_url'];
-                    $data['subscriber_count'] = $stats['subscriber_count'];
-                    $data['live_video_count'] = $stats['video_count'];
-                    $data['view_count'] = $stats['view_count'];
-                    $data['country'] = $stats['country'];
+            $channels = Channel::query()->orderBy('name')->get()->map(function ($c) use ($maxVideos) {
+                $data = [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'color' => $c->color,
+                    'youtube_channel_id' => $c->youtube_channel_id,
+                    'channel_url' => $c->channel_url,
+                    'videos' => [],
+                ];
+
+                if ($c->youtube_channel_id) {
+                    $stats = $this->youtube->channelStats($c->youtube_channel_id);
+                    if ($stats) {
+                        $data['live_title'] = $stats['title'];
+                        $data['thumbnail'] = $stats['thumbnail'];
+                        $data['custom_url'] = $stats['custom_url'];
+                        $data['subscriber_count'] = $stats['subscriber_count'];
+                        $data['live_video_count'] = $stats['video_count'];
+                        $data['view_count'] = $stats['view_count'];
+                        $data['country'] = $stats['country'];
+                    }
+
+                    $data['videos'] = $this->youtube->recentVideos($c->youtube_channel_id, $maxVideos);
                 }
 
-                $data['videos'] = $this->youtube->recentVideos($c->youtube_channel_id, $maxVideos);
-            }
+                return $data;
+            });
 
-            return $data;
+            return ['channels' => $channels];
         });
 
         $statusStats = VideoTask::query()
@@ -74,9 +83,9 @@ class YoutubeController extends Controller
             ->count();
 
         return Inertia::render('Youtube/Index', [
-            'channels' => $channels,
+            'channels' => $data['channels'],
             'stats' => [
-                'total_channels' => $channels->count(),
+                'total_channels' => $data['channels']->count(),
                 'total_videos' => VideoTask::query()->count(),
                 'published_total' => $statusStats['published'] ?? 0,
                 'published_this_month' => $publishedThisMonth,
@@ -86,5 +95,16 @@ class YoutubeController extends Controller
             ],
             'recent_published' => $recentPublished,
         ]);
+    }
+
+    /**
+     * Bust cache when channels are updated.
+     */
+    public static function bustCache(): void
+    {
+        $userId = Auth::id();
+        if ($userId) {
+            Cache::forget("youtube_index_{$userId}");
+        }
     }
 }

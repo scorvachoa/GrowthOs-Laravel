@@ -20,18 +20,19 @@ const form = useForm({
     youtube_url: '',
     status: 'pending',
     channel_id: null,
+    shared_user_ids: [],
 })
 
 provide('taskForm', form)
 
 const submit = () => {
-    form.post('/video-tasks')
+    form.post('/tasks')
 }
 </script>
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto">
+        <div class="">
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Crear Tarea</h1>
                 <Link href="/planning" class="text-indigo-600 hover:text-indigo-700">Volver al calendario</Link>

@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\VideoTaskStatus;
 use App\Models\DayObservation;
 use App\Models\ExtraTask;
 use App\Models\TimeOff;
+use App\Models\User;
 use App\Models\Vacation;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
-use App\Enums\VideoTaskStatus;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -21,9 +22,13 @@ class PlanningCalendarService
         private PeruHolidayService $holidays,
     ) {}
 
-    public static function bustCache(?int $userId = null): void
+    public static function bustCache(?int $orgId = null): void
     {
-        Cache::increment('planning_bust_' . ($userId ?? Auth::id() ?? 'system'));
+        $orgId = $orgId ?? Auth::user()?->activeOrganizationId();
+        if ($orgId) {
+            $key = "planning_bust_{$orgId}";
+            Cache::put($key, now()->timestamp, 3600);
+        }
     }
 
     public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null): array
@@ -44,7 +49,7 @@ class PlanningCalendarService
 
         [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap] = $this->buildWeekMaps($weekStart, $workBlocks);
 
-        $pendingCount = VideoTask::where('is_pending', true)->count();
+        $pendingCount = VideoTask::visibleTo()->where('is_pending', true)->count();
 
         return [
             'year' => $year,
@@ -70,7 +75,8 @@ class PlanningCalendarService
     private function loadMonthTasks(Carbon $start, Carbon $end): Collection
     {
         $tasks = VideoTask::query()
-            ->with('channel', 'sessions')
+            ->visibleTo()
+            ->with('channel', 'sessions', 'shares.sharedByUser')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->where('is_pending', false)
@@ -86,9 +92,13 @@ class PlanningCalendarService
 
             foreach ($task->sessions as $session) {
                 $sessionKey = $session->date->format('Y-m-d');
-                if ($sessionKey === $primaryKey) continue;
-                if ($sessionKey < $start->format('Y-m-d') || $sessionKey >= $end->format('Y-m-d')) continue;
-                $map[$sessionKey][] = (object)[
+                if ($sessionKey === $primaryKey) {
+                    continue;
+                }
+                if ($sessionKey < $start->format('Y-m-d') || $sessionKey >= $end->format('Y-m-d')) {
+                    continue;
+                }
+                $map[$sessionKey][] = (object) [
                     'id' => $task->id,
                     'task_date' => $session->date,
                     'time_range' => $session->time_range,
@@ -105,6 +115,7 @@ class PlanningCalendarService
             ->where('date', '<', $end)
             ->with('videoTask.channel')
             ->whereHas('videoTask', fn ($q) => $q
+                ->visibleTo()
                 ->where('task_date', '<', $start)
                 ->orWhere('task_date', '>=', $end)
             )
@@ -113,10 +124,10 @@ class PlanningCalendarService
         foreach ($orphanSessions as $session) {
             $sessionKey = $session->date->format('Y-m-d');
             $task = $session->videoTask;
-            if (!isset($map[$sessionKey])) {
+            if (! isset($map[$sessionKey])) {
                 $map[$sessionKey] = [];
             }
-            $map[$sessionKey][] = (object)[
+            $map[$sessionKey][] = (object) [
                 'id' => $task->id,
                 'task_date' => $session->date,
                 'time_range' => $session->time_range,
@@ -134,6 +145,8 @@ class PlanningCalendarService
     private function loadMonthExtraTasks(Carbon $start, Carbon $end): Collection
     {
         return ExtraTask::query()
+            ->visibleTo()
+            ->with('shares.sharedByUser')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
             ->get()
@@ -142,7 +155,10 @@ class PlanningCalendarService
 
     private function loadAbsencesMap(Carbon $start, Carbon $end): array
     {
-        $orgUsers = \App\Models\User::where('organization_id', Auth::user()->activeOrganizationId())
+        $user = Auth::user();
+        $isManager = $user->hasRole(['Super Admin', 'Admin']);
+
+        $orgUsers = User::where('organization_id', $user->activeOrganizationId())
             ->pluck('id');
 
         $vacations = Vacation::query()
@@ -150,6 +166,7 @@ class PlanningCalendarService
             ->where('status', 'aprobado')
             ->where('start_date', '<', $end)
             ->where('end_date', '>=', $start)
+            ->when(! $isManager, fn ($q) => $q->where('user_id', $user->id))
             ->get(['user_id', 'start_date', 'end_date', 'type']);
 
         $timeOffs = TimeOff::query()
@@ -157,6 +174,7 @@ class PlanningCalendarService
             ->where('status', 'aprobado')
             ->where('date', '>=', $start)
             ->where('date', '<', $end)
+            ->when(! $isManager, fn ($q) => $q->where('user_id', $user->id))
             ->get(['user_id', 'date', 'type']);
 
         $map = [];
@@ -180,7 +198,7 @@ class PlanningCalendarService
             $key = $t->date instanceof Carbon ? $t->date->format('Y-m-d') : Carbon::parse($t->date)->format('Y-m-d');
             $map[$key][] = [
                 'type' => 'time_off',
-                'label' => 'Permiso: ' . match ($t->type) {
+                'label' => 'Permiso: '.match ($t->type) {
                     'medico' => 'Medico',
                     'personal' => 'Personal',
                     'tramite' => 'Tramite',
@@ -194,11 +212,19 @@ class PlanningCalendarService
 
     private function loadObservationsMap(Carbon $start, Carbon $end): array
     {
-        return DayObservation::query()
+        $user = Auth::user();
+        $isManager = $user->hasRole(['Super Admin', 'Admin']);
+
+        $query = DayObservation::query()
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
-            ->where('organization_id', Auth::user()->activeOrganizationId())
-            ->get()
+            ->where('organization_id', $user->activeOrganizationId());
+
+        if (! $isManager) {
+            $query->where('created_by', $user->id);
+        }
+
+        return $query->get()
             ->keyBy(fn (DayObservation $obs) => $obs->task_date->format('Y-m-d'))
             ->map(fn (DayObservation $obs) => true)
             ->all();
@@ -228,6 +254,7 @@ class PlanningCalendarService
         foreach ($extraTasks as $dayKey => $tasks) {
             $map[$dayKey] = $tasks->count();
         }
+
         return $map;
     }
 
@@ -236,7 +263,8 @@ class PlanningCalendarService
         $weekEnd = $weekStart->copy()->addDays(7);
 
         $weekTasks = VideoTask::query()
-            ->with('channel', 'sessions')
+            ->visibleTo()
+            ->with('channel', 'sessions', 'shares.sharedByUser')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
             ->where('is_pending', false)
@@ -245,6 +273,8 @@ class PlanningCalendarService
             ->get();
 
         $weekExtraTasks = ExtraTask::query()
+            ->visibleTo()
+            ->with('shares.sharedByUser')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
             ->orderBy('task_date')
@@ -274,8 +304,12 @@ class PlanningCalendarService
 
             foreach ($task->sessions as $session) {
                 $sessionKey = $session->date->format('Y-m-d');
-                if ($sessionKey === $primaryKey) continue;
-                if (!isset($weekBlockMap[$sessionKey])) continue;
+                if ($sessionKey === $primaryKey) {
+                    continue;
+                }
+                if (! isset($weekBlockMap[$sessionKey])) {
+                    continue;
+                }
 
                 if ($session->time_range && isset($weekBlockMap[$sessionKey][$session->time_range])) {
                     $weekBlockMap[$sessionKey][$session->time_range]++;
@@ -298,6 +332,7 @@ class PlanningCalendarService
             ->where('date', '<', $weekEnd)
             ->with('videoTask.channel')
             ->whereHas('videoTask', fn ($q) => $q
+                ->visibleTo()
                 ->where('task_date', '<', $weekStart)
                 ->orWhere('task_date', '>=', $weekEnd)
             )
@@ -326,8 +361,10 @@ class PlanningCalendarService
         foreach ($weekExtraTasks as $task) {
             $iso = $task->task_date->format('Y-m-d');
             if (isset($weekExtraTasksDetailMap[$iso])) {
+                $currentUserId = Auth::id();
+                $myShare = $task->shares->firstWhere('shared_with_user_id', $currentUserId);
                 $weekExtraTasksDetailMap[$iso][] = [
-                    'id' => 'e' . $task->id,
+                    'id' => 'e'.$task->id,
                     'task_date' => $task->task_date->format('Y-m-d'),
                     'time_range' => $task->time_range,
                     'title' => $task->title,
@@ -335,6 +372,9 @@ class PlanningCalendarService
                     'status' => $task->status,
                     'location' => $task->location,
                     'is_extra' => true,
+                    'created_by' => $task->created_by,
+                    'shared_by_user_name' => $myShare?->sharedByUser?->name,
+                    'share_role' => $myShare?->role,
                 ];
             }
         }
@@ -345,7 +385,8 @@ class PlanningCalendarService
     public function tasksForDate(string $date, ?int $orgId = null): array
     {
         $tasks = VideoTask::query()
-            ->with('channel')
+            ->visibleTo()
+            ->with(['channel', 'shares.sharedByUser'])
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay())
             ->where('is_pending', false)
@@ -357,7 +398,7 @@ class PlanningCalendarService
 
         $sessionEntries = WorkSession::where('date', $date)
             ->with('videoTask.channel')
-            ->when($orgId, fn ($q) => $q->whereHas('videoTask', fn ($sq) => $sq->where('organization_id', $orgId)))
+            ->when($orgId, fn ($q) => $q->whereHas('videoTask', fn ($sq) => $sq->visibleTo()->where('organization_id', $orgId)))
             ->get()
             ->filter(fn ($s) => $s->videoTask->task_date->format('Y-m-d') !== $date)
             ->map(fn ($s) => $this->serializeDetailFromSession($s))
@@ -370,6 +411,7 @@ class PlanningCalendarService
     private function serializeDetailFromSession(WorkSession $session): array
     {
         $task = $session->videoTask;
+
         return [
             'id' => $task->id,
             'session_id' => $session->id,
@@ -416,6 +458,9 @@ class PlanningCalendarService
 
     private function serializeDetail(VideoTask $task): array
     {
+        $currentUserId = Auth::id();
+        $myShare = $task->shares->firstWhere('shared_with_user_id', $currentUserId);
+
         return [
             'id' => $task->id,
             'task_date' => $task->task_date->format('Y-m-d'),
@@ -426,9 +471,12 @@ class PlanningCalendarService
             'key_phrases' => $task->key_phrases,
             'youtube_url' => $task->youtube_url,
             'status' => $task->status,
+            'created_by' => $task->created_by,
             'channel' => $task->channel
                 ? ['name' => $task->channel->name, 'color' => $task->channel->color]
                 : null,
+            'shared_by_user_name' => $myShare?->sharedByUser?->name,
+            'share_role' => $myShare?->role,
         ];
     }
 }

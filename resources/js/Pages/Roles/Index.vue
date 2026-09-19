@@ -47,7 +47,7 @@ const executeDelete = () => {
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Roles</h1>

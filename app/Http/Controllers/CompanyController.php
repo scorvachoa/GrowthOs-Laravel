@@ -74,7 +74,7 @@ class CompanyController extends Controller
     public function store(StoreOrganizationRequest $request)
     {
         $data = $request->validated();
-        $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $data['name']), 0, 5)) . '-' . random_int(10000, 99999);
+        $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $data['name']), 0, 5)).'-'.random_int(10000, 99999);
 
         $org = Organization::create([
             'name' => $data['name'],
@@ -154,7 +154,7 @@ class CompanyController extends Controller
 
         $company->save();
 
-        return redirect()->route('company.index')->with('warning', 'Empresa actualizada');
+        return redirect()->route('company.index')->with('success', 'Empresa actualizada');
     }
 
     public function destroy(Organization $company)
@@ -166,34 +166,38 @@ class CompanyController extends Controller
             return redirect()->back()->with('error', 'No se puede eliminar una empresa con usuarios activos');
         }
 
+        $company->channels()->delete();
         $company->delete();
 
-        return redirect()->route('company.index')->with('error', 'Empresa eliminada');
+        return redirect()->route('company.index')->with('success', 'Empresa eliminada');
     }
 
     public function storeChannel(StoreChannelRequest $request)
     {
         Channel::create($request->validated());
+
         return redirect()->back()->with('success', 'Canal creado');
     }
 
     public function updateChannel(StoreChannelRequest $request, Channel $channel)
     {
         $channel->update($request->validated());
-        return redirect()->back()->with('warning', 'Canal actualizado');
+
+        return redirect()->back()->with('success', 'Canal actualizado');
     }
 
     public function destroyChannel(Channel $channel)
     {
         $channel->delete();
-        return redirect()->back()->with('error', 'Canal eliminado');
+
+        return redirect()->back()->with('success', 'Canal eliminado');
     }
 
     public function switchCompany(Request $request)
     {
         $request->validate(['company_id' => 'required|exists:organizations,id']);
 
-        if (!auth()->user()->hasRole('Super Admin')) {
+        if (! auth()->user()->hasRole('Super Admin')) {
             abort(403);
         }
 
@@ -207,15 +211,15 @@ class CompanyController extends Controller
         $orgId = $request->input('organization_id', Auth::user()->organization_id);
         $org = Organization::find($orgId);
 
-        if (!$org) {
+        if (! $org) {
             throw ValidationException::withMessages(['invite_code' => 'No existe la empresa']);
         }
 
-        if (!Auth::user()->hasRole('Super Admin') && $org->id !== Auth::user()->organization_id) {
+        if (! Auth::user()->hasRole('Super Admin') && $org->id !== Auth::user()->organization_id) {
             abort(403);
         }
 
-        $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $org->name), 0, 5)) . '-' . random_int(1000, 9999);
+        $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $org->name), 0, 5)).'-'.random_int(1000, 9999);
         $org->update(['invite_code' => $code]);
 
         return redirect()->back()->with('success', "Código de invitación generado: $code");

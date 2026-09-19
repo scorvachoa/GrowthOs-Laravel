@@ -5,6 +5,7 @@ import { Plus, X, Check, AlertTriangle, CalendarClock, Pencil, Search, Eye } fro
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
+import { statusColors, statusLabels } from '@/config/statusConstants'
 
 const props = defineProps({
     timeOffs: Array,
@@ -44,6 +45,27 @@ const showForm = ref(false)
 const form = ref({ date: '', type: 'personal', reason: '', start_time: '', end_time: '' })
 const allDay = ref(false)
 const submitting = ref(false)
+const timeError = ref('')
+
+function toMinutes(t) {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+}
+
+function validateTimeRange(start, end) {
+    if (start && end && toMinutes(end) <= toMinutes(start)) {
+        return 'La hora fin debe ser mayor a la hora de inicio'
+    }
+    return ''
+}
+
+function onStartTimeBlur() {
+    timeError.value = validateTimeRange(form.value.start_time, form.value.end_time)
+}
+
+function onEndTimeBlur() {
+    timeError.value = validateTimeRange(form.value.start_time, form.value.end_time)
+}
 
 function toggleAllDay() {
     form.value.start_time = allDay.value ? workStart : ''
@@ -65,6 +87,8 @@ function openForm() {
 
 function submitForm() {
     if (submitting.value) return
+    timeError.value = validateTimeRange(form.value.start_time, form.value.end_time)
+    if (timeError.value) return
     submitting.value = true
     router.post('/time-off', form.value, {
         preserveScroll: true,
@@ -121,6 +145,15 @@ const editingId = ref(null)
 const editForm = ref({ date: '', type: 'personal', reason: '', start_time: '', end_time: '' })
 const editAllDay = ref(false)
 const editSubmitting = ref(false)
+const editTimeError = ref('')
+
+function onEditStartTimeBlur() {
+    editTimeError.value = validateTimeRange(editForm.value.start_time, editForm.value.end_time)
+}
+
+function onEditEndTimeBlur() {
+    editTimeError.value = validateTimeRange(editForm.value.start_time, editForm.value.end_time)
+}
 
 function openEdit(t) {
     editingId.value = t.id
@@ -136,6 +169,8 @@ function toggleEditAllDay() {
 
 function submitEdit() {
     if (editSubmitting.value || !editingId.value) return
+    editTimeError.value = validateTimeRange(editForm.value.start_time, editForm.value.end_time)
+    if (editTimeError.value) return
     editSubmitting.value = true
     router.patch(`/time-off/${editingId.value}`, editForm.value, {
         preserveScroll: true,
@@ -144,13 +179,6 @@ function submitEdit() {
     })
 }
 
-const statusColors = {
-    pendiente: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    aprobado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    rechazado: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-}
-
-const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' }
 const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite', otro: 'Otro' }
 </script>
 
@@ -317,15 +345,16 @@ const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Hora inicio (opcional)</label>
-                                    <input v-model="form.start_time" type="time"
+                                    <input v-model="form.start_time" type="time" @blur="onStartTimeBlur"
                                         class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                                 </div>
                                 <div>
                                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Hora fin (opcional)</label>
-                                    <input v-model="form.end_time" type="time"
+                                    <input v-model="form.end_time" type="time" @blur="onEndTimeBlur"
                                         class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                                 </div>
                             </div>
+                            <p v-if="timeError" class="text-sm text-red-500 -mt-1">{{ timeError }}</p>
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Motivo</label>
                                 <textarea v-model="form.reason" rows="2"
@@ -378,15 +407,16 @@ const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Hora inicio (opcional)</label>
-                                    <input v-model="editForm.start_time" type="time"
+                                    <input v-model="editForm.start_time" type="time" @blur="onEditStartTimeBlur"
                                         class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                                 </div>
                                 <div>
                                     <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Hora fin (opcional)</label>
-                                    <input v-model="editForm.end_time" type="time"
+                                    <input v-model="editForm.end_time" type="time" @blur="onEditEndTimeBlur"
                                         class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                                 </div>
                             </div>
+                            <p v-if="editTimeError" class="text-sm text-red-500 -mt-1">{{ editTimeError }}</p>
                             <div>
                                 <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Motivo</label>
                                 <textarea v-model="editForm.reason" rows="2"

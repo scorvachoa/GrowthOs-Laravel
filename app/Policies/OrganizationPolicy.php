@@ -17,7 +17,8 @@ class OrganizationPolicy
         if ($user->hasRole('Super Admin')) {
             return true;
         }
-        return $user->organization_id === $organization->id && $user->can('view empresa');
+
+        return $user->activeOrganizationId() === $organization->id && $user->can('view empresa');
     }
 
     public function create(User $user): bool
@@ -30,7 +31,8 @@ class OrganizationPolicy
         if ($user->hasRole('Super Admin')) {
             return true;
         }
-        return $user->organization_id === $organization->id && $user->can('edit empresa');
+
+        return $user->activeOrganizationId() === $organization->id && $user->can('edit empresa');
     }
 
     public function delete(User $user, Organization $organization): bool
@@ -38,6 +40,7 @@ class OrganizationPolicy
         if ($user->hasRole('Super Admin')) {
             return true;
         }
-        return $user->organization_id === $organization->id && $user->can('delete empresa');
+
+        return $user->activeOrganizationId() === $organization->id && $user->can('delete empresa');
     }
 }

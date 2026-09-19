@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,6 +28,6 @@ trait BelongsToOrganization
 
     public function organization()
     {
-        return $this->belongsTo(\App\Models\Organization::class);
+        return $this->belongsTo(Organization::class);
     }
 }

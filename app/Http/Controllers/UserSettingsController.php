@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BackupService;
+use App\Support\WorkBlocks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use App\Support\WorkBlocks;
-use App\Services\BackupService;
 
 class UserSettingsController extends Controller
 {
@@ -28,7 +28,9 @@ class UserSettingsController extends Controller
         $user = Auth::user();
 
         $settingsPermissions = ['configure work hours', 'configure youtube', 'configure dashboard', 'configure backup'];
-        if (!$user->hasAnyPermission($settingsPermissions)) abort(403);
+        if (! $user->hasAnyPermission($settingsPermissions)) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'use_blocks' => 'sometimes|boolean',
@@ -48,6 +50,23 @@ class UserSettingsController extends Controller
             'languages.*' => 'string|size:2',
         ]);
 
+        $settings = $user->settings ?? [];
+        $workStart = $validated['default_work_start'] ?? $settings['default_work_start'] ?? null;
+        $workEnd = $validated['default_work_end'] ?? $settings['default_work_end'] ?? null;
+        $lunchStart = $validated['lunch_start'] ?? $settings['lunch_start'] ?? null;
+        $lunchEnd = $validated['lunch_end'] ?? $settings['lunch_end'] ?? null;
+
+        $errors = [];
+        if ($workStart && $workEnd && $workEnd <= $workStart) {
+            $errors['default_work_end'] = 'La hora de fin de jornada debe ser mayor a la hora de inicio';
+        }
+        if ($lunchStart && $lunchEnd && $lunchEnd <= $lunchStart) {
+            $errors['lunch_end'] = 'La hora de fin de almuerzo debe ser mayor a la hora de inicio de almuerzo';
+        }
+        if (! empty($errors)) {
+            return back()->withErrors($errors)->withInput();
+        }
+
         $user->settings = array_merge($user->settings ?? [], $validated);
         $user->save();
 
@@ -57,7 +76,9 @@ class UserSettingsController extends Controller
     public function updateBackupSchedule(Request $request, BackupService $backupService)
     {
         $user = Auth::user();
-        if (!$user->hasPermissionTo('configure backup')) abort(403);
+        if (! $user->hasPermissionTo('configure backup')) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'time' => 'required|string|date_format:H:i',

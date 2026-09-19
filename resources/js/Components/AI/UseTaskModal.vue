@@ -69,7 +69,7 @@ function close() {
 <template>
     <Teleport to="body">
         <Transition name="fade">
-            <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
                 @click.self="close">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
                     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">

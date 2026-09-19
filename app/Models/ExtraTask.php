@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Traits\BelongsToOrganization;
+use App\Traits\SharedWithUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExtraTask extends Model
 {
-    use SoftDeletes, BelongsToOrganization;
+    use BelongsToOrganization, SharedWithUser, SoftDeletes;
 
     protected $fillable = [
         'task_date',

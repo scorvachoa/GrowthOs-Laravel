@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Organization;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -45,7 +46,7 @@ class HandleInertiaRequests extends Middleware
                         'id' => $org->id,
                         'name' => $org->name,
                         'primary_color' => $org->primary_color,
-                        'logo_url' => $org->logo_path ? \Illuminate\Support\Facades\Storage::url($org->logo_path) : null,
+                        'logo_url' => $org->logo_path ? Storage::url($org->logo_path) : null,
                     ] : null;
                 }
 
@@ -53,7 +54,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $o->id,
                     'name' => $o->name,
                     'primary_color' => $o->primary_color,
-                    'logo_url' => $o->logo_path ? \Illuminate\Support\Facades\Storage::url($o->logo_path) : null,
+                    'logo_url' => $o->logo_path ? Storage::url($o->logo_path) : null,
                 ]);
             } else {
                 $org = $user->organization;
@@ -62,7 +63,7 @@ class HandleInertiaRequests extends Middleware
                         'id' => $org->id,
                         'name' => $org->name,
                         'primary_color' => $org->primary_color,
-                        'logo_url' => $org->logo_path ? \Illuminate\Support\Facades\Storage::url($org->logo_path) : null,
+                        'logo_url' => $org->logo_path ? Storage::url($org->logo_path) : null,
                     ];
                 }
             }

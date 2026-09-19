@@ -8,11 +8,15 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     private const MODEL_NAME = 'gemini-2.5-flash';
+
     private const REQUEST_TIMEOUT = 45;
+
     private const MAX_RETRIES_PER_KEY = 2;
 
     private array $keys;
+
     private int $totalKeys;
+
     private int $currentIndex = 0;
 
     public function __construct()
@@ -39,6 +43,7 @@ class GeminiService
                 $errorType = $this->isRateLimitError($e) ? 'rate-limit' : get_class($e);
                 $errors[] = "key #{$this->currentIndex}: {$errorType}";
                 Log::warning("Gemini key failed: {$e->getMessage()}");
+
                 continue;
             }
         }
@@ -67,7 +72,7 @@ class GeminiService
 
     private function callGemini(string $prompt, string $apiKey): string
     {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/" . self::MODEL_NAME . ":generateContent?key={$apiKey}";
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/'.self::MODEL_NAME.":generateContent?key={$apiKey}";
 
         $response = Http::timeout(self::REQUEST_TIMEOUT)
             ->post($url, [
@@ -101,6 +106,7 @@ class GeminiService
     {
         $key = $this->keys[$this->currentIndex];
         $this->currentIndex = ($this->currentIndex + 1) % $this->totalKeys;
+
         return $key;
     }
 
@@ -113,6 +119,7 @@ class GeminiService
                 return true;
             }
         }
+
         return false;
     }
 }

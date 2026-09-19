@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 class GeneratedVideo extends Model
 {
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_FAILED = 'failed';
 
     use BelongsToOrganization, OwnedByUser;

@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class UserPolicy
 {
@@ -24,11 +23,11 @@ class UserPolicy
 
     public function update(User $user, User $model): bool
     {
-        if ($model->hasRole('Super Admin') && !$user->hasRole('Super Admin')) {
+        if ($model->hasRole('Super Admin') && ! $user->hasRole('Super Admin')) {
             return false;
         }
 
-        if (!$user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
+        if (! $user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
             return false;
         }
 
@@ -37,11 +36,11 @@ class UserPolicy
 
     public function delete(User $user, User $model): bool
     {
-        if ($model->hasRole('Super Admin') && !$user->hasRole('Super Admin')) {
+        if ($model->hasRole('Super Admin') && ! $user->hasRole('Super Admin')) {
             return false;
         }
 
-        if (!$user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
+        if (! $user->hasRole('Super Admin') && $model->organization_id !== $user->organization_id) {
             return false;
         }
 

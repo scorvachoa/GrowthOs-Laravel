@@ -46,7 +46,7 @@ return [
             env('GEMINI_KEY_2'),
             env('GEMINI_KEY_3'),
             env('GEMINI_KEY_4'),
-        ], fn ($v) => !empty(trim($v ?? '')))),
+        ], fn ($v) => ! empty(trim($v ?? '')))),
     ],
 
     'elevenlabs' => [

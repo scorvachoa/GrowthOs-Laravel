@@ -12,7 +12,7 @@ const len = computed(() => links.value.length)
 </script>
 
 <template>
-    <div class="flex items-center justify-center mt-8 gap-1.5 flex-wrap">
+    <div class="flex items-center justify-center gap-1.5 flex-wrap">
 
         <template
             v-for="(link, i) in links"

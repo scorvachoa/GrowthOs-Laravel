@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Channel;
+use App\Models\Idea;
 use App\Services\IdeaService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,15 +23,15 @@ class IdeaController extends Controller
         $sort = $request->query('sort', 'date_desc');
         $status = $request->query('status', 'all');
 
-        if (!in_array($sort, ['date_desc', 'date_asc', 'alpha_asc', 'alpha_desc'])) {
+        if (! in_array($sort, ['date_desc', 'date_asc', 'alpha_asc', 'alpha_desc'])) {
             $sort = 'date_desc';
         }
 
-        if (!in_array($status, ['all', 'used', 'pending'])) {
+        if (! in_array($status, ['all', 'used', 'pending'])) {
             $status = 'all';
         }
 
-        if (!$channels->contains('id', $channelId)) {
+        if (! $channels->contains('id', $channelId)) {
             $channelId = $channels->first()?->id ?? 0;
         }
 
@@ -95,7 +96,7 @@ class IdeaController extends Controller
 
         return response($text, 200, [
             'Content-Type' => 'text/plain; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="Ideas-' . $sanitized . '-' . date('Y-m-d') . '.txt"',
+            'Content-Disposition' => 'attachment; filename="Ideas-'.$sanitized.'-'.date('Y-m-d').'.txt"',
         ]);
     }
 
@@ -105,24 +106,42 @@ class IdeaController extends Controller
             'content' => ['required', 'string', 'max:65535'],
         ]);
 
-        $idea = \App\Models\Idea::query()->findOrFail($id);
+        $idea = Idea::query()->findOrFail($id);
+
+        $user = $request->user();
+        if (! $user->hasRole(['Super Admin', 'Admin']) && $idea->created_by !== $user->id) {
+            abort(403, 'No tienes permiso para editar esta idea');
+        }
+
         $this->ideaService->update($idea, $validated);
 
-        return redirect()->back()->with('warning', 'Idea actualizada');
+        return redirect()->back()->with('success', 'Idea actualizada');
     }
 
     public function destroy($id)
     {
-        $idea = \App\Models\Idea::query()->findOrFail($id);
+        $idea = Idea::query()->findOrFail($id);
+
+        $user = request()->user();
+        if (! $user->hasRole(['Super Admin', 'Admin']) && $idea->created_by !== $user->id) {
+            abort(403, 'No tienes permiso para eliminar esta idea');
+        }
+
         $this->ideaService->delete($idea);
 
-        return redirect()->back()->with('error', 'Idea eliminada');
+        return redirect()->back()->with('success', 'Idea eliminada');
     }
 
     public function toggleUsed(Request $request, $id)
     {
         $validated = $request->validate(['used' => ['required', 'boolean']]);
-        $idea = \App\Models\Idea::query()->findOrFail($id);
+        $idea = Idea::query()->findOrFail($id);
+
+        $user = $request->user();
+        if (! $user->hasRole(['Super Admin', 'Admin']) && $idea->created_by !== $user->id) {
+            abort(403, 'No tienes permiso para modificar esta idea');
+        }
+
         $this->ideaService->toggleUsed($idea, $validated['used']);
 
         return redirect()->back();
@@ -137,7 +156,13 @@ class IdeaController extends Controller
             'contents' => ['nullable', 'array'],
         ]);
 
-        $count = $this->ideaService->bulkUpdate($validated['ids'], $validated['action'], $validated['contents'] ?? []);
+        $ideas = Idea::whereIn('id', $validated['ids']);
+        if (! $request->user()->hasRole('Super Admin') && ! $request->user()->hasRole('Admin')) {
+            $ideas->where('created_by', $request->user()->id);
+        }
+        $ids = $ideas->pluck('id')->toArray();
+
+        $count = $this->ideaService->bulkUpdate($ids, $validated['action'], $validated['contents'] ?? []);
 
         $messages = [
             'mark_used' => "{$count} ideas marcadas como usadas",

@@ -21,9 +21,9 @@ class GeneratedVideoResource extends JsonResource
             'video_phrases' => $this->video_phrases,
             'status' => $this->status,
             'created_at' => $this->created_at?->format('Y-m-d H:i'),
-            'has_script' => !empty($this->script),
-            'has_copy' => !empty($this->copy_title),
-            'has_phrases' => !empty($this->video_phrases),
+            'has_script' => ! empty($this->script),
+            'has_copy' => ! empty($this->copy_title),
+            'has_phrases' => ! empty($this->video_phrases),
             'script_preview' => mb_substr($this->script, 0, 120),
         ];
     }

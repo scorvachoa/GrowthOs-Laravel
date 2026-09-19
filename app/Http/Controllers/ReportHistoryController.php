@@ -12,14 +12,17 @@ class ReportHistoryController extends Controller
     public function index(Request $request)
     {
         $perPage = min(max((int) $request->input('per_page', 10), 5), 100);
+        $user = $request->user();
+        $isManager = $user->hasRole(['Super Admin', 'Admin']);
 
         $histories = ReportHistory::query()
             ->with('user')
+            ->when(! $isManager, fn ($q) => $q->where('user_id', $user->id))
             ->when(
                 $request->search,
                 fn ($q, $search) => $q->where(function ($q) use ($search) {
                     $q->where('filename', 'like', "%{$search}%")
-                      ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$search}%"));
                 })
             )
             ->when(
@@ -47,9 +50,14 @@ class ReportHistoryController extends Controller
 
     public function download(ReportHistory $reportHistory)
     {
-        $filePath = 'reports/' . $reportHistory->filename;
+        $user = request()->user();
+        if (! $user->hasRole(['Super Admin', 'Admin']) && $reportHistory->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para descargar este reporte');
+        }
 
-        if (!Storage::disk('public')->exists($filePath)) {
+        $filePath = 'reports/'.$reportHistory->filename;
+
+        if (! Storage::disk('public')->exists($filePath)) {
             return redirect()
                 ->route('report-history.index')
                 ->with('error', 'El archivo PDF ya no está disponible. Genera un nuevo reporte.');
@@ -60,7 +68,12 @@ class ReportHistoryController extends Controller
 
     public function destroy(ReportHistory $reportHistory)
     {
-        $filePath = 'reports/' . $reportHistory->filename;
+        $user = request()->user();
+        if (! $user->hasRole(['Super Admin', 'Admin']) && $reportHistory->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para eliminar este reporte');
+        }
+
+        $filePath = 'reports/'.$reportHistory->filename;
         if (Storage::disk('public')->exists($filePath)) {
             Storage::disk('public')->delete($filePath);
         }
@@ -69,6 +82,6 @@ class ReportHistoryController extends Controller
 
         return redirect()
             ->route('report-history.index')
-            ->with('error', 'Reporte eliminado correctamente.');
+            ->with('success', 'Reporte eliminado correctamente.');
     }
 }

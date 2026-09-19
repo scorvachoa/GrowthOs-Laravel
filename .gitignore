@@ -1,28 +1,43 @@
-/.phpunit.cache
+# Dependencies
 /node_modules
+
+# Build files
 /public/build
 /public/hot
+
+# Storage
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
+
+# Environment
 .env
 .env.backup
 .env.production
-.phpactor.json
-.phpunit.result.cache
-Homestead.json
-Homestead.yaml
-npm-debug.log
-yarn-error.log
 /auth.json
+
+# IDE
 /.fleet
 /.idea
 /.nova
 /.vscode
 /.zed
+.phpactor.json
 
-# Database files (SQLite - can contain channel IDs and sensitive data)
+# Testing
+/.phpunit.cache
+.phpunit.result.cache
+
+# Logs
+*.log
+npm-debug.log
+yarn-error.log
+
+# Legacy
+Homestead.json
+Homestead.yaml
+
+# Database (SQLite)
 *.sqlite
 *.sqlite3
 *.db

@@ -15,9 +15,9 @@ class CopyParser
     public function parse(string $rawCopy): array
     {
         $fields = $this->parseLabeledBlocks($rawCopy);
-        $lines = array_filter(array_map('trim', explode("\n", $rawCopy)), fn($l) => $l !== '');
+        $lines = array_filter(array_map('trim', explode("\n", $rawCopy)), fn ($l) => $l !== '');
 
-        if (empty($fields['title']) && !empty($lines)) {
+        if (empty($fields['title']) && ! empty($lines)) {
             $fields['title'] = $this->cleanValue(preg_replace('/^\s*(?:\d+\.\s*)?[^:\n]{0,35}:\s*/', '', $lines[0]));
         }
 
@@ -27,15 +27,15 @@ class CopyParser
         }
 
         if (empty($fields['tags'])) {
-            $tagLines = array_values(array_filter($lines, fn($l) => str_contains($l, ',') && !str_starts_with($l, '#')));
-            $fields['tags'] = !empty($tagLines) ? end($tagLines) : '';
+            $tagLines = array_values(array_filter($lines, fn ($l) => str_contains($l, ',') && ! str_starts_with($l, '#')));
+            $fields['tags'] = ! empty($tagLines) ? end($tagLines) : '';
         }
 
         if (empty($fields['description'])) {
             $nonTagLines = array_values(array_filter($lines, function ($l) {
-                return !str_starts_with($l, '#')
-                    && !str_contains(mb_strtolower($l), 'tags seo')
-                    && !preg_match('/^[#\wáéíóúñÁÉÍÓÚÑ\s]+$/u', $l);
+                return ! str_starts_with($l, '#')
+                    && ! str_contains(mb_strtolower($l), 'tags seo')
+                    && ! preg_match('/^[#\wáéíóúñÁÉÍÓÚÑ\s]+$/u', $l);
             }));
             if (count($nonTagLines) > 1) {
                 $fields['description'] = $this->cleanValue(implode("\n", array_slice($nonTagLines, 1)));
@@ -63,9 +63,10 @@ class CopyParser
             $line = trim($rawLine);
 
             if ($line === '') {
-                if ($currentKey !== null && !empty($buffer) && end($buffer) !== '') {
+                if ($currentKey !== null && ! empty($buffer) && end($buffer) !== '') {
                     $buffer[] = '';
                 }
+
                 continue;
             }
 
@@ -76,6 +77,7 @@ class CopyParser
                     $currentKey = $key;
                     $firstValue = trim($match[2]);
                     $buffer = $firstValue !== '' ? [$firstValue] : [];
+
                     continue;
                 }
             }
@@ -87,6 +89,7 @@ class CopyParser
                     $this->flush($fields, $currentKey, $buffer);
                     $currentKey = $key;
                     $buffer = [];
+
                     continue;
                 }
             }
@@ -97,6 +100,7 @@ class CopyParser
         }
 
         $this->flush($fields, $currentKey, $buffer);
+
         return $fields;
     }
 
@@ -113,11 +117,12 @@ class CopyParser
     {
         $normalized = $this->normalizeLabel($label);
         foreach (self::LABELS as $key => $aliases) {
-            $normalizedAliases = array_map(fn($a) => $this->normalizeLabel($a), $aliases);
+            $normalizedAliases = array_map(fn ($a) => $this->normalizeLabel($a), $aliases);
             if (in_array($normalized, $normalizedAliases, true)) {
                 return $key;
             }
         }
+
         return null;
     }
 
@@ -130,6 +135,7 @@ class CopyParser
             $value
         );
         $value = preg_replace('/[^a-z_\s]/', '', $value);
+
         return preg_replace('/\s+/', ' ', trim($value));
     }
 
@@ -137,6 +143,7 @@ class CopyParser
     {
         $value = preg_replace('/\*\*(.*?)\*\*/', '$1', $value);
         $value = preg_replace('/^\s*[-*•]\s*/m', '', $value);
+
         return trim($value);
     }
 }

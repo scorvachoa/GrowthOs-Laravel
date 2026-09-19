@@ -21,6 +21,7 @@ class PlanningController extends Controller
     private function userWorkBlocks(): array
     {
         $settings = Auth::user()->merged_settings;
+
         return WorkBlocks::fromSettings($settings);
     }
 
@@ -98,10 +99,18 @@ class PlanningController extends Controller
     {
         $request->validate(['fecha' => ['required', 'date']]);
 
-        $obs = DayObservation::query()
-            ->where('organization_id', Auth::user()->activeOrganizationId())
-            ->where('task_date', $request->string('fecha'))
-            ->first();
+        $user = Auth::user();
+        $isManager = $user->hasRole(['Super Admin', 'Admin']);
+
+        $query = DayObservation::query()
+            ->where('organization_id', $user->activeOrganizationId())
+            ->where('task_date', $request->string('fecha'));
+
+        if (! $isManager) {
+            $query->where('created_by', $user->id);
+        }
+
+        $obs = $query->first();
 
         return response()->json([
             'notes' => $obs?->notes ?? '',
@@ -115,18 +124,20 @@ class PlanningController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $orgId = Auth::user()->activeOrganizationId();
+        $user = Auth::user();
+        $orgId = $user->activeOrganizationId();
         $date = $request->string('fecha');
         $notes = $request->input('notes');
 
         if ($notes === null || trim($notes) === '') {
             DayObservation::where('organization_id', $orgId)
                 ->where('task_date', $date)
+                ->where('created_by', $user->id)
                 ->delete();
         } else {
             DayObservation::updateOrCreate(
-                ['organization_id' => $orgId, 'task_date' => $date],
-                ['notes' => $notes, 'created_by' => Auth::id()],
+                ['organization_id' => $orgId, 'task_date' => $date, 'created_by' => $user->id],
+                ['notes' => $notes],
             );
         }
 
@@ -144,6 +155,8 @@ class PlanningController extends Controller
 
         $date = $request->string('date');
         $query = VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
             ->where('task_date', '>=', $date)
             ->where('task_date', '<', Carbon::parse($date)->addDay());
 

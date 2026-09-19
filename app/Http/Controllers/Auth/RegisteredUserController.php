@@ -41,7 +41,7 @@ class RegisteredUserController extends Controller
 
         $org = Organization::where('admin_invite_code', $request->invite_code)->orWhere('invite_code', $request->invite_code)->first();
 
-        if (!$org) {
+        if (! $org) {
             throw ValidationException::withMessages(['invite_code' => 'Invalid invitation code']);
         }
 
@@ -49,6 +49,10 @@ class RegisteredUserController extends Controller
 
         if ($isAdminCode) {
             $org->update(['admin_invite_code' => null]);
+        } else {
+            // Regenerar invite code después de usarlo para prevenir reuso
+            $newCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $org->name), 0, 5)).'-'.random_int(1000, 9999);
+            $org->update(['invite_code' => $newCode]);
         }
 
         $user = User::create([

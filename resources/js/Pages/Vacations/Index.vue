@@ -6,6 +6,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
+import { statusColors, statusLabels } from '@/config/statusConstants'
 
 const props = defineProps({
     vacations: Array,
@@ -150,14 +151,6 @@ function submitEdit() {
         onError: () => { editSubmitting.value = false },
     })
 }
-
-const statusColors = {
-    pendiente: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    aprobado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    rechazado: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-}
-
-const statusLabels = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' }
 </script>
 
 <template>

@@ -4,12 +4,12 @@ namespace App\Models;
 
 use App\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class WorkSession extends Model
 {
-    use LogsActivity, BelongsToOrganization;
+    use BelongsToOrganization, LogsActivity;
 
     protected $fillable = [
         'video_task_id',

@@ -7,12 +7,24 @@ use Illuminate\Support\Facades\Auth;
 
 class IdeaService
 {
+    private function scopeVisibleTo($query)
+    {
+        $user = Auth::user();
+        if (! $user || $user->hasRole(['Super Admin', 'Admin'])) {
+            return $query;
+        }
+
+        return $query->where('created_by', $user->id);
+    }
+
     public function list(int $channelId, string $search = '', string $sort = 'date_desc', string $status = 'all', int $perPage = 50)
     {
         $query = Idea::query()->where('channel_id', $channelId);
+        $this->scopeVisibleTo($query);
 
         if ($search = trim($search)) {
-            $query->where('content', 'like', "%{$search}%");
+            $escaped = addcslashes($search, '%_');
+            $query->where('content', 'like', "%{$escaped}%");
         }
 
         match ($status) {
@@ -41,11 +53,13 @@ class IdeaService
         }
 
         $now = now();
-        $orgId = Auth::user()?->activeOrganizationId();
+        $user = Auth::user();
+        $orgId = $user?->activeOrganizationId();
         $data = array_map(fn ($line) => [
             'channel_id' => $channelId,
             'content' => $line,
             'organization_id' => $orgId,
+            'created_by' => $user?->id,
             'created_at' => $now,
             'updated_at' => $now,
         ], array_values($lines));
@@ -81,6 +95,7 @@ class IdeaService
                     $count++;
                 }
             }
+
             return $count;
         }
 
@@ -96,10 +111,11 @@ class IdeaService
 
     public function exportIdeas(int $channelId): string
     {
-        $ideas = Idea::query()
+        $query = Idea::query()
             ->where('channel_id', $channelId)
-            ->orderBy('created_at')
-            ->get();
+            ->orderBy('created_at');
+        $this->scopeVisibleTo($query);
+        $ideas = $query->get();
 
         $unused = $ideas->where('is_used', false);
         $used = $ideas->where('is_used', true);
@@ -109,7 +125,7 @@ class IdeaService
         if ($unused->isNotEmpty()) {
             $lines[] = 'Ideas pendientes';
             foreach ($unused as $idea) {
-                $lines[] = '- ' . $idea->content;
+                $lines[] = '- '.$idea->content;
             }
         }
 
@@ -119,7 +135,7 @@ class IdeaService
             }
             $lines[] = 'Ideas usadas';
             foreach ($used as $idea) {
-                $lines[] = '- ' . $idea->content;
+                $lines[] = '- '.$idea->content;
             }
         }
 

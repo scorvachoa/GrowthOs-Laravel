@@ -25,7 +25,7 @@ class ScriptCleaner
                 continue;
             }
 
-            $normalized = mb_strtolower(trim($line, " ¡!¿? "));
+            $normalized = mb_strtolower(trim($line, ' ¡!¿? '));
             if (str_starts_with($normalized, 'absolutamente') ||
                 str_starts_with($normalized, 'claro') ||
                 str_starts_with($normalized, 'aqui tienes') ||

@@ -25,12 +25,13 @@ class AudioController extends Controller
         $script = trim($validated['script']);
 
         $video = null;
-        if (!empty($validated['video_id'])) {
+        if (! empty($validated['video_id'])) {
             $video = GeneratedVideo::find($validated['video_id']);
         }
 
         if ($video === null) {
             $video = GeneratedVideo::create([
+                'organization_id' => auth()->user()->activeOrganizationId(),
                 'idea' => $idea ?: 'Guion editado manualmente',
                 'script' => $script,
             ]);
@@ -39,7 +40,7 @@ class AudioController extends Controller
         try {
             $response = $this->elevenLabs->generateAudio($script);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Error al generar audio: ' . $e->getMessage()], 502);
+            return response()->json(['error' => 'Error al generar audio: '.$e->getMessage()], 502);
         }
 
         $filename = $this->safeFilename($idea ?: 'guion-audio');
@@ -56,6 +57,7 @@ class AudioController extends Controller
     {
         $base = preg_replace('/[^a-zA-Z0-9]+/', '-', trim($idea));
         $base = strtolower(trim($base, '-'));
+
         return mb_substr($base, 0, 50) ?: 'guion-audio';
     }
 }

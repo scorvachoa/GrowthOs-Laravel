@@ -16,7 +16,7 @@ class YouTubeService
     public function __construct()
     {
         $apiKey = config('services.youtube.api_key');
-        if (!$apiKey) {
+        if (! $apiKey) {
             return;
         }
         $this->client = new Client;
@@ -31,7 +31,7 @@ class YouTubeService
 
     public function channelStats(string $channelId): ?array
     {
-        if (!$this->available()) {
+        if (! $this->available()) {
             return null;
         }
 
@@ -62,6 +62,7 @@ class YouTubeService
                 ];
             } catch (\Exception $e) {
                 Log::warning("YouTube API error for channel {$channelId}: {$e->getMessage()}");
+
                 return null;
             }
         });
@@ -69,7 +70,9 @@ class YouTubeService
 
     public function uploadsPlaylistId(string $channelId): ?string
     {
-        if (!$this->available()) return null;
+        if (! $this->available()) {
+            return null;
+        }
 
         $cacheKey = "youtube_uploads_playlist_{$channelId}";
 
@@ -89,6 +92,7 @@ class YouTubeService
                     ->getUploads();
             } catch (\Exception $e) {
                 Log::warning("YouTube API error getting uploads playlist for {$channelId}: {$e->getMessage()}");
+
                 return null;
             }
         });
@@ -96,7 +100,7 @@ class YouTubeService
 
     public function recentVideos(string $channelId, int $max = 10): array
     {
-        if (!$this->available()) {
+        if (! $this->available()) {
             return [];
         }
 
@@ -106,7 +110,7 @@ class YouTubeService
             try {
                 $playlistId = $this->uploadsPlaylistId($channelId);
 
-                if (!$playlistId) {
+                if (! $playlistId) {
                     return [];
                 }
 
@@ -123,7 +127,7 @@ class YouTubeService
                 }
 
                 $statsMap = [];
-                if (!empty($videoIds)) {
+                if (! empty($videoIds)) {
                     $videoResponse = $this->youtube->videos->listVideos('statistics', [
                         'id' => implode(',', $videoIds),
                     ]);
@@ -160,6 +164,7 @@ class YouTubeService
                 return $videos;
             } catch (\Exception $e) {
                 Log::warning("YouTube API error fetching videos for {$channelId}: {$e->getMessage()}");
+
                 return [];
             }
         });

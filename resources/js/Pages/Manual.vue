@@ -1,10 +1,14 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import {
     LayoutDashboard, Users, Shield, CalendarDays, ClipboardList,
     Lightbulb, FileClock, Youtube, Settings, Building2, Sparkles,
     BookOpen, ChevronRight, ArrowRight, Umbrella, CalendarClock, HardDrive
 } from 'lucide-vue-next'
+
+const activeSection = ref('')
+const scrollContainer = ref(null)
 
 const sections = [
     {
@@ -30,6 +34,8 @@ const sections = [
             'Tareas pendientes: las tareas que no están listas para programar se pueden mover a "Pendientes" usando el icono de reloj en el sidebar del día. Estas tareas desaparecen del calendario y se muestran en la vista dedicada de Pendientes.',
             'Vista Pendientes: accede desde el botón "Pendientes" en la barra de navegación del calendario. Muestra todas las tareas pendientes en formato de tarjetas (4 columnas en desktop).',
             'Restaurar tarea pendiente: haz clic en "Restaurar" para seleccionar una nueva fecha y bloque horario. La validación verifica que el bloque esté libre y que sea un día laborable.',
+            'Compartir desde el sidebar: cada tarea tiene un icono de compartir que abre un modal para seleccionar usuarios y asignar roles (editor/lector).',
+            'Gestionar sesiones desde el sidebar: las sesiones muestran botones de editar (modal inline) y eliminar directamente desde el calendario.',
         ],
     },
     {
@@ -40,8 +46,12 @@ const sections = [
             'Historial completo de tareas de video con filtros por fecha, estado, canal y usuario.',
             'Cada tarea tiene: título, script, copy, estado, canal asignado, rango horario y enlace a YouTube.',
             'Estados: Pendiente, Script Listo, Editando, Revisión, Programado, Publicado, Cancelado.',
-            'Las tareas pueden tener sesiones de trabajo (días de continuación) con sus propios rangos horarios y estados. Las sesiones se gestionan desde la vista de detalle de la tarea.',
+            'Las tareas pueden tener sesiones de trabajo (días de continuación) con sus propios rangos horarios y estados. Las sesiones se gestionan desde la vista de detalle de la tarea (/tasks/id).',
             'Soporta traducciones por idioma: cada tarea puede tener título, script, copy y youtube_url en varios idiomas. Al ver una tarea, solo se muestran las pestañas de idiomas que tienen contenido.',
+            'Compartir tareas: desde la vista de detalle o el calendario, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve).',
+            'Historial de cambios: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Haz clic en una entrada para ver los detalles completos.',
+            'Sesiones de trabajo: desde la vista de detalle, puedes crear, editar y eliminar sesiones adicionales con selector de bloque horario y verificación de disponibilidad.',
+            'Botón Cancelar: al editar una tarea, el botón Cancelar (rojo) te lleva de vuelta a la vista de detalle sin guardar cambios.',
         ],
     },
     {
@@ -167,12 +177,48 @@ const generalTips = [
     'Los permisos determinan qué secciones y acciones están disponibles. Contacta a un Super Admin si necesitas acceso a algo.',
     'Todas las acciones importantes muestran notificaciones de éxito/error en la parte superior de la pantalla.',
 ]
+
+function scrollTo(id) {
+    const el = document.getElementById(id)
+    if (el && scrollContainer.value) {
+        const containerTop = scrollContainer.value.getBoundingClientRect().top
+        const elTop = el.getBoundingClientRect().top
+        const offset = elTop - containerTop + scrollContainer.value.scrollTop - 16
+        scrollContainer.value.scrollTo({ top: offset, behavior: 'smooth' })
+    }
+}
+
+function handleScroll() {
+    if (!scrollContainer.value) return
+    const containerTop = scrollContainer.value.getBoundingClientRect().top
+    const offsets = sections.map(s => {
+        const el = document.getElementById(s.id)
+        if (!el) return null
+        const rect = el.getBoundingClientRect()
+        const relativeTop = rect.top - containerTop
+        return { id: s.id, top: relativeTop }
+    }).filter(Boolean)
+
+    const current = offsets.find(o => o.top > -50 && o.top < 250)
+    if (current) {
+        activeSection.value = current.id
+    }
+}
+
+onMounted(() => {
+    scrollContainer.value?.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+})
+
+onUnmounted(() => {
+    scrollContainer.value?.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <template>
     <AppLayout>
-        <div class="max-w-4xl mx-auto space-y-8">
-            <div class="flex items-center gap-3">
+        <div class="flex flex-col h-[calc(100vh-8rem)] sm:h-[calc(100vh-9.5rem)] w-full">
+            <div class="flex items-center gap-3 mb-6 shrink-0">
                 <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
                     <BookOpen class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
@@ -182,47 +228,75 @@ const generalTips = [
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Introducción</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    GrowthOS es un sistema de gestión de contenido para creadores de videos y equipos de marketing.
-                    Permite planificar, generar y dar seguimiento a la producción de videos de principio a fin,
-                    integrando inteligencia artificial para la creación de guiones y copys.
-                </p>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Consejos Generales</h2>
-                <ul class="space-y-2">
-                    <li v-for="(tip, i) in generalTips" :key="i" class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <ArrowRight class="w-4 h-4 mt-0.5 text-indigo-500 shrink-0" />
-                        <span>{{ tip }}</span>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="space-y-4">
-                <div v-for="section in sections" :key="section.id"
-                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div class="flex items-center gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-                        <component :is="section.icon" class="w-5 h-5 text-indigo-500" />
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ section.title }}</h2>
+            <div class="flex gap-8 flex-1 min-h-0 w-full">
+                <nav class="hidden lg:block w-56 shrink-0">
+                    <div class="sticky top-2 space-y-1 max-h-[calc(100vh-12rem)] overflow-y-auto">
+                        <button v-for="section in sections" :key="section.id"
+                            @click="scrollTo(section.id)"
+                            class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition text-left"
+                            :class="activeSection === section.id
+                                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'">
+                            <component :is="section.icon" class="w-4 h-4 shrink-0" />
+                            <span class="truncate">{{ section.title }}</span>
+                        </button>
                     </div>
-                    <div class="px-6 py-4 space-y-3">
-                        <p v-for="(paragraph, pi) in section.content" :key="pi"
-                            class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-                            :class="{ 'ml-4 border-l-2 border-indigo-200 dark:border-indigo-800 pl-4': pi > 0 }">
-                            {{ paragraph }}
+                </nav>
+
+                <div ref="scrollContainer" class="flex-1 space-y-6 min-w-0 overflow-y-auto hide-scrollbar pr-1">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Introducción</h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            GrowthOS es un sistema de gestión de contenido para creadores de videos y equipos de marketing.
+                            Permite planificar, generar y dar seguimiento a la producción de videos de principio a fin,
+                            integrando inteligencia artificial para la creación de guiones y copys.
+                        </p>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Consejos Generales</h2>
+                        <ul class="space-y-2">
+                            <li v-for="(tip, i) in generalTips" :key="i" class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <ArrowRight class="w-4 h-4 mt-0.5 text-indigo-500 shrink-0" />
+                                <span>{{ tip }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div v-for="section in sections" :key="section.id" :id="section.id"
+                            class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden scroll-mt-4">
+                            <div class="flex items-center gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
+                                <component :is="section.icon" class="w-5 h-5 text-indigo-500" />
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ section.title }}</h2>
+                            </div>
+                            <div class="px-6 py-4 space-y-3">
+                                <p v-for="(paragraph, pi) in section.content" :key="pi"
+                                    class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+                                    :class="{ 'ml-4 border-l-2 border-indigo-200 dark:border-indigo-800 pl-4': pi > 0 }">
+                                    {{ paragraph }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            ¿Necesitas ayuda adicional? Contacta al administrador del sistema.
                         </p>
                     </div>
                 </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center">
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                    ¿Necesitas ayuda adicional? Contacta al administrador del sistema.
-                </p>
-            </div>
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+</style>

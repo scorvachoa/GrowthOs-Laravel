@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Traits\BelongsToOrganization;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Idea extends Model
 {
-    use BelongsToOrganization;
+    use BelongsToOrganization, HasFactory;
+
     protected $fillable = [
         'channel_id',
         'content',
@@ -15,6 +17,7 @@ class Idea extends Model
         'tags',
         'priority',
         'category',
+        'created_by',
     ];
 
     protected function casts(): array
@@ -28,5 +31,10 @@ class Idea extends Model
     public function channel()
     {
         return $this->belongsTo(Channel::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

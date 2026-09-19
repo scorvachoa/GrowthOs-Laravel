@@ -4,6 +4,7 @@ import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import Pagination from '@/Components/UI/Pagination.vue'
+import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
 
 const page = usePage()
 const permissions = page.props.auth?.user?.permissions ?? []
@@ -203,7 +204,7 @@ const statusOptions = [
 
 <template>
     <AppLayout>
-        <div class="flex flex-col min-h-0 flex-1 overflow-hidden">
+        <div class="ideas-scroll-wrapper flex flex-col min-h-0 overflow-hidden">
             <div class="flex items-center justify-between mb-6 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
@@ -240,11 +241,11 @@ const statusOptions = [
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr_280px] gap-0 min-h-0 flex-1 overflow-hidden">
-                        <div class="hidden lg:flex flex-col border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
+                        <div class="hidden lg:flex flex-col min-h-0 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
                             <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
                                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Canales</h3>
                             </div>
-                            <div class="p-2 space-y-0.5">
+                            <div class="p-2 space-y-0.5 overflow-y-auto min-h-0 hide-scrollbar">
                                 <button v-for="channel in channels" :key="channel.id"
                                     @click="switchChannel(channel.id)"
                                     class="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-left"
@@ -257,8 +258,8 @@ const statusOptions = [
                             </div>
                         </div>
 
-                        <div class="flex flex-col min-h-0 h-full overflow-hidden">
-                            <div class="p-6 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 space-y-3">
+                        <div class="flex flex-col min-h-0 lg:h-full overflow-hidden">
+                            <div class="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 space-y-3">
                                 <div class="flex gap-2 items-center flex-wrap">
                                     <div class="relative min-w-0 flex-[2_1_200px]">
                                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -268,7 +269,7 @@ const statusOptions = [
                                     <div class="flex gap-1">
                                         <button v-for="opt in statusOptions" :key="opt.value"
                                             @click="setStatus(opt.value)"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg transition whitespace-nowrap"
+                                            class="px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition whitespace-nowrap"
                                             :class="currentStatus === opt.value
                                                 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
                                                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
@@ -288,7 +289,7 @@ const statusOptions = [
                                     </div>
                                 </div>
 
-                                <div v-if="hasSelection" class="flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                <div v-if="hasSelection" class="flex items-center justify-between px-2 sm:px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                                     <div class="flex items-center gap-2">
                                         <button @click="toggleSelectAll"
                                             class="p-0.5 rounded hover:bg-amber-200/50 dark:hover:bg-amber-800/50 transition text-amber-500"
@@ -296,26 +297,26 @@ const statusOptions = [
                                             <CheckSquare v-if="selectAll" class="w-4 h-4" />
                                             <Square v-else class="w-4 h-4" />
                                         </button>
-                                        <span class="text-sm font-medium text-amber-700 dark:text-amber-300">
-                                            {{ selectedIds.size }} seleccionadas
+                                        <span class="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">
+                                            {{ selectedIds.size }} sel.
                                         </span>
                                     </div>
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-1 sm:gap-2">
                                         <button v-if="can('edit ideas')" @click="openBulkEdit()"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5">
-                                            <Pencil class="w-3.5 h-3.5" /> Editar
+                                            class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5">
+                                            <Pencil class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Editar</span>
                                         </button>
                                         <button @click="bulkAction('mark_used')"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition flex items-center gap-1.5">
-                                            <CheckCircle2 class="w-3.5 h-3.5" /> Usadas
+                                            class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition flex items-center gap-1.5">
+                                            <CheckCircle2 class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Usadas</span>
                                         </button>
                                         <button @click="bulkAction('mark_pending')"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1.5">
-                                            <Circle class="w-3.5 h-3.5" /> Pendientes
+                                            class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1.5">
+                                            <Circle class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Pendientes</span>
                                         </button>
                                         <button @click="bulkAction('delete')"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5">
-                                            <Trash2 class="w-3.5 h-3.5" /> Eliminar
+                                            class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5">
+                                            <Trash2 class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Eliminar</span>
                                         </button>
                                         <button @click="selectedIds = new Set(); selectAll = false"
                                             class="p-1 rounded-lg hover:bg-amber-200/50 dark:hover:bg-amber-800/50 text-amber-500 transition">
@@ -333,7 +334,7 @@ const statusOptions = [
                                     </div>
                                 </div>
                             </template>
-                            <div v-else class="flex-1 overflow-y-auto px-6 py-4 space-y-1">
+                            <div v-else class="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 space-y-1">
                                 <div v-for="idea in ideasList" :key="idea.id"
                                     class="group flex items-start gap-2 p-3 rounded-xl transition relative"
                                     :class="[
@@ -384,39 +385,41 @@ const statusOptions = [
                                         <Square v-else class="w-4 h-4" />
                                     </button>
                                 </div>
-                            </div>
-
-                            <div v-if="paginationLinks.length > 0" class="flex-shrink-0 px-6 py-4 border-t border-gray-100 dark:border-gray-800">
-                                <Pagination :links="paginationLinks" />
+                                <div v-if="paginationLinks.length > 0" class="flex-shrink-0 px-6 py-4 pb-8 border-t border-gray-100 dark:border-gray-800">
+                                    <Pagination :links="paginationLinks" />
+                                </div>
                             </div>
                         </div>
 
-                        <div class="p-6 space-y-4 border-l border-gray-200 dark:border-gray-700">
-                            <button v-if="can('create ideas')" @click="showModal = true"
-                                class="w-full px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center justify-center gap-2">
-                                <Plus class="w-4 h-4" /> Crear ideas
-                            </button>
+                        <div class="p-4 lg:p-6 space-y-4 lg:space-y-4 lg:border-l border-t lg:border-t-0 border-gray-200 dark:border-gray-700">
+                            <div class="flex lg:flex-col gap-3">
+                                <button v-if="can('create ideas')" @click="showModal = true"
+                                    class="flex-1 lg:w-full px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center justify-center gap-2">
+                                    <Plus class="w-4 h-4" /> <span class="hidden sm:inline">Crear ideas</span><span class="sm:hidden">Crear</span>
+                                </button>
 
-                            <div v-if="can('import ideas')" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
-                                <label class="flex flex-col items-center gap-2 cursor-pointer">
-                                    <Upload class="w-5 h-5 text-gray-400" />
-                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Importar TXT</span>
-                                    <input type="file" accept=".txt,text/plain" @change="importTxt" class="hidden" />
-                                </label>
+                                <div v-if="can('import ideas')" class="flex-1 lg:w-full p-3 lg:p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
+                                    <label class="flex items-center lg:flex-col lg:items-center gap-2 cursor-pointer">
+                                        <Upload class="w-5 h-5 text-gray-400" />
+                                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Importar TXT</span>
+                                        <input type="file" accept=".txt,text/plain" @change="importTxt" class="hidden" />
+                                    </label>
+                                </div>
+
+                                <button v-if="can('export ideas')" @click="exportTxt"
+                                    class="flex-1 lg:w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2">
+                                    <Download class="w-4 h-4" /> <span class="hidden sm:inline">Exportar TXT</span><span class="sm:hidden">Exportar</span>
+                                </button>
                             </div>
-
-                            <button v-if="can('export ideas')" @click="exportTxt"
-                                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2">
-                                <Download class="w-4 h-4" /> Exportar TXT
-                            </button>
                         </div>
                     </div>
                 </div>
             </template>
         </div>
 
+        <Teleport to="body">
         <transition name="fade">
-            <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showModal = false">
+            <div v-if="showModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="showModal = false">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 mx-4 max-h-[90vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Crear ideas</h3>
@@ -439,7 +442,7 @@ const statusOptions = [
         </transition>
 
         <transition name="fade">
-            <div v-if="editingIdea" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="editingIdea = null">
+            <div v-if="editingIdea" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="editingIdea = null">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 mx-4">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Editar idea</h3>
@@ -475,7 +478,7 @@ const statusOptions = [
         />
 
         <transition name="fade">
-            <div v-if="showBulkEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showBulkEdit = false">
+            <div v-if="showBulkEdit" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="showBulkEdit = false">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Editar ideas seleccionadas</h3>
@@ -503,6 +506,7 @@ const statusOptions = [
                 </div>
             </div>
         </transition>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -516,5 +520,23 @@ const statusOptions = [
     0% { transform: scale(0); opacity: 0; }
     70% { transform: scale(1.15); }
     100% { transform: scale(1); opacity: 1; }
+}
+
+.ideas-scroll-wrapper {
+    overflow-y: auto;
+}
+@media (min-width: 1024px) {
+    .ideas-scroll-wrapper {
+        height: calc(100vh - 112px - 24px);
+        overflow: hidden;
+    }
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
 }
 </style>

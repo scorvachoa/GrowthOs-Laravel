@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\GeneratedVideo;
 use App\Services\AI\AIContentService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Queue\Queueable;
 
 class ProcessAIContent implements ShouldQueue
@@ -32,7 +33,7 @@ class ProcessAIContent implements ShouldQueue
 
             $data['status'] = 'completed';
             $video->update($data);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $this->fail(new \RuntimeException("Video {$this->videoId} not found for AI processing"));
         } catch (\Throwable $e) {
             try {
@@ -52,6 +53,7 @@ class ProcessAIContent implements ShouldQueue
     private function generateCopy(AIContentService $ai): array
     {
         $copy = $ai->generateCopy($this->input);
+
         return [
             'copy_title' => $copy['title'],
             'copy_description' => $copy['description'],
@@ -70,6 +72,7 @@ class ProcessAIContent implements ShouldQueue
     {
         $copy = $ai->generateCopy($this->input);
         $phrases = $ai->generatePhrases($this->input);
+
         return [
             'copy_title' => $copy['title'],
             'copy_description' => $copy['description'],

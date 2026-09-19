@@ -27,7 +27,7 @@ class CopyController extends Controller
         try {
             $copy = $this->ai->generateCopy($script);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Error al generar copy: ' . $e->getMessage()], 502);
+            return response()->json(['error' => 'Error al generar copy: '.$e->getMessage()], 502);
         }
 
         $video = $this->resolveVideo($validated, $idea, $script, $copy);
@@ -42,7 +42,7 @@ class CopyController extends Controller
 
     private function resolveVideo(array $validated, string $idea, string $script, array $copy): GeneratedVideo
     {
-        if (!empty($validated['video_id'])) {
+        if (! empty($validated['video_id'])) {
             $video = GeneratedVideo::find($validated['video_id']);
             if ($video) {
                 $video->update([
@@ -52,11 +52,13 @@ class CopyController extends Controller
                     'copy_hashtags' => $copy['hashtags'],
                     'copy_tags' => $copy['tags'],
                 ]);
+
                 return $video;
             }
         }
 
         return GeneratedVideo::create([
+            'organization_id' => auth()->user()->activeOrganizationId(),
             'idea' => $idea ?: 'Guion editado manualmente',
             'script' => $script,
             'copy_title' => $copy['title'],

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-
-use Spatie\Permission\Models\Role;
+use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -18,7 +18,7 @@ class RoleController extends Controller
         $roles = Role::query()
             ->withCount('permissions', 'users')
             ->when(
-                !$user->hasRole('Super Admin'),
+                ! $user->hasRole('Super Admin'),
                 fn ($query) => $query
                     ->where('organization_id', $user->activeOrganizationId())
                     ->where('name', '!=', 'Super Admin')
@@ -36,8 +36,7 @@ class RoleController extends Controller
             )
             ->when(
                 $request->search,
-                fn ($query, $search) =>
-                    $query->where('name', 'like', "%{$search}%")
+                fn ($query, $search) => $query->where('name', 'like', "%{$search}%")
             )
             ->orderBy('name')
             ->get()
@@ -49,7 +48,7 @@ class RoleController extends Controller
                 'users_count' => $role->users_count,
             ]);
 
-        $companies = \App\Models\Organization::orderBy('name')->get(['id', 'name']);
+        $companies = Organization::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
@@ -73,8 +72,7 @@ class RoleController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required',
-                Rule::unique('roles', 'name')->where(fn ($q) =>
-                    $q->where('organization_id', $request->user()->activeOrganizationId())
+                Rule::unique('roles', 'name')->where(fn ($q) => $q->where('organization_id', $request->user()->activeOrganizationId())
                 ),
             ],
             'permissions' => ['array'],
@@ -95,14 +93,14 @@ class RoleController extends Controller
     public function edit(Request $request, Role $role)
     {
         $user = $request->user();
-        if (!$user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
+        if (! $user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
             abort(403);
         }
 
         $users = $role->users()->latest()->take(5)->get(['id', 'name', 'email']);
 
         $organization = $role->organization_id
-            ? \App\Models\Organization::find($role->organization_id)?->only(['id', 'name'])
+            ? Organization::find($role->organization_id)?->only(['id', 'name'])
             : null;
 
         return Inertia::render('Roles/Edit', [
@@ -119,7 +117,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role)
     {
         $user = $request->user();
-        if (!$user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
+        if (! $user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
             abort(403);
         }
 
@@ -138,13 +136,13 @@ class RoleController extends Controller
 
         return redirect()
             ->route('roles.index')
-            ->with('warning', 'Rol actualizado correctamente.');
+            ->with('success', 'Rol actualizado correctamente.');
     }
 
     public function destroy(Request $request, Role $role)
     {
         $user = $request->user();
-        if (!$user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
+        if (! $user->hasRole('Super Admin') && $role->organization_id !== $user->activeOrganizationId()) {
             abort(403);
         }
 
@@ -152,6 +150,6 @@ class RoleController extends Controller
 
         return redirect()
             ->back()
-            ->with('error', 'Rol eliminado correctamente.');
+            ->with('success', 'Rol eliminado correctamente.');
     }
 }

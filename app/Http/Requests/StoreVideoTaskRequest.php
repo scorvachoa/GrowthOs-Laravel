@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Services\PlanningValidator;
 use App\Enums\VideoTaskStatus;
+use App\Services\PlanningValidator;
 use App\Support\WorkBlocks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -42,6 +42,10 @@ class StoreVideoTaskRequest extends FormRequest
                 $q->where('organization_id', $this->user()->activeOrganizationId());
             })],
             'status' => ['required', Rule::in(VideoTaskStatus::values())],
+            'shared_user_ids' => ['nullable', 'array'],
+            'shared_user_ids.*' => ['integer', 'exists:users,id'],
+            'shared_roles' => ['nullable', 'array'],
+            'shared_roles.*' => ['string', 'in:reader,editor'],
         ];
 
         if ($useBlocks) {
@@ -58,8 +62,9 @@ class StoreVideoTaskRequest extends FormRequest
     {
         $settings = $this->user()->merged_settings;
         $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
+        $useBlocks = $settings['use_blocks'] ?? true;
 
-        $validator->after(function ($validator) use ($workingDays) {
+        $validator->after(function ($validator) use ($workingDays, $useBlocks) {
             $taskDate = $this->input('task_date');
             $timeRange = $this->input('time_range');
             $taskId = $this->route('video_task')?->id ?? $this->route('task')?->id;
@@ -70,6 +75,13 @@ class StoreVideoTaskRequest extends FormRequest
 
             if ($taskDate && $timeRange) {
                 $this->planningValidator->assertSlotAvailable($taskDate, $timeRange, $taskId);
+            }
+
+            if (! $useBlocks && $timeRange && str_contains($timeRange, '-')) {
+                [$start, $end] = explode('-', $timeRange, 2);
+                if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
+                    $validator->errors()->add('time_range', 'La hora fin debe ser mayor a la hora de inicio');
+                }
             }
         });
     }

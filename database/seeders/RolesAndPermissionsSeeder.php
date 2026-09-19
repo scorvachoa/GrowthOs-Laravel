@@ -96,7 +96,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdmin->givePermissionTo($permissions);
 
         $orgIds = \DB::table('organizations')->pluck('id');
-        $adminPermissions = array_values(array_filter($permissions, fn ($p) => !str_ends_with($p, 'roles')));
+        $adminPermissions = array_values(array_filter($permissions, fn ($p) => ! str_ends_with($p, 'roles')));
 
         foreach ($orgIds as $orgId) {
             $employee = Role::firstOrCreate([

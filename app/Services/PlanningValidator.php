@@ -13,7 +13,7 @@ class PlanningValidator
     public function assertWorkingDay(string $date, array $workingDays): void
     {
         $dayOfWeek = Carbon::parse($date)->dayOfWeek;
-        if (!in_array($dayOfWeek, $workingDays)) {
+        if (! in_array($dayOfWeek, $workingDays)) {
             throw ValidationException::withMessages([
                 'task_date' => 'La fecha seleccionada no es un dia laborable.',
             ]);
@@ -30,7 +30,7 @@ class PlanningValidator
             ->when($exceptVideoTaskId, fn ($q) => $q->where('id', '!=', $exceptVideoTaskId))
             ->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             $sessionExists = WorkSession::where('date', '>=', $date)
                 ->where('date', '<', Carbon::parse($date)->addDay())
                 ->where('time_range', $block)
@@ -50,6 +50,7 @@ class PlanningValidator
     public function resolveBlock(array $settings, string $block): string
     {
         $valid = WorkBlocks::fromSettings($settings);
+
         return in_array($block, $valid, true)
             ? $block
             : ($valid[0] ?? WorkBlocks::ALL[0]);

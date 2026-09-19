@@ -1,5 +1,6 @@
 <script setup>
 import { Plus } from 'lucide-vue-next'
+import { calendarStatusColors as statusColors } from '@/config/statusConstants'
 
 defineProps({
     days: Array,
@@ -10,18 +11,6 @@ defineProps({
 const emit = defineEmits(['openDay', 'createTask'])
 
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-
-const statusColors = {
-    pending: 'bg-yellow-500',
-    script_ready: 'bg-blue-500',
-    editing: 'bg-purple-500',
-    review: 'bg-orange-500',
-    scheduled: 'bg-indigo-500',
-    published: 'bg-green-500',
-    cancelled: 'bg-red-500',
-    in_progress: 'bg-amber-500',
-    completed: 'bg-teal-500',
-}
 
 function allBlocksFull(day, blocks) {
     return blocks?.every(b => (day.blocks?.[b] || 0) > 0) ?? false

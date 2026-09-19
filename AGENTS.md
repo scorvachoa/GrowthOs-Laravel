@@ -20,6 +20,9 @@ Business logic lives in `app/Services/`. Controllers call services and return In
 `app/Policies/` — authorization on CRUD operations. Used via `Gate` in controllers, middleware `can:*` on routes, and blade directives. Key patterns:
 - **UserPolicy:** Super Admin can only be edited/deleted by another Super Admin; org-scoped access
 - **ChannelPolicy, VideoTaskPolicy, IdeaPolicy, ExtraTaskPolicy:** Org-scoped via `BelongsToOrganization` trait + policy checks
+- **VacationPolicy, TimeOffPolicy:** Org-scoped; approve/reject require different user than creator
+- **WorkSessionPolicy:** Org-scoped; nested under video tasks
+- **ReportHistoryPolicy, GeneratedVideoPolicy:** Org-scoped; delete requires ownership (GeneratedVideo)
 
 ### Global Scopes (Traits)
 - `BelongsToOrganization` — auto-filters all queries by `organization_id` from `Auth::user()->activeOrganizationId()`. Applied to: `VideoTask`, `Channel`, `Idea`, `ExtraTask`, `GeneratedVideo`, `ReportHistory`, `DayObservation`
@@ -35,11 +38,11 @@ Business logic lives in `app/Services/`. Controllers call services and return In
 ### Default Roles (from `RolesAndPermissionsSeeder`)
 | Role | Scope | Permissions |
 |------|-------|-------------|
-| **Super Admin** | Global (no org) | All 34 permissions + can switch companies |
+| **Super Admin** | Global (no org) | All 52 permissions + can switch companies |
 | **Admin** | Per-org | All permissions except role management |
 | **Employee** | Per-org | None by default (assignable per-org) |
 
-### All 34 Permissions
+### All 52 Permissions
 ```
 Dashboard:   view dashboard
 Usuarios:    view users, create users, edit users, delete users
@@ -52,6 +55,9 @@ YouTube:     view youtube
 AI:          generate ai, view ai history, download ai
 Empresa:     view empresa, create empresa, edit empresa, delete empresa
 Config:      view configuracion, configure work hours, configure youtube, configure dashboard, configure backup
+Vacaciones:  view vacations, create vacations, edit vacations, delete vacations, approve vacations, reject vacations
+Time Off:    view time off, create time off, edit time off, delete time off, approve time off, reject time off
+Backup:      view backup, create backup, download backups
 ```
 
 ### Super Admin Special Behavior

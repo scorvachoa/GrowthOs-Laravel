@@ -33,7 +33,7 @@ export default [
     {
         title: 'Tareas',
         icon: ClipboardList,
-        route: '/task-history',
+        route: '/tasks/history',
         permission: 'view tasks',
     },
 

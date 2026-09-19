@@ -19,7 +19,7 @@ const submit = () => form.post('/users')
 
 <template>
     <AppLayout>
-        <div class="max-w-3xl mx-auto space-y-6">
+        <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">

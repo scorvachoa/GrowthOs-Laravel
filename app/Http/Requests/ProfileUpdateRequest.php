@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,6 +12,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         return true;
     }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -34,9 +34,15 @@ class ProfileUpdateRequest extends FormRequest
                     ->ignore($this->user()->id),
             ],
 
+            'current_password' => [
+                'required_with:password',
+                'current_password',
+            ],
+
             'password' => [
                 'nullable',
                 'min:8',
+                'confirmed',
             ],
         ];
     }

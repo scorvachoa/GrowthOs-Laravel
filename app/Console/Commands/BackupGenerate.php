@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class BackupGenerate extends Command
 {
     protected $signature = 'backup:generate {--org=} {--all}';
+
     protected $description = 'Generate a backup file and save it to storage';
 
     public function handle(BackupService $backupService): int
@@ -17,14 +18,15 @@ class BackupGenerate extends Command
 
         if ($isSuperAdmin && $orgId) {
             $this->error('Usa --all o --org, no ambos.');
+
             return Command::FAILURE;
         }
 
         $path = $backupService->saveToStorage($orgId, $isSuperAdmin ?: false);
-        $size = filesize(storage_path('app/' . $path));
+        $size = filesize(storage_path('app/'.$path));
 
-        $this->info('Backup generado: ' . $path);
-        $this->info('Tamano: ' . $this->formatBytes($size));
+        $this->info('Backup generado: '.$path);
+        $this->info('Tamano: '.$this->formatBytes($size));
 
         return Command::SUCCESS;
     }
@@ -33,7 +35,11 @@ class BackupGenerate extends Command
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = 0;
-        while ($bytes >= 1024 && $i < count($units) - 1) { $bytes /= 1024; $i++; }
-        return round($bytes, 1) . ' ' . $units[$i];
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+
+        return round($bytes, 1).' '.$units[$i];
     }
 }

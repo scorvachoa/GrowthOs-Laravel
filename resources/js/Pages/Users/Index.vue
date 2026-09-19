@@ -5,6 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
+import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
 import { Users, Plus, Pencil, Trash2, Shield, Mail, CalendarDays, ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 const page = usePage()
@@ -67,7 +68,7 @@ const roleColor = (role) => {
 
 <template>
     <AppLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Usuarios</h1>
@@ -83,7 +84,11 @@ const roleColor = (role) => {
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <table class="w-full text-sm table-fixed">
+                <!-- Skeleton loader -->
+                <div v-if="users?.data?.length === 0 && users?.links?.length === 0" class="p-6">
+                    <SkeletonLoader type="table" :rows="5" />
+                </div>
+                <table v-else class="w-full text-sm table-fixed">
                     <thead>
                         <tr class="border-b border-gray-200 dark:border-gray-700">
                             <th class="text-left px-4 py-4 font-semibold text-gray-500 dark:text-gray-400">Usuario</th>

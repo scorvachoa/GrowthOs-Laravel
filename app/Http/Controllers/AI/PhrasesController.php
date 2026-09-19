@@ -27,7 +27,7 @@ class PhrasesController extends Controller
         try {
             $phrases = $this->ai->generatePhrases($script);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Error al generar frases: ' . $e->getMessage()], 502);
+            return response()->json(['error' => 'Error al generar frases: '.$e->getMessage()], 502);
         }
 
         $video = $this->resolveVideo($validated, $idea, $script, $phrases);
@@ -55,7 +55,7 @@ class PhrasesController extends Controller
             $copy = $this->ai->generateCopy($script);
             $phrases = $this->ai->generatePhrases($script);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Error al generar contenido: ' . $e->getMessage()], 502);
+            return response()->json(['error' => 'Error al generar contenido: '.$e->getMessage()], 502);
         }
 
         $video = $this->resolveVideoWithBoth($validated, $idea, $script, $copy, $phrases);
@@ -71,15 +71,17 @@ class PhrasesController extends Controller
 
     private function resolveVideo(array $validated, string $idea, string $script, string $phrases): GeneratedVideo
     {
-        if (!empty($validated['video_id'])) {
+        if (! empty($validated['video_id'])) {
             $video = GeneratedVideo::find($validated['video_id']);
             if ($video) {
                 $video->update(['video_phrases' => $phrases]);
+
                 return $video;
             }
         }
 
         return GeneratedVideo::create([
+            'organization_id' => auth()->user()->activeOrganizationId(),
             'idea' => $idea ?: 'Guion editado manualmente',
             'script' => $script,
             'video_phrases' => $phrases,
@@ -88,7 +90,7 @@ class PhrasesController extends Controller
 
     private function resolveVideoWithBoth(array $validated, string $idea, string $script, array $copy, string $phrases): GeneratedVideo
     {
-        if (!empty($validated['video_id'])) {
+        if (! empty($validated['video_id'])) {
             $video = GeneratedVideo::find($validated['video_id']);
             if ($video) {
                 $video->update([
@@ -99,11 +101,13 @@ class PhrasesController extends Controller
                     'copy_tags' => $copy['tags'],
                     'video_phrases' => $phrases,
                 ]);
+
                 return $video;
             }
         }
 
         return GeneratedVideo::create([
+            'organization_id' => auth()->user()->activeOrganizationId(),
             'idea' => $idea ?: 'Guion editado manualmente',
             'script' => $script,
             'copy_title' => $copy['title'],

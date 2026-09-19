@@ -87,7 +87,7 @@ class PhraseCleanerTest extends TestCase
 
     public function test_clean_removes_lines_exceeding_90_chars(): void
     {
-        $input = "Corta\n" . str_repeat('a', 100);
+        $input = "Corta\n".str_repeat('a', 100);
 
         $result = $this->cleaner->clean($input);
 

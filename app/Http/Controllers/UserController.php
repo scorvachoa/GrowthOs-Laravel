@@ -6,7 +6,6 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -16,12 +15,13 @@ class UserController extends Controller
     public function __construct(
         protected UserService $userService
     ) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-         $this->authorize('viewAny', User::class);
+        $this->authorize('viewAny', User::class);
 
         $users = User::query()
             ->with('roles')
@@ -32,7 +32,7 @@ class UserController extends Controller
                 fn ($query) => $query->where(
                     'name',
                     'like',
-                    "%{$request->search}%"
+                    '%'.addcslashes($request->search, '%_').'%'
                 )
             )
             ->latest()
@@ -85,7 +85,9 @@ class UserController extends Controller
 
         $user = auth()->user();
         $roles = $user->hasRole('Super Admin')
-            ? Role::where(function ($q) use ($user) { $q->whereNull('organization_id')->orWhere('organization_id', $user->activeOrganizationId()); })->pluck('name')
+            ? Role::where(function ($q) use ($user) {
+                $q->whereNull('organization_id')->orWhere('organization_id', $user->activeOrganizationId());
+            })->pluck('name')
             : Role::where('organization_id', $user->activeOrganizationId())->where('name', '!=', 'Super Admin')->pluck('name');
 
         return Inertia::render('Users/Create', [
@@ -124,7 +126,9 @@ class UserController extends Controller
 
         $authUser = request()->user();
         $roles = $authUser->hasRole('Super Admin')
-            ? Role::where(function ($q) use ($authUser) { $q->whereNull('organization_id')->orWhere('organization_id', $authUser->activeOrganizationId()); })->pluck('name')
+            ? Role::where(function ($q) use ($authUser) {
+                $q->whereNull('organization_id')->orWhere('organization_id', $authUser->activeOrganizationId());
+            })->pluck('name')
             : Role::where('organization_id', $authUser->activeOrganizationId())->where('name', '!=', 'Super Admin')->pluck('name');
 
         return Inertia::render('Users/Edit', [
@@ -150,7 +154,7 @@ class UserController extends Controller
             $request->validated()
         );
 
-        return redirect()->route('users.index')->with('warning', 'Usuario actualizado correctamente.');
+        return redirect()->route('users.index')->with('success', 'Usuario actualizado correctamente.');
     }
 
     /**
@@ -162,6 +166,6 @@ class UserController extends Controller
 
         $user->delete();
 
-        return redirect()->route('users.index')->with('error', 'Usuario eliminado correctamente.');
+        return redirect()->route('users.index')->with('success', 'Usuario eliminado correctamente.');
     }
 }

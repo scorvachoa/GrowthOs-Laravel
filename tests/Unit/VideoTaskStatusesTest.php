@@ -59,4 +59,32 @@ class VideoTaskStatusesTest extends TestCase
     {
         $this->assertEquals(VideoTaskStatus::values(), array_keys(VideoTaskStatus::labels()));
     }
+
+    public function test_label_returns_spanish_for_each_status(): void
+    {
+        $this->assertEquals('Pendiente', VideoTaskStatus::Pending->label());
+        $this->assertEquals('Guion listo', VideoTaskStatus::ScriptReady->label());
+        $this->assertEquals('Edición', VideoTaskStatus::Editing->label());
+        $this->assertEquals('Revisión', VideoTaskStatus::Review->label());
+        $this->assertEquals('Programado', VideoTaskStatus::Scheduled->label());
+        $this->assertEquals('Publicado', VideoTaskStatus::Published->label());
+        $this->assertEquals('Cancelado', VideoTaskStatus::Cancelled->label());
+    }
+
+    public function test_options_values_match_cases(): void
+    {
+        $options = VideoTaskStatus::options();
+        $cases = VideoTaskStatus::cases();
+
+        foreach ($cases as $i => $case) {
+            $this->assertEquals($case->value, $options[$i]['value']);
+            $this->assertEquals($case->label(), $options[$i]['label']);
+        }
+    }
+
+    public function test_all_values_are_unique(): void
+    {
+        $values = VideoTaskStatus::values();
+        $this->assertEquals(count($values), count(array_unique($values)));
+    }
 }

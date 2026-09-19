@@ -2,6 +2,7 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
+import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
 import { ChevronLeft, ChevronRight, FileDown, Clock } from 'lucide-vue-next'
 
 import CalendarMonth from './Components/CalendarMonth.vue'
@@ -10,7 +11,7 @@ import DaySidebar from './Components/DaySidebar.vue'
 import ExtraTaskModal from './Components/ExtraTaskModal.vue'
 import RestorePendingModal from './Components/RestorePendingModal.vue'
 import { usePlanning } from './composables/usePlanning.js'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
     calendar: Object,
@@ -33,7 +34,7 @@ const {
     createTask, viewTask, editTask,
     confirmDeleteTask, executeDelete,
     updateTaskStatus, updateExtraTaskStatus, saveObservation,
-    createSession, completeSession,
+    createSession, completeSession, editSession, deleteSession,
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
     moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
@@ -41,13 +42,25 @@ const {
 
 onMounted(() => {
     if (viewMode.value === 'pending') fetchPendingTasks()
+    window.addEventListener('share-accepted', fetchSnapshot)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('share-accepted', fetchSnapshot)
 })
 </script>
 
 <template>
     <AppLayout>
         <div class="space-y-4 sm:space-y-6">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 sm:p-6">
+            <!-- Skeleton loader while data loads -->
+            <template v-if="loading && !snapshot.tasks_count">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 sm:p-6">
+                    <SkeletonLoader type="calendar" />
+                </div>
+            </template>
+
+            <div v-else class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                     <div class="flex items-center gap-2 sm:gap-3">
                         <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700">
@@ -174,37 +187,41 @@ onMounted(() => {
             </div>
         </div>
 
-        <transition name="fade">
-            <div v-if="showSidebar" class="fixed inset-0 z-40 bg-black/30" @click="closeSidebar"></div>
-        </transition>
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="showSidebar" class="fixed inset-0 z-40 bg-black/30" @click="closeSidebar"></div>
+            </transition>
 
-        <transition name="slide">
-            <DaySidebar v-if="showSidebar && selectedDate"
-                :selected-date="selectedDate"
-                :day-tasks="dayTasks"
-                :extra-tasks="extraTasks"
-                :statuses="snapshot.statuses"
-                :status-labels="statusLabels"
-                :holiday="snapshot.holidays_map?.[selectedDate]"
-                :observation="dayObservation"
-                :absences="snapshot.absences_map?.[selectedDate] || []"
-                :can-create="can('create planning')"
-                :can-edit="can('edit planning')"
-                :can-delete="can('delete planning')"
-                @close="closeSidebar"
-                @createTask="createTask"
-                @viewTask="viewTask"
-                @editTask="editTask"
-                @deleteTask="confirmDeleteTask"
-                @updateStatus="updateTaskStatus"
-                @createSession="createSession"
-                @completeSession="completeSession"
-                @openExtraModal="openExtraModal"
-                @deleteExtra="confirmDeleteExtra"
-                @updateExtraStatus="updateExtraTaskStatus"
-                @saveObservation="saveObservation"
-                @moveToPending="moveToPending" />
-        </transition>
+            <transition name="slide">
+                <DaySidebar v-if="showSidebar && selectedDate"
+                    :selected-date="selectedDate"
+                    :day-tasks="dayTasks"
+                    :extra-tasks="extraTasks"
+                    :statuses="snapshot.statuses"
+                    :status-labels="statusLabels"
+                    :holiday="snapshot.holidays_map?.[selectedDate]"
+                    :observation="dayObservation"
+                    :absences="snapshot.absences_map?.[selectedDate] || []"
+                    :can-create="can('create planning')"
+                    :can-edit="can('edit planning')"
+                    :can-delete="can('delete planning')"
+                    @close="closeSidebar"
+                    @createTask="createTask"
+                    @viewTask="viewTask"
+                    @editTask="editTask"
+                    @deleteTask="confirmDeleteTask"
+                    @updateStatus="updateTaskStatus"
+                    @createSession="createSession"
+                    @completeSession="completeSession"
+                    @editSession="editSession"
+                    @deleteSession="deleteSession"
+                    @openExtraModal="openExtraModal"
+                    @deleteExtra="confirmDeleteExtra"
+                    @updateExtraStatus="updateExtraTaskStatus"
+                    @saveObservation="saveObservation"
+                    @moveToPending="moveToPending" />
+            </transition>
+        </Teleport>
 
         <ExtraTaskModal
             :show="showExtraModal"
