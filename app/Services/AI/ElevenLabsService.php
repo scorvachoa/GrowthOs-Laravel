@@ -33,6 +33,7 @@ class ElevenLabsService
                 'Content-Type' => 'application/json',
                 'Accept' => 'audio/mpeg',
             ])
+            ->withOptions(['stream' => true])
             ->post($url, [
                 'text' => trim($script),
                 'model_id' => $modelId,

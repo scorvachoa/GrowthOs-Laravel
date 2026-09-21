@@ -48,7 +48,6 @@ class CopyParser
             'cta' => $this->cleanValue($fields['cta']),
             'hashtags' => $this->cleanValue($fields['hashtags']),
             'tags' => $this->cleanValue($fields['tags']),
-            'raw' => trim($rawCopy),
         ];
     }
 

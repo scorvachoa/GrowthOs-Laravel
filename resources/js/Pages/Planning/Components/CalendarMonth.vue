@@ -6,6 +6,7 @@ defineProps({
     days: Array,
     workBlocks: Array,
     canCreate: Boolean,
+    searchedDates: { type: Set, default: () => new Set() },
 })
 
 const emit = defineEmits(['openDay', 'createTask'])
@@ -38,6 +39,9 @@ function allBlocksFull(day, blocks) {
                             : 'border-gray-200 dark:border-gray-700 hover:shadow-md hover:-translate-y-0.5',
                     day.isToday && !day.isOtherMonth
                         ? 'border-indigo-400 dark:border-indigo-500 shadow-indigo-100 dark:shadow-indigo-900/20'
+                        : '',
+                    searchedDates.has(day.date) && !day.isOtherMonth
+                        ? 'ring-2 ring-indigo-400 dark:ring-indigo-500'
                         : '',
                 ]">
                 <div class="flex items-start justify-between sm:flex-col sm:gap-1">

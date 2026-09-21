@@ -62,7 +62,7 @@ class GeminiService
             } catch (\Exception $e) {
                 $lastError = $e;
                 if ($retry < self::MAX_RETRIES_PER_KEY - 1) {
-                    usleep(700000 * ($retry + 1));
+                    usleep(300000 * ($retry + 1));
                 }
             }
         }
@@ -72,9 +72,12 @@ class GeminiService
 
     private function callGemini(string $prompt, string $apiKey): string
     {
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/'.self::MODEL_NAME.":generateContent?key={$apiKey}";
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/'.self::MODEL_NAME.':generateContent';
 
         $response = Http::timeout(self::REQUEST_TIMEOUT)
+            ->withHeaders([
+                'x-goog-api-key' => $apiKey,
+            ])
             ->post($url, [
                 'contents' => [
                     ['parts' => [['text' => $prompt]]],

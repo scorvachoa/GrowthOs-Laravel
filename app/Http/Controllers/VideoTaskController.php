@@ -102,11 +102,25 @@ class VideoTaskController extends Controller
                 'properties' => $a->changes,
             ]);
 
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $orgId = $user->activeOrganizationId();
+
+        $query = VideoTask::query()->withoutGlobalScope('organization');
+        if (! $isSuperAdmin) {
+            $query->where('organization_id', $orgId);
+        }
+
+        $prevTask = $query->clone()->where('id', '<', $videoTask->id)->latest('id')->first(['id', 'title']);
+        $nextTask = $query->clone()->where('id', '>', $videoTask->id)->oldest('id')->first(['id', 'title']);
+
         return Inertia::render('VideoTasks/Show', [
             'task' => $this->serializeTask($videoTask),
             'statuses' => VideoTaskStatus::options(),
             'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
             'activities' => $activities,
+            'prev_task' => $prevTask ? ['id' => $prevTask->id, 'title' => $prevTask->title] : null,
+            'next_task' => $nextTask ? ['id' => $nextTask->id, 'title' => $nextTask->title] : null,
         ]);
     }
 
@@ -163,10 +177,7 @@ class VideoTaskController extends Controller
         PlanningCalendarService::bustCache();
 
         return redirect()
-            ->route('planning.index', [
-                'year' => Carbon::parse($validated['task_date'])->year,
-                'month' => Carbon::parse($validated['task_date'])->month,
-            ])
+            ->route('tasks.show', $videoTask->id)
             ->with('success', 'Tarea actualizada correctamente.');
     }
 
@@ -376,7 +387,7 @@ class VideoTaskController extends Controller
         $this->ensureCanEdit($videoTask);
 
         $videoTask->update(['is_pending' => true]);
-        $videoTask->activity()->latest()->first()?->update(['description' => 'Movido a pendiente']);
+        $videoTask->activities()->latest()->first()?->update(['description' => 'Movido a pendiente']);
         PlanningCalendarService::bustCache();
 
         return response()->json(['ok' => true]);
@@ -429,7 +440,7 @@ class VideoTaskController extends Controller
             'time_range' => $validated['time_range'],
             'is_pending' => false,
         ]);
-        $videoTask->activity()->latest()->first()?->update(['description' => 'Restaurado desde pendiente']);
+        $videoTask->activities()->latest()->first()?->update(['description' => 'Restaurado desde pendiente']);
         PlanningCalendarService::bustCache();
 
         return response()->json([

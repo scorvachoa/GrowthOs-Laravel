@@ -65,6 +65,7 @@ const groups = computed(() => {
         'export ideas': 'Ideas',
         'view reports': 'Reportes',
         'download reports': 'Reportes',
+        'delete reports': 'Reportes',
         'view youtube': 'YouTube',
         'generate ai': 'Generador IA',
         'view ai history': 'Generador IA',
@@ -93,6 +94,7 @@ const groups = computed(() => {
         'reject time off': 'Permisos',
         'view backup': 'Backup',
         'create backup': 'Backup',
+        'download backups': 'Backup',
     }
 
     const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos', 'Backup']

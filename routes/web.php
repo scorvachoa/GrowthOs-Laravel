@@ -169,7 +169,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ai/copy', [CopyController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy');
     Route::post('/ai/phrases', [PhrasesController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.phrases');
     Route::post('/ai/copy-phrases', [PhrasesController::class, 'generateWithCopy'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy-phrases');
-    Route::post('/ai/create-task', [AIController::class, 'createTask'])->middleware('can:generate ai')->name('ai.create-task');
+    Route::post('/ai/create-task', [AIController::class, 'createTask'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.create-task');
 
     Route::get('/ai/history', [AIController::class, 'history'])->middleware('can:view ai history')->name('ai.history');
     Route::get('/ai/history/{id}', [AIController::class, 'show'])->middleware('can:view ai history')->name('ai.show');

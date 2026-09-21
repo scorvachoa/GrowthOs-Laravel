@@ -26,7 +26,9 @@ class AudioController extends Controller
 
         $video = null;
         if (! empty($validated['video_id'])) {
-            $video = GeneratedVideo::find($validated['video_id']);
+            $video = GeneratedVideo::where('id', $validated['video_id'])
+                ->where('organization_id', auth()->user()->activeOrganizationId())
+                ->first();
         }
 
         if ($video === null) {
@@ -46,7 +48,8 @@ class AudioController extends Controller
         $filename = $this->safeFilename($idea ?: 'guion-audio');
 
         return response()->streamDownload(function () use ($response) {
-            echo $response->body();
+            $body = $response->body();
+            echo $body;
         }, "{$filename}.mp3", [
             'Content-Type' => 'audio/mpeg',
             'Content-Disposition' => "attachment; filename=\"{$filename}.mp3\"",

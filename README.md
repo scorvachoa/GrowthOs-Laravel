@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales y tareas del día, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, interfaz 100 % en español latino, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC con 53 permisos, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros, selección múltiple y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, generación de contenido con IA (Gemini + ElevenLabs), interfaz 100 % en español latino, e integración con YouTube API.
 
 > **Repositorio:** [https://github.com/scorvachoa/GrowthOs-Laravel](https://github.com/scorvachoa/GrowthOs-Laravel)
 
@@ -96,12 +96,12 @@ npm run dev
 | Historial de reportes (ver) | `/report-history` | `view reports` |
 | Historial de reportes (descargar) | — | `download reports` |
 | YouTube (canales + API stats) | `/youtube` | `view youtube` |
-| Empresa (editar) | `/settings` | `edit company` |
+| Empresa (editar) | `/company` | `edit empresa` |
 | Canales (CRUD) | — | `create channels`, `edit channels`, `delete channels` |
 | AI Generator | `/ai` | `view ai` |
+| AI Generar contenido | `/ai` | `generate ai` |
 | AI Historial (ver) | `/ai/history` | `view ai history` |
 | AI Historial (descargar) | — | `download ai` |
-| AI Historial (filtrar usadas en planner) | — | `view ai history` |
 | Perfil | `/profile` | Usuario autenticado |
 | Vacaciones (ver) | `/vacations` | `view vacations` |
 | Vacaciones (solicitar) | — | `create vacations` |
@@ -146,9 +146,9 @@ Reportes:        view reports, download reports, delete reports
 YouTube:         view youtube
 Empresa:         view empresa, create empresa, edit empresa, delete empresa
 Canales:         create channels, edit channels, delete channels
-AI:              view ai, view ai history, download ai
+AI:              view ai, generate ai, view ai history, download ai
 Config:          view configuracion, configure work hours, configure youtube, configure dashboard, configure backup
-Respaldos:       view backup, create backup, delete backup
+Respaldos:       view backup, create backup, download backups, delete backup
 Vacaciones:      view vacations, create vacations, edit vacations, approve vacations, reject vacations, delete vacations
 Permisos:        view time off, create time off, edit time off, approve time off, reject time off, delete time off
 ```
@@ -205,17 +205,15 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **Planning mes**: tareas extra visibles como barras ámbar individuales lado a lado
 - **YouTube**: gráficos con Chart.js (vue-chartjs) en vez de SVG custom
 - **403 personalizado**: página SPA con botones "Volver" e "Ir al Dashboard"
-- **Configuración**: permisos granulares por sección (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`), ya no existe permiso master `edit configuracion`
+- **Configuración**: rediseñada en grid balanceado (3 filas de 2 columnas: Horario+Bloques, YouTube+Dashboard, Idiomas+Backup)
 - **Respaldo en topbar**: icono `HardDrive` fijo en la topbar, eliminado del sidebar
 - **Sesiones de trabajo multi-día**: tabla `work_sessions` permite continuar tareas en días posteriores. Las tareas se muestran en el calendario tanto en su fecha original como en las fechas de sesión, cada una con su propio bloque horario y estado.
-- **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; todo sin salir del calendario.
-- **Edición/eliminación de sesiones**: desde el sidebar del calendario o desde la vista de detalle `/tasks/{id}`. Selector de bloque horario con verificación de disponibilidad. Botón Cancelar (rojo) en el formulario de edición.
-- **Multi-idioma configurable en VideoTasks**: columna `translations` JSON para título/guion/copy/youtube_url en múltiples idiomas. Idiomas configurables desde `/settings` (ES siempre presente). Pestañas de idioma en crear, editar y ver tarea — solo se muestras las que tienen contenido.
-- **Leyenda de colores en planificación**: todos los estados de tarea y sesión visibles con indicador de color, agrupados por sección (Tareas / Sesiones).
-- **Tareas extra con descripción**: campo opcional de descripción para detallar lo realizado en cada tarea extra. Visible en el sidebar del calendario y en los reportes PDF.
+- **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; editar/eliminar sesión con selector de bloque verificado.
 - **Compartir tareas**: desde el sidebar del calendario o la vista de detalle, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve). Gestión desde `/tasks/{id}`.
 - **Historial de cambios en tareas**: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Las entradas personalizadas muestran "Movido a pendiente" y "Restaurado desde pendiente". Haz clic en una entrada para ver los detalles completos.
 - **URLs generalizadas**: rutas unificadas bajo `/tasks/*` para tareas de video, `/tasks/extra/*` para tareas extra, y `/tasks/history` para el historial. Las URLs antiguas (`/video-tasks`, `/extra-tasks`, `/task-history`) siguen funcionando como redirects.
+- **Búsqueda en planificación**: campo de búsqueda en el header del calendario que filtra tareas por título, con resultados dropdown y navegación directa a la fecha de la tarea. Días con resultados resaltados con borde indigo.
+- **Gemini multi-key**: rotación automática de hasta 5 API keys (`GEMINI_API_KEY`, `GEMINI_KEY_1` a `GEMINI_KEY_4`), retry por key, manejo de rate-limit con delay progresivo.
 
 ---
 
@@ -394,7 +392,7 @@ INICIAR.txt                   # Instrucciones de uso del script de inicio
 - **Componentes Vue reutilizables** — DRY en formularios y UI
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema. Incluye tareas extra con descripción detallada.
-- **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de API keys, rate-limit handling) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts`. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
+- **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de hasta 5 API keys con retry automático y manejo de rate-limit) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts` (configurables por `.env`). Prompts reestructurados: Hook→Promesa→Desarrollo→Revelación→Cierre, 7 tipos de gancho, 6 fórmulas de contenido, micro-ganchos cada 5-10s. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
 - **Permisos granulares** — cada acción CRUD tiene su propio permiso (52 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 - **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
@@ -442,7 +440,7 @@ php artisan test     # Tests PHPUnit
 | `ADMIN_PASSWORD` | Contraseña del usuario admin al ejecutar seeders |
 | `VITE_APP_NAME` | Nombre mostrado en el frontend |
 | `YOUTUBE_API_KEY` | API Key de YouTube Data API v3 para estadisticas de canales |
-| `GEMINI_API_KEY` | API Key de Google Gemini (o `GEMINI_KEY_1`, `GEMINI_KEY_2`... para rotación) |
+| `GEMINI_API_KEY` | API Key de Google Gemini. Soporta hasta 5 keys para rotación: `GEMINI_API_KEY`, `GEMINI_KEY_1` a `GEMINI_KEY_4` |
 | `ELEVENLABS_API_KEY` | API Key de ElevenLabs para generación de audio MP3 |
 | `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
 | `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
@@ -512,6 +510,8 @@ php artisan test     # Tests PHPUnit
 - [x] Topbar sticky → fixed con padding compensado
 - [x] Vacaciones y Permisos (CRUD, aprobar/rechazar, formulario modal, tabla con búsqueda)
 - [x] Respaldo de datos (BackupService con export streaming chunked, restore, schedule)
+- [x] Backup scope selector (Super Admin elige empresa en /backup)
+- [x] Backup page reworked: export/import/delete con ConfirmDelete modal
 - [x] Backup schedule en Settings con permiso granular `configure backup`
 - [x] Permisos granulares en Configuración (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`)
 - [x] Eliminado permiso master `edit configuracion`

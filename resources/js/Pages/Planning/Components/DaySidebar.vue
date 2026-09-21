@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { Plus, ExternalLink, Trash2, X, StickyNote, ChevronDown, ChevronRight, Clock, Eye, Pencil, Users, Share2 } from 'lucide-vue-next'
 import ShareModal from '@/Components/Modals/ShareModal.vue'
+import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 
 const page = usePage()
 const currentUserId = page.props.auth?.user?.id
@@ -23,6 +24,7 @@ const props = defineProps({
     canEdit: Boolean,
     canDelete: Boolean,
     absences: { type: Array, default: () => [] },
+    workBlocks: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits([
@@ -52,6 +54,8 @@ const editingSession = ref(null)
 const editSessionDate = ref('')
 const editSessionTimeRange = ref('')
 const editSessionStatus = ref('in_progress')
+const showDeleteSessionModal = ref(false)
+const deleteSessionTarget = ref(null)
 
 function canDeleteTask(task) {
     return props.canDelete && (task.created_by === currentUserId || isAdmin.value)
@@ -114,7 +118,15 @@ function saveEditSession() {
 }
 
 function confirmDeleteSession(task) {
-    emit('deleteSession', { task_id: task.id, session_id: task.session_id })
+    deleteSessionTarget.value = task
+    showDeleteSessionModal.value = true
+}
+
+function executeDeleteSession() {
+    if (!deleteSessionTarget.value) return
+    emit('deleteSession', { task_id: deleteSessionTarget.value.id, session_id: deleteSessionTarget.value.session_id })
+    showDeleteSessionModal.value = false
+    deleteSessionTarget.value = null
 }
 
 function handleEscape(e) {
@@ -377,6 +389,14 @@ onUnmounted(() => {
         @saved="onShareSaved"
     />
 
+    <ConfirmDeleteModal
+        :show="showDeleteSessionModal"
+        title="Eliminar sesión"
+        message="¿Eliminar esta sesión? Esta acción no se puede deshacer."
+        @close="showDeleteSessionModal = false"
+        @confirm="executeDeleteSession"
+    />
+
     <Teleport to="body">
         <transition name="fade">
             <div v-if="showEditSessionModal"
@@ -392,8 +412,11 @@ onUnmounted(() => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bloque</label>
-                            <input v-model="editSessionTimeRange" type="text" placeholder="09:00-11:00"
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm" />
+                            <select v-model="editSessionTimeRange"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm">
+                                <option value="">Seleccionar bloque</option>
+                                <option v-for="b in props.workBlocks" :key="b" :value="b">{{ b }}</option>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>

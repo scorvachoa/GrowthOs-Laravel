@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
-import { Copy, Check, ExternalLink, Globe, Users, Share2, Pencil, Trash2, Plus, X, ArrowLeft } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, Globe, Users, Share2, Pencil, Trash2, Plus, X, ArrowLeft, ChevronLeft, ChevronRight, Download } from 'lucide-vue-next'
 import ShareModal from '@/Components/Modals/ShareModal.vue'
 import axios from 'axios'
 
@@ -22,6 +22,8 @@ const props = defineProps({
     statuses: Array,
     channels: Array,
     activities: { type: Array, default: () => [] },
+    prev_task: { type: Object, default: null },
+    next_task: { type: Object, default: null },
 })
 
 const statusLabel = (value) => {
@@ -293,6 +295,33 @@ const embedUrl = computed(() => {
     if (ttMatch) return { src: `https://www.tiktok.com/player/v1/${ttMatch[1]}`, type: 'tiktok' }
     return null
 })
+
+function exportTxt() {
+    const lines = []
+    lines.push(`TAREA: ${props.task.title}`)
+    lines.push(`ESTADO: ${statusLabel(props.task.status)}`)
+    lines.push(`FECHA: ${props.task.task_date}`)
+    lines.push(`BLOQUE: ${props.task.time_range || 'Sin asignar'}`)
+    if (props.task.channel) lines.push(`CANAL: ${props.task.channel.name}`)
+    lines.push('')
+    lines.push('--- GUION ---')
+    lines.push(currentScript.value || 'Sin guion')
+    lines.push('')
+    lines.push('--- COPY / DESCRIPCIÓN ---')
+    lines.push(currentCopy.value || 'Sin copy')
+    if (currentYoutubeUrl.value) {
+        lines.push('')
+        lines.push(`--- VIDEO ---`)
+        lines.push(currentYoutubeUrl.value)
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tarea_${props.task.id}_${props.task.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'sin_titulo'}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
@@ -305,12 +334,29 @@ const embedUrl = computed(() => {
                         class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400">
                         <ArrowLeft class="w-5 h-5" />
                     </Link>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ task.title }}</h1>
+                    <div class="flex items-center gap-2">
+                        <button v-if="prev_task" @click="router.visit(`/tasks/${prev_task.id}`)"
+                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400"
+                            :title="prev_task.title">
+                            <ChevronLeft class="w-5 h-5" />
+                        </button>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ task.title }}</h1>
+                        <button v-if="next_task" @click="router.visit(`/tasks/${next_task.id}`)"
+                            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400"
+                            :title="next_task.title">
+                            <ChevronRight class="w-5 h-5" />
+                        </button>
+                    </div>
                     <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="statusColor(task.status)">
                         {{ statusLabel(task.status) }}
                     </span>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button @click="exportTxt"
+                        class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
+                        <Download class="w-4 h-4" />
+                        TXT
+                    </button>
                     <button v-if="!task.shared_by_user_name" @click="showShareModal = true"
                         class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
                         <Share2 class="w-4 h-4" />

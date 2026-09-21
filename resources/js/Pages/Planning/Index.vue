@@ -3,7 +3,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
-import { ChevronLeft, ChevronRight, FileDown, Clock } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, FileDown, Clock, Search, SearchX, Calendar } from 'lucide-vue-next'
 
 import CalendarMonth from './Components/CalendarMonth.vue'
 import CalendarWeek from './Components/CalendarWeek.vue'
@@ -11,7 +11,7 @@ import DaySidebar from './Components/DaySidebar.vue'
 import ExtraTaskModal from './Components/ExtraTaskModal.vue'
 import RestorePendingModal from './Components/RestorePendingModal.vue'
 import { usePlanning } from './composables/usePlanning.js'
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
     calendar: Object,
@@ -38,15 +38,27 @@ const {
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
     moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
+    searchQuery, searchResults, searchedDates, showSearchResults,
+    goToSearchResult, clearSearch,
 } = usePlanning(props)
+
+const searchContainer = ref(null)
+
+function handleClickOutside(e) {
+    if (searchContainer.value && !searchContainer.value.contains(e.target)) {
+        showSearchResults.value = false
+    }
+}
 
 onMounted(() => {
     if (viewMode.value === 'pending') fetchPendingTasks()
     window.addEventListener('share-accepted', fetchSnapshot)
+    document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
     window.removeEventListener('share-accepted', fetchSnapshot)
+    document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -79,9 +91,6 @@ onUnmounted(() => {
                                 :class="viewMode === 'pending' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
                                 <Clock class="w-4 h-4" />
                                 Pendientes
-                                <span v-if="snapshot.pending_count" class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                                    {{ snapshot.pending_count }}
-                                </span>
                             </button>
                         </div>
                         <button @click="goToday"
@@ -103,6 +112,41 @@ onUnmounted(() => {
                             <ChevronRight class="w-5 h-5 text-gray-600 dark:text-gray-400" />
                         </button>
                     </div>
+
+                    <!-- Search -->
+                    <div v-if="viewMode !== 'pending'" class="relative" ref="searchContainer">
+                        <div class="relative">
+                            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input v-model="searchQuery" type="text" placeholder="Buscar tarea..."
+                                @focus="showSearchResults = searchQuery.length > 0 && searchResults.length > 0"
+                                @keydown.escape="clearSearch"
+                                class="w-full sm:w-64 pl-9 pr-8 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+                            <button v-if="searchQuery" @click="clearSearch"
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <SearchX class="w-4 h-4" />
+                            </button>
+                        </div>
+                        <transition name="fade">
+                            <div v-if="showSearchResults && searchResults.length > 0"
+                                class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
+                                <div v-for="result in searchResults" :key="`${result.date}-${result.id}`"
+                                    @click="goToSearchResult(result)"
+                                    class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <div class="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">
+                                        <Calendar class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.title }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ result.date }} · {{ result.time_range }}</p>
+                                    </div>
+                                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
+                                        :class="statusColors[result.status] || 'bg-gray-100 text-gray-600'">
+                                        {{ statusLabels[result.status] || result.status }}
+                                    </span>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
                     <button v-if="can('export planning')" @click="showPdfModal = true"
                         class="px-4 sm:px-5 py-2 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2 text-sm">
                         <FileDown class="w-4 h-4" />
@@ -117,6 +161,7 @@ onUnmounted(() => {
                         :days="calendarDays"
                         :work-blocks="snapshot.work_blocks"
                         :can-create="can('create planning')"
+                        :searched-dates="searchedDates"
                         @openDay="openDay"
                         @createTask="createTask" />
 
@@ -202,6 +247,7 @@ onUnmounted(() => {
                     :holiday="snapshot.holidays_map?.[selectedDate]"
                     :observation="dayObservation"
                     :absences="snapshot.absences_map?.[selectedDate] || []"
+                    :work-blocks="snapshot.work_blocks || []"
                     :can-create="can('create planning')"
                     :can-edit="can('edit planning')"
                     :can-delete="can('delete planning')"

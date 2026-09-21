@@ -1,0 +1,410 @@
+🎯 Plan de contenido para YouTube Shorts
+1. Objetivo principal
+
+Convertir el canal en una referencia de información turística práctica sobre Cusco y Machu Picchu, utilizando Shorts que respondan preguntas concretas y despierten curiosidad.
+
+Cada video debe conseguir al menos una de estas acciones:
+
+👀 Que el usuario se quede hasta el final.
+💾 Que quiera guardar el video.
+📤 Que lo comparta con su compañero de viaje.
+💬 Que deje una pregunta o comentario.
+➕ Que quiera ver otro video del canal.
+
+La prioridad será:
+
+Hook → Curiosidad → Información → Revelación → Cierre
+
+2. Estructura base de cada Short
+
+Trabajaremos principalmente con videos de 35–60 segundos.
+
+0–3 s — HOOK
+
+Los primeros segundos decidirán prácticamente todo.
+
+No empezaremos con:
+
+“Hoy vamos a hablar de…”
+
+Ni:
+
+“Machu Picchu es uno de los lugares…”
+
+En cambio, utilizaremos hooks como:
+
+“Si compras este boleto de Machu Picchu sin saber esto, podrías arrepentirte.”
+
+“Esta es la montaña más fácil de Machu Picchu… y casi nadie habla de ella.”
+
+“Hay un error que muchos turistas cometen antes de entrar a Machu Picchu.”
+
+El hook debe crear una pregunta mental.
+
+3–8 s — PROMESA
+
+Explicamos rápidamente qué descubrirá el espectador.
+
+Ejemplo:
+
+“Porque este circuito tiene una de las mejores vistas… pero tiene una gran limitación.”
+
+El espectador piensa:
+
+“¿Cuál es la limitación?”
+
+Y continúa viendo.
+
+8–40 s — DESARROLLO
+
+Información en bloques muy pequeños.
+
+En lugar de explicar:
+
+“El Circuito 1 permite…”
+
+Lo dividiremos:
+
+Qué es → para quién sirve → qué puedes ver → qué NO puedes hacer.
+
+Cada bloque debe aportar algo nuevo.
+
+40–52 s — REVELACIÓN / PUNTO CLAVE
+
+Aquí entregamos la información que justificó el hook.
+
+Ejemplo:
+
+“Y ese es el detalle que muchos descubren demasiado tarde: el Circuito 1 prioriza las vistas panorámicas, pero no permite recorrer toda la ciudadela.”
+
+52–60 s — CIERRE
+
+No terminaremos simplemente con:
+
+“Espero que te haya servido.”
+
+El cierre debe generar una siguiente acción.
+
+Ejemplos:
+
+“Si quieres saber qué circuito te conviene según lo que buscas, mira el siguiente video.”
+
+“Guarda este video antes de comprar tu boleto.”
+
+“¿Quieres que te explique los cuatro circuitos? Te lo explico en el siguiente Short.”
+
+3. Los 7 tipos de hooks que utilizaremos
+
+Para evitar que todos los videos parezcan iguales, construiremos una biblioteca de hooks.
+
+🔥 1. Hook de advertencia
+
+“No compres tu boleto de Machu Picchu antes de saber esto.”
+
+😱 2. Hook de error
+
+“Este es uno de los errores más comunes al visitar Machu Picchu.”
+
+🤯 3. Hook de sorpresa
+
+“Machu Picchu tiene algo que probablemente no sabías.”
+
+🏆 4. Hook de ranking/comparación
+
+“¿Cuál es el mejor circuito de Machu Picchu? Depende de esto.”
+
+❓ 5. Hook de pregunta
+
+“¿Se puede visitar Machu Picchu sin subir ninguna montaña?”
+
+🚫 6. Hook de restricción
+
+“Con este boleto no podrás hacer todo lo que imaginas.”
+
+👀 7. Hook de curiosidad
+
+“Hay un lugar dentro de Machu Picchu que muchos turistas pasan por alto.”
+
+4. Principio clave: abrir un “bucle”
+
+Cada Short debe plantear algo que todavía no hemos resuelto.
+
+Ejemplo:
+
+“Este circuito tiene una de las mejores vistas de Machu Picchu… pero tiene un problema.”
+
+No revelamos inmediatamente cuál.
+
+Después:
+
+“Primero debes saber qué incluye…”
+
+Y finalmente:
+
+“El problema es que…”
+
+Esto crea una razón para continuar mirando.
+
+5. Ritmo de edición
+
+Los guiones estarán escritos pensando en edición, no únicamente en narración.
+
+Utilizaremos:
+
+Frases cortas.
+Cambios visuales frecuentes.
+B-roll específico.
+Texto en pantalla.
+Zooms o movimientos cuando tengan sentido.
+Imágenes de apoyo para conceptos importantes.
+Palabras clave destacadas.
+Regla:
+
+Una idea = una imagen.
+
+Si hablamos de:
+
+“Circuito 1”
+
+→ mostrar Circuito 1.
+
+Si hablamos de:
+
+“vista panorámica”
+
+→ mostrar la vista.
+
+Si hablamos de:
+
+“no puedes recorrer toda la ciudadela”
+
+→ mostrar visualmente la zona que no corresponde al recorrido.
+
+6. Retención: construiremos “micro-hooks”
+
+No dependeremos solamente del hook inicial.
+
+Cada 5–10 segundos introduciremos una pequeña razón para continuar.
+
+Ejemplo:
+
+“Pero eso no es lo más importante…”
+
+“Y aquí viene el detalle…”
+
+“Lo que pocos saben es…”
+
+“Pero cuidado con esto…”
+
+“Ahora viene la parte importante…”
+
+Esto evita que el Short se sienta como una explicación lineal.
+
+7. Información turística: primero valor, después emoción
+
+El canal debe ser entretenido, pero también confiable.
+
+Por eso separaremos:
+
+🟢 Datos comprobables
+
+Horarios, circuitos, restricciones, precios, rutas, temporadas, accesos, etc.
+
+🟡 Contexto histórico
+
+Historia, significado, arquitectura, cultura.
+
+🔵 Recomendaciones
+
+Qué llevar, cuánto tiempo considerar, qué esperar, errores comunes.
+
+🔴 Opiniones
+
+Las presentaremos como opiniones o preferencias, no como hechos.
+
+Esto es especialmente importante para mantener la imagen de canal confiable.
+
+8. Categorías de Shorts
+
+Vamos a trabajar diferentes pilares para que el canal no dependa únicamente de “datos turísticos”.
+
+🏔️ MACHU PICCHU
+Circuitos
+Montañas
+Boletos
+Restricciones
+Horarios
+Cómo llegar
+Errores
+Consejos
+Qué esperar
+🌈 MONTAÑA DE COLORES
+Vinicunca
+Mejor época
+Altitud
+Caminata
+Clima
+Errores
+Preparación
+Qué llevar
+🏛️ CUSCO
+Lugares turísticos
+Historia
+Centro histórico
+Templos
+Cultura
+Gastronomía
+Datos curiosos
+🏔️ VALLE SAGRADO
+Pisac
+Ollantaytambo
+Chinchero
+Moray
+Maras
+Consejos de visita
+🎒 GUÍAS PRÁCTICAS
+Presupuesto
+Transporte
+Altitud
+Clima
+Seguridad
+Qué llevar
+Cuántos días quedarse
+9. Fórmulas de contenido que repetiremos estratégicamente
+
+No repetiremos guiones, pero sí podremos reutilizar estructuras que funcionan.
+
+Fórmula A — “Antes de comprar”
+
+Hook → problema → explicación → consecuencia → recomendación
+
+Fórmula B — “X vs Y”
+
+Pregunta → diferencia principal → ventajas/limitaciones → para quién → conclusión práctica
+
+Fórmula C — “3 cosas”
+
+Hook → punto 1 → punto 2 → punto 3 → CTA
+
+Fórmula D — “El error”
+
+Error → por qué ocurre → qué sucede → cómo evitarlo
+
+Fórmula E — “¿Vale la pena?”
+
+Expectativa → realidad → pros → limitaciones → para qué viajero tiene sentido
+
+Fórmula F — “Lo que nadie te cuenta”
+
+Curiosidad → dato inesperado → explicación → importancia
+
+10. SEO para Shorts
+
+El SEO estará integrado sin sacrificar el hook.
+
+Trabajaremos con:
+
+Título
+
+Debe combinar:
+
+Keyword + curiosidad
+
+Ejemplo:
+
+Circuito 1 de Machu Picchu: la gran ventaja y su problema
+
+Palabras clave habladas
+
+Machu Picchu, Cusco, Circuito 1, boleto, Huayna Picchu, Montaña de Colores, etc.
+
+Texto en pantalla
+
+También reforzará las keywords principales.
+
+Descripción
+
+Breve, natural y orientada a búsqueda.
+
+Hashtags
+
+Pocos y relevantes, no una lista enorme.
+
+11. Sistema de producción de cada guion
+
+A partir de ahora, cuando me pidas un tema, trabajaremos así:
+
+PASO 1 — IDEA
+
+Definimos exactamente qué pregunta responderá.
+
+PASO 2 — ÁNGULO
+
+Buscamos el enfoque más atractivo.
+
+Ejemplo:
+
+Tema: Circuito 1
+
+Ángulo débil:
+
+“Información sobre el Circuito 1.”
+
+Ángulo fuerte:
+
+“La mejor vista de Machu Picchu tiene una limitación que debes conocer.”
+
+PASO 3 — HOOK
+
+Creamos varias posibilidades y elegimos la más potente.
+
+PASO 4 — RETENCIÓN
+
+Diseñamos los puntos que mantienen abierto el interés.
+
+PASO 5 — GUION
+
+Escribimos máximo 60 segundos, con lenguaje natural.
+
+PASO 6 — VISUALES
+
+Indicaremos qué debería mostrarse mientras se narra.
+
+PASO 7 — CTA
+
+El CTA dependerá del objetivo:
+
+Guardar / comentar / compartir / seguir / ver otro Short.
+
+12. Regla de oro del proyecto
+
+Quiero que todos los guiones pasen este filtro:
+
+“¿Por qué alguien que está haciendo scroll debería dejar de hacerlo por este video?”
+
+Si la respuesta no es clara, el problema está en el hook o en el ángulo, no en la cantidad de información.
+
+Y otra regla:
+
+No intentaremos meter toda la información en un Short.
+
+Es mejor explicar una cosa extraordinariamente bien y generar otro video, que intentar explicar diez cosas y perder la atención.
+
+🚀 Nuestro formato de trabajo
+
+Cuando me des un tema, te entregaré:
+
+1. Hook principal
+2. Hook alternativo
+3. Guion de máximo 60 s
+4. Estructura de retención
+5. Sugerencias visuales por escena
+6. Texto en pantalla
+7. CTA final
+8. Título optimizado para YouTube Shorts
+9. Descripción breve
+10. Hashtags relevantes
+
+Y antes de escribir el guion, primero definiré el ángulo y la promesa del video. Así evitamos crear guiones que sean correctos pero poco atractivos.
+
+La prioridad será: impacto → retención → claridad → utilidad → SEO.

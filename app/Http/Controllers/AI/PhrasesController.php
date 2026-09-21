@@ -51,22 +51,48 @@ class PhrasesController extends Controller
         $idea = trim($validated['idea'] ?? '');
         $script = trim($validated['script']);
 
+        $copy = null;
+        $phrases = null;
+        $copyError = null;
+        $phrasesError = null;
+
         try {
             $copy = $this->ai->generateCopy($script);
+        } catch (\Throwable $e) {
+            $copyError = $e->getMessage();
+        }
+
+        try {
             $phrases = $this->ai->generatePhrases($script);
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Error al generar contenido: '.$e->getMessage()], 502);
+            $phrasesError = $e->getMessage();
+        }
+
+        if ($copy === null && $phrases === null) {
+            return response()->json(['error' => 'Error al generar contenido: '.($copyError || $phrasesError)], 502);
         }
 
         $video = $this->resolveVideoWithBoth($validated, $idea, $script, $copy, $phrases);
 
-        return response()->json([
+        $response = [
             'video_id' => $video->id,
             'idea' => $video->idea,
             'script' => $video->script,
-            'copy' => $copy,
-            'phrases' => $phrases,
-        ], 201);
+        ];
+
+        if ($copy) {
+            $response['copy'] = $copy;
+        } elseif ($copyError) {
+            $response['copy_error'] = $copyError;
+        }
+
+        if ($phrases) {
+            $response['phrases'] = $phrases;
+        } elseif ($phrasesError) {
+            $response['phrases_error'] = $phrasesError;
+        }
+
+        return response()->json($response, 201);
     }
 
     private function resolveVideo(array $validated, string $idea, string $script, string $phrases): GeneratedVideo
@@ -88,34 +114,35 @@ class PhrasesController extends Controller
         ]);
     }
 
-    private function resolveVideoWithBoth(array $validated, string $idea, string $script, array $copy, string $phrases): GeneratedVideo
+    private function resolveVideoWithBoth(array $validated, string $idea, string $script, ?array $copy, ?string $phrases): GeneratedVideo
     {
+        $data = [
+            'organization_id' => auth()->user()->activeOrganizationId(),
+            'idea' => $idea ?: 'Guion editado manualmente',
+            'script' => $script,
+        ];
+
+        if ($copy) {
+            $data['copy_title'] = $copy['title'];
+            $data['copy_description'] = $copy['description'];
+            $data['copy_cta'] = $copy['cta'];
+            $data['copy_hashtags'] = $copy['hashtags'];
+            $data['copy_tags'] = $copy['tags'];
+        }
+
+        if ($phrases) {
+            $data['video_phrases'] = $phrases;
+        }
+
         if (! empty($validated['video_id'])) {
             $video = GeneratedVideo::find($validated['video_id']);
             if ($video) {
-                $video->update([
-                    'copy_title' => $copy['title'],
-                    'copy_description' => $copy['description'],
-                    'copy_cta' => $copy['cta'],
-                    'copy_hashtags' => $copy['hashtags'],
-                    'copy_tags' => $copy['tags'],
-                    'video_phrases' => $phrases,
-                ]);
+                $video->update($data);
 
                 return $video;
             }
         }
 
-        return GeneratedVideo::create([
-            'organization_id' => auth()->user()->activeOrganizationId(),
-            'idea' => $idea ?: 'Guion editado manualmente',
-            'script' => $script,
-            'copy_title' => $copy['title'],
-            'copy_description' => $copy['description'],
-            'copy_cta' => $copy['cta'],
-            'copy_hashtags' => $copy['hashtags'],
-            'copy_tags' => $copy['tags'],
-            'video_phrases' => $phrases,
-        ]);
+        return GeneratedVideo::create($data);
     }
 }

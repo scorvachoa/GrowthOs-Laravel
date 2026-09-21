@@ -5,9 +5,13 @@ namespace App\Models;
 use App\Traits\BelongsToOrganization;
 use App\Traits\OwnedByUser;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class GeneratedVideo extends Model
 {
+    use LogsActivity;
+
     public const STATUS_PROCESSING = 'processing';
 
     public const STATUS_COMPLETED = 'completed';
@@ -15,6 +19,13 @@ class GeneratedVideo extends Model
     public const STATUS_FAILED = 'failed';
 
     use BelongsToOrganization, OwnedByUser;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnlyDirty()
+            ->dontLogIfAttributesChangedOnly(['organization_id']);
+    }
 
     protected $fillable = [
         'status',
@@ -29,5 +40,9 @@ class GeneratedVideo extends Model
         'used_in_planner',
         'organization_id',
         'user_id',
+    ];
+
+    protected $casts = [
+        'used_in_planner' => 'boolean',
     ];
 }

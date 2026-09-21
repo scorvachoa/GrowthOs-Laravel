@@ -64,6 +64,7 @@ class ReportService
         return VideoTask::query()
             ->with('channel', 'sessions')
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
+            ->where('is_pending', false)
             ->where(function ($q) use ($start, $end) {
                 $q->whereBetween('task_date', [$start, $end])
                     ->orWhereHas('sessions', function ($sq) use ($start, $end) {

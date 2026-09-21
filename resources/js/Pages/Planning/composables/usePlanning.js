@@ -577,15 +577,23 @@ export function usePlanning(props) {
     async function moveToPending(task) {
         try {
             await axios.patch(`/tasks/${task.id}/pending`)
-            if (selectedDate.value) await fetchDayTasks(selectedDate.value)
-            if (viewMode.value === 'pending') {
-                await fetchPendingTasks()
-            } else {
-                await fetchSnapshot()
-            }
         } catch (e) {
-            console.error('Failed to move task to pending', e)
+            console.error('PATCH /pending failed:', e.response?.status, e.response?.data || e.message)
+            alert(e.response?.data?.message || 'Error al mover la tarea a pendientes.')
+            return
         }
+        closeSidebar()
+        setTimeout(async () => {
+            try {
+                if (viewMode.value === 'pending') {
+                    await fetchPendingTasks()
+                } else {
+                    await fetchSnapshot()
+                }
+            } catch (e) {
+                console.error('Refresh after moveToPending failed:', e.response?.status, e.response?.data || e.message)
+            }
+        }, 100)
     }
 
     function openRestoreModal(task) {
@@ -605,14 +613,68 @@ export function usePlanning(props) {
                 task_date: form.task_date,
                 time_range: form.time_range,
             })
-            closeRestoreModal()
-            await fetchPendingTasks()
-            if (viewMode.value !== 'pending') {
-                await fetchSnapshot()
-            }
         } catch (e) {
-            console.error('Failed to restore task', e)
+            console.error('PATCH /restore failed:', e.response?.status, e.response?.data || e.message)
+            const msg = e.response?.data?.message
+                || Object.values(e.response?.data?.errors || {}).flat().join('. ')
+                || 'Error al restaurar la tarea.'
+            alert(msg)
+            return
         }
+        closeRestoreModal()
+        setTimeout(async () => {
+            try {
+                if (viewMode.value === 'pending') {
+                    await fetchPendingTasks()
+                } else {
+                    await fetchSnapshot()
+                }
+            } catch (e) {
+                console.error('Refresh after restoreFromPending failed:', e.response?.status, e.response?.data || e.message)
+            }
+        }, 100)
+    }
+
+    const searchQuery = ref('')
+    const showSearchResults = ref(false)
+
+    const searchResults = computed(() => {
+        const q = searchQuery.value.toLowerCase().trim()
+        if (!q) return []
+        const results = []
+        const detailMap = snapshot.value.tasks_detail_map || {}
+        for (const [date, tasks] of Object.entries(detailMap)) {
+            for (const task of tasks) {
+                if (task.title?.toLowerCase().includes(q)) {
+                    results.push({ ...task, date })
+                }
+            }
+        }
+        return results.slice(0, 8)
+    })
+
+    const searchedDates = computed(() => {
+        const q = searchQuery.value.toLowerCase().trim()
+        if (!q) return new Set()
+        const dates = new Set()
+        const detailMap = snapshot.value.tasks_detail_map || {}
+        for (const [date, tasks] of Object.entries(detailMap)) {
+            if (tasks.some(t => t.title?.toLowerCase().includes(q))) {
+                dates.add(date)
+            }
+        }
+        return dates
+    })
+
+    function goToSearchResult(task) {
+        showSearchResults.value = false
+        searchQuery.value = ''
+        openDay(task.date)
+    }
+
+    function clearSearch() {
+        searchQuery.value = ''
+        showSearchResults.value = false
     }
 
     return {
@@ -638,5 +700,7 @@ export function usePlanning(props) {
         confirmDeleteExtra, executeExtraDelete,
         createSession, completeSession, editSession, deleteSession,
         moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
+        searchQuery, searchResults, searchedDates, showSearchResults,
+        goToSearchResult, clearSearch,
     }
 }

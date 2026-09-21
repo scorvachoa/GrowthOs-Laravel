@@ -36,7 +36,6 @@ class CopyParserTest extends TestCase
         $this->assertEquals('', $result['cta']);
         $this->assertEquals('', $result['hashtags']);
         $this->assertEquals('', $result['tags']);
-        $this->assertEquals('', $result['raw']);
     }
 
     public function test_parse_with_hashtags_only(): void
