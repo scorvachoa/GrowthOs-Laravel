@@ -6,6 +6,7 @@ export const statusColors = {
     scheduled: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
     in_progress: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
     completed: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+    completado: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
     published: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     pendiente: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -21,6 +22,7 @@ export const statusLabels = {
     scheduled: 'Programado',
     in_progress: 'En progreso',
     completed: 'Completado',
+    completado: 'Completado',
     published: 'Publicado',
     cancelled: 'Cancelado',
     pendiente: 'Pendiente',
@@ -39,4 +41,5 @@ export const calendarStatusColors = {
     cancelled: 'bg-red-500',
     in_progress: 'bg-amber-500',
     completed: 'bg-teal-500',
+    completado: 'bg-teal-500',
 }

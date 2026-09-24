@@ -16,6 +16,7 @@ const form = useForm({
     title: '',
     script: '',
     copy: '',
+    copy_ai_generated: false,
     translations: null,
     youtube_url: '',
     status: 'pending',

@@ -38,7 +38,7 @@ const {
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
     moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
-    searchQuery, searchResults, searchedDates, showSearchResults,
+    searchQuery, searchResults, searchedDates, showSearchResults, highlightDate, searching,
     goToSearchResult, clearSearch,
 } = usePlanning(props)
 
@@ -47,6 +47,7 @@ const searchContainer = ref(null)
 function handleClickOutside(e) {
     if (searchContainer.value && !searchContainer.value.contains(e.target)) {
         showSearchResults.value = false
+        highlightDate.value = null
     }
 }
 
@@ -118,7 +119,7 @@ onUnmounted(() => {
                         <div class="relative">
                             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input v-model="searchQuery" type="text" placeholder="Buscar tarea..."
-                                @focus="showSearchResults = searchQuery.length > 0 && searchResults.length > 0"
+                                @focus="showSearchResults = searchQuery.length > 0"
                                 @keydown.escape="clearSearch"
                                 class="w-full sm:w-64 pl-9 pr-8 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
                             <button v-if="searchQuery" @click="clearSearch"
@@ -127,23 +128,34 @@ onUnmounted(() => {
                             </button>
                         </div>
                         <transition name="fade">
-                            <div v-if="showSearchResults && searchResults.length > 0"
+                            <div v-if="showSearchResults"
                                 class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
-                                <div v-for="result in searchResults" :key="`${result.date}-${result.id}`"
-                                    @click="goToSearchResult(result)"
-                                    class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition border-b border-gray-100 dark:border-gray-700 last:border-0">
-                                    <div class="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">
-                                        <Calendar class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.title }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ result.date }} · {{ result.time_range }}</p>
-                                    </div>
-                                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
-                                        :class="statusColors[result.status] || 'bg-gray-100 text-gray-600'">
-                                        {{ statusLabels[result.status] || result.status }}
-                                    </span>
+                                <div v-if="searching" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                    Buscando...
                                 </div>
+                                <div v-else-if="searchQuery.trim().length < 2" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                    Escribe al menos 2 caracteres
+                                </div>
+                                <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                    Sin resultados para "{{ searchQuery.trim() }}"
+                                </div>
+                                <template v-else>
+                                    <div v-for="result in searchResults" :key="`${result.type}-${result.date}-${result.id}`"
+                                        @click="goToSearchResult(result)"
+                                        class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                        <div class="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">
+                                            <Calendar class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.title }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ result.date }} · {{ result.time_range }}</p>
+                                        </div>
+                                        <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
+                                            :class="statusColors[result.status] || 'bg-gray-100 text-gray-600'">
+                                            {{ statusLabels[result.status] || result.status }}
+                                        </span>
+                                    </div>
+                                </template>
                             </div>
                         </transition>
                     </div>
@@ -162,6 +174,7 @@ onUnmounted(() => {
                         :work-blocks="snapshot.work_blocks"
                         :can-create="can('create planning')"
                         :searched-dates="searchedDates"
+                        :highlight-date="highlightDate"
                         @openDay="openDay"
                         @createTask="createTask" />
 
@@ -173,6 +186,7 @@ onUnmounted(() => {
                         :status-colors="statusColors"
                         :status-labels="statusLabels"
                         :can-create="can('create planning')"
+                        :highlight-date="highlightDate"
                         @openDay="openDay"
                         @createTask="createTask"
                         @openExtraModal="openExtraModal"

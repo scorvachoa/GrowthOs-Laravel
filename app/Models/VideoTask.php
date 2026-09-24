@@ -20,6 +20,7 @@ class VideoTask extends Model
         'title',
         'script',
         'copy',
+        'copy_ai_generated',
         'translations',
         'youtube_url',
         'status',
@@ -36,6 +37,7 @@ class VideoTask extends Model
             'translations' => 'array',
             'key_phrases' => 'array',
             'is_pending' => 'boolean',
+            'copy_ai_generated' => 'boolean',
         ];
     }
 

@@ -7,7 +7,6 @@ import {
     Settings,
     Youtube,
     Lightbulb,
-    ClipboardList,
     Sparkles,
     Building2,
     BookOpen,
@@ -28,13 +27,6 @@ export default [
         icon: CalendarDays,
         route: '/planning',
         permission: 'view planning',
-    },
-
-    {
-        title: 'Tareas',
-        icon: ClipboardList,
-        route: '/tasks/history',
-        permission: 'view tasks',
     },
 
     {

@@ -7,6 +7,7 @@ defineProps({
     workBlocks: Array,
     canCreate: Boolean,
     searchedDates: { type: Set, default: () => new Set() },
+    highlightDate: { type: String, default: null },
 })
 
 const emit = defineEmits(['openDay', 'createTask'])
@@ -27,8 +28,9 @@ function allBlocksFull(day, blocks) {
             </div>
         </div>
         <div class="sm:grid sm:grid-cols-7 gap-1.5">
-            <div v-for="(day, idx) in days" :key="idx"
-                v-memo="[day.day, day.date, day.isOtherMonth, day.isToday, day.isNonWorkingDay, day.tasks.length, day.hasExtraTasks, day.extraTasksCount, day.holidayName, day.absences?.length]"
+            <div v-for="day in days" :key="day.date"
+                :data-date="day.date"
+                v-memo="[day.day, day.date, day.isOtherMonth, day.isToday, day.isNonWorkingDay, day.tasks.length, day.hasExtraTasks, day.extraTasksCount, day.holidayName, day.absences?.length, highlightDate]"
                 @click="!day.isNonWorkingDay && !day.isOtherMonth && emit('openDay', day.date)"
                 class="sm:min-h-[100px] bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-2.5 cursor-pointer transition-all duration-150 relative group"
                 :class="[
@@ -42,6 +44,9 @@ function allBlocksFull(day, blocks) {
                         : '',
                     searchedDates.has(day.date) && !day.isOtherMonth
                         ? 'ring-2 ring-indigo-400 dark:ring-indigo-500'
+                        : '',
+                    highlightDate === day.date
+                        ? 'ring-2 ring-indigo-500 dark:ring-indigo-400 ring-offset-2 dark:ring-offset-gray-800 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40 z-10'
                         : '',
                 ]">
                 <div class="flex items-start justify-between sm:flex-col sm:gap-1">

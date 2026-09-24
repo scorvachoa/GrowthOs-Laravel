@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC con 53 permisos, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros, selección múltiple y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, generación de contenido con IA (Gemini + ElevenLabs), interfaz 100 % en español latino, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC con 51 permisos, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros, selección múltiple y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, generación de contenido con IA (Gemini + ElevenLabs), interfaz 100 % en español latino, e integración con YouTube API.
 
 > **Repositorio:** [https://github.com/scorvachoa/GrowthOs-Laravel](https://github.com/scorvachoa/GrowthOs-Laravel)
 
@@ -88,8 +88,6 @@ npm run dev
 | Ideas (editar) | — | `edit ideas` |
 | Ideas (eliminar) | — | `delete ideas` |
 | Ideas (importar/exportar) | — | `import ideas`, `export ideas` |
-| Historial de tareas (ver) | `/tasks` | `view tasks` |
-| Historial de tareas (detalle) | `/tasks/{id}` | `view tasks` |
 | Compartir tareas | — | `edit planning` |
 | Reportes PDF (ver) | `/dashboard`, `/planning` | `view reports` |
 | Reportes PDF (exportar) | — | `download reports` |
@@ -132,7 +130,7 @@ Roles por defecto tras `db:seed`:
 | **Super Admin** | Todos |
 | **Employee** | Sin permisos asignados (extensible) |
 
-Permisos del sistema (53 en total, agrupados por módulo):
+Permisos del sistema (51 en total, agrupados por módulo):
 
 ```
 Dashboard:       view dashboard
@@ -141,7 +139,6 @@ Roles:           view roles, create roles, edit roles, delete roles
 Planificación:   view planning, create planning, edit planning, delete planning, export planning
 Tareas extra:    view extra tasks, create extra tasks, edit extra tasks, delete extra tasks
 Ideas:           view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
-Historial:       view tasks
 Reportes:        view reports, download reports, delete reports
 YouTube:         view youtube
 Empresa:         view empresa, create empresa, edit empresa, delete empresa
@@ -211,7 +208,7 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; editar/eliminar sesión con selector de bloque verificado.
 - **Compartir tareas**: desde el sidebar del calendario o la vista de detalle, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve). Gestión desde `/tasks/{id}`.
 - **Historial de cambios en tareas**: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Las entradas personalizadas muestran "Movido a pendiente" y "Restaurado desde pendiente". Haz clic en una entrada para ver los detalles completos.
-- **URLs generalizadas**: rutas unificadas bajo `/tasks/*` para tareas de video, `/tasks/extra/*` para tareas extra, y `/tasks/history` para el historial. Las URLs antiguas (`/video-tasks`, `/extra-tasks`, `/task-history`) siguen funcionando como redirects.
+- **URLs generalizadas**: rutas unificadas bajo `/tasks/*` para tareas de video y `/tasks/extra/*` para tareas extra. Las URLs antiguas (`/video-tasks`, `/extra-tasks`) siguen funcionando como redirects. El historial de tareas se eliminó (duplicaba Planificación); el detalle vive en `/tasks/{id}`.
 - **Búsqueda en planificación**: campo de búsqueda en el header del calendario que filtra tareas por título, con resultados dropdown y navegación directa a la fecha de la tarea. Días con resultados resaltados con borde indigo.
 - **Gemini multi-key**: rotación automática de hasta 5 API keys (`GEMINI_API_KEY`, `GEMINI_KEY_1` a `GEMINI_KEY_4`), retry por key, manejo de rate-limit con delay progresivo.
 
@@ -393,7 +390,7 @@ INICIAR.txt                   # Instrucciones de uso del script de inicio
 - **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema. Incluye tareas extra con descripción detallada.
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de hasta 5 API keys con retry automático y manejo de rate-limit) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts` (configurables por `.env`). Prompts reestructurados: Hook→Promesa→Desarrollo→Revelación→Cierre, 7 tipos de gancho, 6 fórmulas de contenido, micro-ganchos cada 5-10s. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
-- **Permisos granulares** — cada acción CRUD tiene su propio permiso (52 permisos en 14 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (51 permisos en 13 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
 - **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
 - **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
@@ -477,7 +474,6 @@ php artisan test     # Tests PHPUnit
 - [x] Configuración empresa (nombre, logo, color principal) y canales (CRUD inline)
 - [x] YouTube section con estadísticas via API (suscriptores, vistas, videos recientes, toggle cards/lista)
 - [x] Ideas (CRUD, tabs por canal, búsqueda, sort, import/export txt)
-- [x] Historial de tareas (listado con filtros + timeline de cambios por tarea)
 
 - [x] PDF Report: observaciones por día (subtítulo "Observaciones" con color empresa, borde izquierdo)
 - [x] PDF Report: tareas extra con diseño de borde izquierdo gris oscuro
@@ -565,7 +561,7 @@ php artisan test     # Tests PHPUnit
 - [x] Botones de acciones con iconos (ver, editar, pendiente, eliminar) en sidebar del día
 - [x] Toggle MES / SEMANA / PENDIENTES como grupo único de selección
 - [x] Modal de tareas extra mejorado: selector de rango horario con hora y minuto individuales
-- [x] URLs generalizadas: `/tasks/*`, `/tasks/extra/*`, `/tasks/history` (redirecciones desde URLs antiguas)
+- [x] URLs generalizadas: `/tasks/*`, `/tasks/extra/*` (redirecciones desde URLs antiguas)
 - [x] Notificaciones + Shares unificados en `/notifications` con tabs
 - [x] Compartir tareas desde sidebar del calendario y vista de detalle
 - [x] Gestión de sesiones desde sidebar: editar y eliminar con modal inline

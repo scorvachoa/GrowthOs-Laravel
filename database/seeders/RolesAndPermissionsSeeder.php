@@ -33,8 +33,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'delete planning',
             'export planning',
 
-            'view tasks',
-
             'view ideas',
             'create ideas',
             'edit ideas',
@@ -120,6 +118,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage roles',
             'view ai',
             'view video tasks',
+            'view tasks',
         ];
 
         foreach ($oldPermissions as $old) {

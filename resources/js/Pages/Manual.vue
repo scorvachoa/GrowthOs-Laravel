@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import {
-    LayoutDashboard, Users, Shield, CalendarDays, ClipboardList,
+    LayoutDashboard, Users, Shield, CalendarDays,
     Lightbulb, FileClock, Youtube, Settings, Building2, Sparkles,
     BookOpen, ChevronRight, ArrowRight, Umbrella, CalendarClock, HardDrive
 } from 'lucide-vue-next'
@@ -36,22 +36,6 @@ const sections = [
             'Restaurar tarea pendiente: haz clic en "Restaurar" para seleccionar una nueva fecha y bloque horario. La validación verifica que el bloque esté libre y que sea un día laborable.',
             'Compartir desde el sidebar: cada tarea tiene un icono de compartir que abre un modal para seleccionar usuarios y asignar roles (editor/lector).',
             'Gestionar sesiones desde el sidebar: las sesiones muestran botones de editar (modal inline) y eliminar directamente desde el calendario.',
-        ],
-    },
-    {
-        id: 'tasks',
-        icon: ClipboardList,
-        title: 'Tareas',
-        content: [
-            'Historial completo de tareas de video con filtros por fecha, estado, canal y usuario.',
-            'Cada tarea tiene: título, script, copy, estado, canal asignado, rango horario y enlace a YouTube.',
-            'Estados: Pendiente, Script Listo, Editando, Revisión, Programado, Publicado, Cancelado.',
-            'Las tareas pueden tener sesiones de trabajo (días de continuación) con sus propios rangos horarios y estados. Las sesiones se gestionan desde la vista de detalle de la tarea (/tasks/id).',
-            'Soporta traducciones por idioma: cada tarea puede tener título, script, copy y youtube_url en varios idiomas. Al ver una tarea, solo se muestran las pestañas de idiomas que tienen contenido.',
-            'Compartir tareas: desde la vista de detalle o el calendario, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve).',
-            'Historial de cambios: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Haz clic en una entrada para ver los detalles completos.',
-            'Sesiones de trabajo: desde la vista de detalle, puedes crear, editar y eliminar sesiones adicionales con selector de bloque horario y verificación de disponibilidad.',
-            'Botón Cancelar: al editar una tarea, el botón Cancelar (rojo) te lleva de vuelta a la vista de detalle sin guardar cambios.',
         ],
     },
     {
@@ -172,7 +156,7 @@ const sections = [
 ]
 
 const generalTips = [
-    'Usa el panel lateral izquierdo para navegar entre las secciones. El orden sigue el flujo de trabajo: Dashboard, Planificación, Tareas, YouTube, Ideas, IA, Historial, Usuarios, Roles, Vacaciones, Permisos, Empresa, Configuración.',
+    'Usa el panel lateral izquierdo para navegar entre las secciones. El orden sigue el flujo de trabajo: Panel, Planificación, YouTube, Ideas, Generador IA, Historial, Usuarios, Roles, Vacaciones, Permisos, Empresa, Configuración, Manual.',
     'El topbar superior muestra tu empresa activa, el botón de Backup y tu perfil. Los Super Admins pueden cambiar de empresa desde el nombre de la empresa.',
     'Los permisos determinan qué secciones y acciones están disponibles. Contacta a un Super Admin si necesitas acceso a algo.',
     'Todas las acciones importantes muestran notificaciones de éxito/error en la parte superior de la pantalla.',

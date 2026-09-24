@@ -22,6 +22,7 @@ const form = useForm({
     title: props.task.title || '',
     script: props.task.script || '',
     copy: props.task.copy || '',
+    copy_ai_generated: props.task.copy_ai_generated || false,
     translations: props.task.translations || null,
     youtube_url: props.task.youtube_url || '',
     status: props.task.status || 'pending',

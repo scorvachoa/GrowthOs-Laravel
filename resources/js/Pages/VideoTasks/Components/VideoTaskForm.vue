@@ -1,13 +1,15 @@
 <script setup>
-import { ref, computed, watch, inject, onMounted } from 'vue'
+import { ref, computed, watch, inject, onMounted, nextTick } from 'vue'
 import { usePage, Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Plus, X, Globe, Users } from 'lucide-vue-next'
+import { Sparkles, Loader2, Plus, X, Globe, Users } from 'lucide-vue-next'
 
 const page = usePage()
 const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
+const permissions = page.props.auth?.user?.permissions ?? []
+const canGenerateAi = permissions.includes('generate ai')
 
 const form = inject('taskForm')
 
@@ -90,6 +92,67 @@ function setVal(field, val) {
 
 function switchLang(lang) {
     currentLang.value = lang
+}
+
+const scriptRef = ref(null)
+const copyRef = ref(null)
+
+function autoResize(el) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+}
+
+function resizeTextareas() {
+    nextTick(() => {
+        autoResize(scriptRef.value)
+        autoResize(copyRef.value)
+    })
+}
+
+watch([currentLang, () => form.script, () => form.copy, () => form.translations], resizeTextareas, { deep: true })
+
+onMounted(() => {
+    resizeTextareas()
+})
+
+const loadingCopy = ref(false)
+const copyAiError = ref('')
+
+const canCompleteCopyWithAi = computed(() => {
+    if (!canGenerateAi || loadingCopy.value) return false
+    return getVal('script').trim().length >= 100 && getVal('copy').trim() === ''
+})
+
+async function generateCopyWithAi() {
+    if (!canCompleteCopyWithAi.value) return
+
+    copyAiError.value = ''
+    loadingCopy.value = true
+    try {
+        const response = await axios.post('/tasks/generate-copy', {
+            script: getVal('script').trim(),
+        })
+        const data = response.data.copy || {}
+        setVal('copy', [data.title, data.description, data.cta, data.hashtags, data.tags].filter(Boolean).join('\n\n'))
+        form.copy_ai_generated = true
+        resizeTextareas()
+    } catch (error) {
+        copyAiError.value = 'No se pudo generar el copy con IA. Inténtalo de nuevo.'
+    } finally {
+        loadingCopy.value = false
+    }
+}
+
+function onScriptInput(e) {
+    setVal('script', e.target.value)
+    autoResize(e.target)
+}
+
+function onCopyInput(e) {
+    setVal('copy', e.target.value)
+    autoResize(e.target)
+    if (form.copy_ai_generated) form.copy_ai_generated = false
 }
 
 function addLang(lang) {
@@ -497,16 +560,32 @@ function onSubmit() {
             <div class="space-y-5">
                 <div>
                     <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Guion</label>
-                    <textarea :value="getVal('script')" @input="e => setVal('script', e.target.value)" rows="10"
-                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                    <textarea ref="scriptRef" :value="getVal('script')" @input="onScriptInput" rows="10"
+                        class="w-full resize-none overflow-hidden rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                     <div v-if="form.errors.script" class="mt-1 text-sm text-red-500">{{ form.errors.script }}</div>
                 </div>
 
                 <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Copy / Descripción</label>
-                    <textarea :value="getVal('copy')" @input="e => setVal('copy', e.target.value)" rows="6"
-                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Copy / Descripción</label>
+                        <span v-if="form.copy_ai_generated"
+                            class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-medium">
+                            <Sparkles class="w-3 h-3" />
+                            Completado con IA
+                        </span>
+                    </div>
+                    <textarea ref="copyRef" :value="getVal('copy')" @input="onCopyInput" rows="6"
+                        class="w-full resize-none overflow-hidden rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                     <div v-if="form.errors.copy" class="mt-1 text-sm text-red-500">{{ form.errors.copy }}</div>
+                    <div v-if="canGenerateAi" class="mt-2 flex items-center gap-3">
+                        <button type="button" @click="generateCopyWithAi" :disabled="!canCompleteCopyWithAi"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            <Loader2 v-if="loadingCopy" class="w-3 h-3 animate-spin" />
+                            <Sparkles v-else class="w-3 h-3" />
+                            {{ loadingCopy ? 'Generando...' : 'Completar con IA' }}
+                        </button>
+                    </div>
+                    <div v-if="copyAiError" class="mt-1 text-sm text-red-500">{{ copyAiError }}</div>
                 </div>
 
             </div>

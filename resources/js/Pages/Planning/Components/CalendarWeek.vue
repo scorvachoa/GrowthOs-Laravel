@@ -9,6 +9,7 @@ defineProps({
     statusColors: Object,
     statusLabels: Object,
     canCreate: Boolean,
+    highlightDate: { type: String, default: null },
 })
 
 const emit = defineEmits(['openDay', 'createTask', 'openExtraModal', 'viewTask'])
@@ -44,8 +45,12 @@ function isHourOccupied(day, hour) {
             :style="{ gridColumn: 1, gridRow: 1 }"></div>
         <template v-for="(day, dIdx) in days" :key="day.date">
             <div :style="{ gridColumn: dIdx + 2, gridRow: 1 }"
-                class="border-r border-b border-gray-200 dark:border-gray-700 p-2 text-center min-w-0"
-                :class="day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-gray-50 dark:bg-gray-800/50'">
+                :data-date="day.date"
+                class="border-r border-b border-gray-200 dark:border-gray-700 p-2 text-center min-w-0 transition-all"
+                :class="[
+                    day.isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-gray-50 dark:bg-gray-800/50',
+                    highlightDate === day.date ? 'ring-2 ring-inset ring-indigo-500 dark:ring-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : '',
+                ]">
                 <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ day.weekday }}</div>
                 <div class="text-lg font-bold"
                     :class="day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'">

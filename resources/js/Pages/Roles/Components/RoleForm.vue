@@ -29,7 +29,6 @@ const groups = computed(() => {
         'view users': Users,
         'view roles': ShieldIcon,
         'view planning': ClipboardList,
-        'view tasks': Eye,
         'view ideas': Lightbulb,
         'view reports': BarChart3,
         'view youtube': Youtube,
@@ -56,7 +55,6 @@ const groups = computed(() => {
         'edit planning': 'Planificación',
         'delete planning': 'Planificación',
         'export planning': 'Planificación',
-        'view tasks': 'Tareas',
         'view ideas': 'Ideas',
         'create ideas': 'Ideas',
         'edit ideas': 'Ideas',
@@ -97,7 +95,7 @@ const groups = computed(() => {
         'download backups': 'Backup',
     }
 
-    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Tareas', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos', 'Backup']
+    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos', 'Backup']
     const grouped = {}
 
     for (const p of props.permissions || []) {

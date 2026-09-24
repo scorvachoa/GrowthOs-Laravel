@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/vue3'
 import { Plus, ExternalLink, Trash2, X, StickyNote, ChevronDown, ChevronRight, Clock, Eye, Pencil, Users, Share2 } from 'lucide-vue-next'
 import ShareModal from '@/Components/Modals/ShareModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
+import CompleteVideoUrlModal from './CompleteVideoUrlModal.vue'
 
 const page = usePage()
 const currentUserId = page.props.auth?.user?.id
@@ -56,6 +57,48 @@ const editSessionTimeRange = ref('')
 const editSessionStatus = ref('in_progress')
 const showDeleteSessionModal = ref(false)
 const deleteSessionTarget = ref(null)
+const showVideoUrlModal = ref(false)
+const videoUrlTarget = ref(null)
+const videoUrlAction = ref(null)
+const statusSelectKey = ref(0)
+
+function handleStatusChange(task, status) {
+    if (status === 'published') {
+        videoUrlTarget.value = task
+        videoUrlAction.value = 'status'
+        showVideoUrlModal.value = true
+        statusSelectKey.value++
+        return
+    }
+    emit('updateStatus', task, status)
+}
+
+function handleCompleteSession(task) {
+    videoUrlTarget.value = task
+    videoUrlAction.value = 'session'
+    showVideoUrlModal.value = true
+}
+
+function closeVideoUrlModal() {
+    showVideoUrlModal.value = false
+    videoUrlTarget.value = null
+    videoUrlAction.value = null
+    statusSelectKey.value++
+}
+
+function confirmVideoUrl(url) {
+    const task = videoUrlTarget.value
+    const action = videoUrlAction.value
+    showVideoUrlModal.value = false
+    videoUrlTarget.value = null
+    videoUrlAction.value = null
+    if (!task || !action) return
+    if (action === 'session') {
+        emit('completeSession', task, url)
+    } else {
+        emit('updateStatus', task, 'published', url)
+    }
+}
 
 function canDeleteTask(task) {
     return props.canDelete && (task.created_by === currentUserId || isAdmin.value)
@@ -131,6 +174,7 @@ function executeDeleteSession() {
 
 function handleEscape(e) {
     if (e.key === 'Escape') {
+        if (showVideoUrlModal.value) return
         emit('close')
     }
 }
@@ -217,7 +261,7 @@ onUnmounted(() => {
                                 class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 font-medium">
                                 Completado
                             </span>
-                            <button v-if="canEdit && task.status !== 'completed'" @click="emit('completeSession', task)"
+                            <button v-if="canEdit && task.status !== 'completed'" @click="handleCompleteSession(task)"
                                 class="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition">
                                 Completar
                             </button>
@@ -237,7 +281,8 @@ onUnmounted(() => {
                             </button>
                         </div>
                         <div v-else class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <select :value="task.status" @change="emit('updateStatus', task, $event.target.value)"
+                            <select :key="`${task.id}-${statusSelectKey}`" :value="task.status"
+                                @change="handleStatusChange(task, $event.target.value)"
                                 class="text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white py-1 px-2 min-w-[130px]">
                                 <option v-for="s in statuses || []" :key="s.value" :value="s.value">{{ s.label }}</option>
                             </select>
@@ -395,6 +440,13 @@ onUnmounted(() => {
         message="¿Eliminar esta sesión? Esta acción no se puede deshacer."
         @close="showDeleteSessionModal = false"
         @confirm="executeDeleteSession"
+    />
+
+    <CompleteVideoUrlModal
+        :show="showVideoUrlModal"
+        :task="videoUrlTarget"
+        @close="closeVideoUrlModal"
+        @confirm="confirmVideoUrl"
     />
 
     <Teleport to="body">

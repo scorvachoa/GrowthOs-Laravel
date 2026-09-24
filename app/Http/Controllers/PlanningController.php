@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DayObservation;
+use App\Models\ExtraTask;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
 use App\Services\PlanningCalendarService;
@@ -82,6 +83,61 @@ class PlanningController extends Controller
         return response()->json(
             $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks())
         );
+    }
+
+    public function search(Request $request)
+    {
+        $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+        ]);
+
+        $q = trim($request->string('q')->toString());
+        $like = '%'.$q.'%';
+
+        $videos = VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
+            ->where(function ($query) use ($like) {
+                $query->where('title', 'like', $like)
+                    ->orWhere('script', 'like', $like)
+                    ->orWhere('copy', 'like', $like);
+            })
+            ->orderBy('task_date')
+            ->orderBy('time_range')
+            ->limit(30)
+            ->get(['id', 'task_date', 'time_range', 'title', 'status']);
+
+        $extras = ExtraTask::query()
+            ->visibleTo()
+            ->where(function ($query) use ($like) {
+                $query->where('title', 'like', $like)
+                    ->orWhere('description', 'like', $like);
+            })
+            ->orderBy('task_date')
+            ->orderBy('time_range')
+            ->limit(30)
+            ->get(['id', 'task_date', 'time_range', 'title', 'status']);
+
+        $results = $videos->map(fn ($t) => [
+            'id' => $t->id,
+            'type' => 'video',
+            'date' => $t->task_date->format('Y-m-d'),
+            'time_range' => $t->time_range,
+            'title' => $t->title,
+            'status' => $t->status,
+        ])->merge($extras->map(fn ($t) => [
+            'id' => $t->id,
+            'type' => 'extra',
+            'date' => $t->task_date->format('Y-m-d'),
+            'time_range' => $t->time_range,
+            'title' => $t->title,
+            'status' => $t->status,
+        ]))
+            ->sortBy([['date', 'asc'], ['time_range', 'asc']])
+            ->take(20)
+            ->values();
+
+        return response()->json(['results' => $results]);
     }
 
     public function tasksByDate(Request $request)

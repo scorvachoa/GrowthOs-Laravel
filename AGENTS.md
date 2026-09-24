@@ -38,17 +38,16 @@ Business logic lives in `app/Services/`. Controllers call services and return In
 ### Default Roles (from `RolesAndPermissionsSeeder`)
 | Role | Scope | Permissions |
 |------|-------|-------------|
-| **Super Admin** | Global (no org) | All 52 permissions + can switch companies |
+| **Super Admin** | Global (no org) | All 51 permissions + can switch companies |
 | **Admin** | Per-org | All permissions except role management |
 | **Employee** | Per-org | None by default (assignable per-org) |
 
-### All 52 Permissions
+### All 51 Permissions
 ```
 Dashboard:   view dashboard
 Usuarios:    view users, create users, edit users, delete users
 Roles:       view roles, create roles, edit roles, delete roles
 Planning:    view planning, create planning, edit planning, delete planning, export planning
-Tareas:      view tasks
 Ideas:       view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
 Reportes:    view reports, download reports, delete reports
 YouTube:     view youtube
@@ -67,7 +66,7 @@ Backup:      view backup, create backup, download backups
 - Excluded from `recent_users` in DashboardService
 
 ### Navigation Filtering
-`resources/js/config/navigation.js` — 14 items. Each has `permission` (string, optional). The `Sidebar` component filters `auth.user.permissions` against `item.permission`; items without permission are always visible.
+`resources/js/config/navigation.js` — 13 items. Each has `permission` (string, optional). The `Sidebar` component filters `auth.user.permissions` against `item.permission`; items without permission are always visible.
 
 ---
 

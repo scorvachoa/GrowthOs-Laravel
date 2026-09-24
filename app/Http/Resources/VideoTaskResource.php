@@ -19,6 +19,7 @@ class VideoTaskResource extends JsonResource
             'status_label' => VideoTaskStatus::labels()[$this->status] ?? $this->status,
             'script' => $this->script,
             'copy' => $this->copy,
+            'copy_ai_generated' => (bool) $this->copy_ai_generated,
             'key_phrases' => $this->key_phrases,
             'youtube_url' => $this->youtube_url,
             'translations' => $this->translations,

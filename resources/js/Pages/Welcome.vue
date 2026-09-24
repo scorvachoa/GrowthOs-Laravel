@@ -62,7 +62,7 @@ const features = [
     {
         icon: Users,
         title: 'Multi-empresa y RBAC',
-        description: '53 permisos granulares en 16 módulos. Roles por organización, datos aislados. Super Admin puede gestionar todas las empresas.',
+        description: '51 permisos granulares en 15 módulos. Roles por organización, datos aislados. Super Admin puede gestionar todas las empresas.',
         color: 'violet',
     },
     {
@@ -131,7 +131,7 @@ const steps = [
                         <div class="text-sm text-gray-500 mt-1">Módulos</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-3xl font-bold text-white">53</div>
+                        <div class="text-3xl font-bold text-white">51</div>
                         <div class="text-sm text-gray-500 mt-1">Permisos</div>
                     </div>
                     <div class="text-center">
@@ -333,7 +333,7 @@ const steps = [
                                         </div>
                                         <div>
                                             <h4 class="text-white font-semibold mb-1">Multi-organización</h4>
-                                            <p class="text-sm text-gray-400">53 permisos granulares, 3 roles por defecto, datos aislados por empresa</p>
+                                            <p class="text-sm text-gray-400">51 permisos granulares, 3 roles por defecto, datos aislados por empresa</p>
                                         </div>
                                     </div>
                                 </div>

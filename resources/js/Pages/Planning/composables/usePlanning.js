@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { calendarStatusColors } from '@/config/statusConstants'
 import axios from 'axios'
@@ -289,6 +289,7 @@ export function usePlanning(props) {
     }
 
     function goToday() {
+        highlightDate.value = null
         const today = new Date()
         currentYear.value = today.getFullYear()
         currentMonth.value = today.getMonth() + 1
@@ -303,6 +304,7 @@ export function usePlanning(props) {
     }
 
     function prevMonth() {
+        highlightDate.value = null
         currentMonth.value--
         if (currentMonth.value < 1) {
             currentMonth.value = 12
@@ -313,6 +315,7 @@ export function usePlanning(props) {
     }
 
     function nextMonth() {
+        highlightDate.value = null
         currentMonth.value++
         if (currentMonth.value > 12) {
             currentMonth.value = 1
@@ -323,6 +326,7 @@ export function usePlanning(props) {
     }
 
     function prevWeek() {
+        highlightDate.value = null
         const d = parseDate(currentWeekStart.value)
         d.setDate(d.getDate() - 7)
         currentWeekStart.value = formatDate(d)
@@ -335,6 +339,7 @@ export function usePlanning(props) {
     }
 
     function nextWeek() {
+        highlightDate.value = null
         const d = parseDate(currentWeekStart.value)
         d.setDate(d.getDate() + 7)
         currentWeekStart.value = formatDate(d)
@@ -347,6 +352,7 @@ export function usePlanning(props) {
     }
 
     function setView(mode) {
+        highlightDate.value = null
         viewMode.value = mode
         updateUrl()
         if (mode === 'pending') {
@@ -407,9 +413,11 @@ export function usePlanning(props) {
         })
     }
 
-    async function updateTaskStatus(task, status) {
+    async function updateTaskStatus(task, status, youtube_url = null) {
         try {
-            await axios.patch(`/tasks/${task.id}/status`, { status })
+            const payload = { status }
+            if (youtube_url) payload.youtube_url = youtube_url
+            await axios.patch(`/tasks/${task.id}/status`, payload)
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
@@ -447,13 +455,13 @@ export function usePlanning(props) {
         }
     }
 
-    async function completeSession(task) {
+    async function completeSession(task, youtube_url = null) {
         if (!task.session_id) { console.warn('completeSession: no session_id', task); return }
         try {
             const patchDate = selectedDate.value
-            await axios.patch(`/tasks/${task.id}/sessions/${task.session_id}`, {
-                status: 'completed',
-            })
+            const payload = { status: 'completed' }
+            if (youtube_url) payload.youtube_url = youtube_url
+            await axios.patch(`/tasks/${task.id}/sessions/${task.session_id}`, payload)
             if (patchDate) await fetchDayTasks(patchDate)
             await fetchSnapshot()
         } catch (e) {
@@ -637,44 +645,97 @@ export function usePlanning(props) {
 
     const searchQuery = ref('')
     const showSearchResults = ref(false)
+    const highlightDate = ref(null)
+    const searchResults = ref([])
+    const searching = ref(false)
+    let searchTimer = null
+    let searchSeq = 0
 
-    const searchResults = computed(() => {
-        const q = searchQuery.value.toLowerCase().trim()
-        if (!q) return []
-        const results = []
-        const detailMap = snapshot.value.tasks_detail_map || {}
-        for (const [date, tasks] of Object.entries(detailMap)) {
-            for (const task of tasks) {
-                if (task.title?.toLowerCase().includes(q)) {
-                    results.push({ ...task, date })
-                }
-            }
+    watch(searchQuery, (q) => {
+        const query = q.trim()
+        showSearchResults.value = q.length > 0
+        if (q.length > 0) highlightDate.value = null
+        clearTimeout(searchTimer)
+
+        if (query.length < 2) {
+            searchResults.value = []
+            searching.value = false
+            return
         }
-        return results.slice(0, 8)
+
+        searching.value = true
+        const seq = ++searchSeq
+        searchTimer = setTimeout(async () => {
+            try {
+                const res = await axios.get('/planning/search', { params: { q: query } })
+                if (seq !== searchSeq) return
+                searchResults.value = res.data.results
+            } catch (e) {
+                if (seq === searchSeq) searchResults.value = []
+                console.error('Search failed', e)
+            } finally {
+                if (seq === searchSeq) searching.value = false
+            }
+        }, 300)
     })
 
     const searchedDates = computed(() => {
-        const q = searchQuery.value.toLowerCase().trim()
-        if (!q) return new Set()
         const dates = new Set()
-        const detailMap = snapshot.value.tasks_detail_map || {}
-        for (const [date, tasks] of Object.entries(detailMap)) {
-            if (tasks.some(t => t.title?.toLowerCase().includes(q))) {
-                dates.add(date)
-            }
+        for (const r of searchResults.value) {
+            dates.add(r.date)
         }
         return dates
     })
 
-    function goToSearchResult(task) {
+    async function goToSearchResult(task) {
         showSearchResults.value = false
         searchQuery.value = ''
-        openDay(task.date)
+
+        const [y, m] = task.date.split('-').map(Number)
+        let needsFetch = false
+
+        if (viewMode.value !== 'month' && viewMode.value !== 'week') {
+            viewMode.value = 'month'
+            currentYear.value = y
+            currentMonth.value = m
+            needsFetch = true
+        } else if (viewMode.value === 'month') {
+            if (y !== currentYear.value || m !== currentMonth.value) {
+                currentYear.value = y
+                currentMonth.value = m
+                needsFetch = true
+            }
+        } else {
+            const start = parseDate(currentWeekStart.value)
+            const end = new Date(start)
+            end.setDate(start.getDate() + 6)
+            const target = parseDate(task.date)
+            if (target < start || target > end) {
+                const weekStart = new Date(target)
+                weekStart.setDate(target.getDate() - ((target.getDay() + 6) % 7))
+                currentWeekStart.value = formatDate(weekStart)
+                currentYear.value = y
+                currentMonth.value = m
+                needsFetch = true
+            }
+        }
+
+        if (needsFetch) {
+            updateUrl()
+            await fetchSnapshot()
+        }
+
+        await nextTick()
+        const el = document.querySelector(`[data-date="${task.date}"]`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        highlightDate.value = task.date
     }
 
     function clearSearch() {
         searchQuery.value = ''
         showSearchResults.value = false
+        searchResults.value = []
+        searching.value = false
     }
 
     return {
@@ -700,7 +761,7 @@ export function usePlanning(props) {
         confirmDeleteExtra, executeExtraDelete,
         createSession, completeSession, editSession, deleteSession,
         moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
-        searchQuery, searchResults, searchedDates, showSearchResults,
+        searchQuery, searchResults, searchedDates, showSearchResults, highlightDate, searching,
         goToSearchResult, clearSearch,
     }
 }

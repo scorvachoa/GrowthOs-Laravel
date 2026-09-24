@@ -14,7 +14,6 @@ use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportHistoryController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\TaskHistoryController;
 use App\Http\Controllers\TaskReportController;
 use App\Http\Controllers\TaskShareController;
 use App\Http\Controllers\TimeOffController;
@@ -70,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/planning', [PlanningController::class, 'index'])->name('planning.index');
         Route::get('/planning/calendar/snapshot', [PlanningController::class, 'snapshot'])->name('planning.snapshot');
         Route::get('/planning/tasks', [PlanningController::class, 'tasksByDate'])->name('planning.tasks-by-date');
+        Route::get('/planning/search', [PlanningController::class, 'search'])->name('planning.search');
         Route::get('/planning/occupied-blocks', [PlanningController::class, 'occupiedBlocks'])->name('planning.occupied-blocks');
         Route::redirect('/video-tasks', '/planning');
     });
@@ -81,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/tasks/extra/{extra_task}', [ExtraTaskController::class, 'update'])->middleware('can:edit planning')->name('tasks.extra.update');
     Route::delete('/tasks/extra/{extra_task}', [ExtraTaskController::class, 'destroy'])->middleware('can:delete planning')->name('tasks.extra.destroy');
     Route::get('/tasks/{video_task}', [VideoTaskController::class, 'show'])->middleware('can:view planning')->name('tasks.show');
+    Route::post('/tasks/generate-copy', [VideoTaskController::class, 'generateCopy'])->middleware(['can:generate ai', 'throttle:10,1'])->name('tasks.generate-copy');
     Route::get('/tasks/{video_task}/edit', [VideoTaskController::class, 'edit'])->middleware('can:edit planning')->name('tasks.edit');
     Route::put('/tasks/{video_task}', [VideoTaskController::class, 'update'])->middleware('can:edit planning')->name('tasks.update');
     Route::patch('/tasks/{video_task}/status', [VideoTaskController::class, 'updateStatus'])->middleware('can:edit planning')->name('tasks.status');
@@ -112,13 +113,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'destroy'])->middleware('can:delete planning');
     Route::get('/planning/observation', [PlanningController::class, 'getObservation'])->middleware('can:view planning')->name('planning.observation.get');
     Route::post('/planning/observation', [PlanningController::class, 'saveObservation'])->middleware('can:view planning')->name('planning.observation.save');
-
-    // Task History
-    Route::get('/tasks/history', [TaskHistoryController::class, 'index'])->middleware('can:view tasks')->name('tasks.history');
-    Route::get('/tasks/history/{video_task}', [TaskHistoryController::class, 'show'])->middleware('can:view tasks')->name('tasks.history.show');
-    // Backward compatibility redirect
-    Route::redirect('/task-history', '/tasks/history');
-    Route::redirect('/task-history/{video_task}', '/tasks/history');
 
     // Ideas
     Route::get('/ideas', [IdeaController::class, 'index'])->middleware('can:view ideas')->name('ideas.index');

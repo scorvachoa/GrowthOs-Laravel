@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
 use App\Notifications\TaskSharedNotification;
+use App\Services\AI\AIContentService;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
 use App\Support\WorkBlocks;
@@ -23,9 +24,87 @@ use Inertia\Inertia;
 class VideoTaskController extends Controller
 {
     use TaskAuthorization;
+
     public function __construct(
         protected PlanningValidator $planningValidator,
+        protected AIContentService $ai,
     ) {}
+
+    public function generateCopy(Request $request)
+    {
+        $validated = $request->validate([
+            'script' => ['required', 'string', 'min:10', 'max:5000'],
+        ]);
+
+        $script = $this->ensureUtf8(trim($validated['script']));
+
+        try {
+            $copy = $this->ai->generateCopy($script);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'No se pudo generar el copy con IA. Inténtalo de nuevo.'], 502);
+        }
+
+        return response()->json([
+            'copy' => [
+                'title' => $this->ensureUtf8($copy['title'] ?? ''),
+                'description' => $this->ensureUtf8($copy['description'] ?? ''),
+                'cta' => $this->ensureUtf8($this->ensureCtaContacts($copy['cta'] ?? '')),
+                'hashtags' => $this->ensureUtf8($this->formatHashtags($copy['hashtags'] ?? '')),
+                'tags' => $this->ensureUtf8($copy['tags'] ?? ''),
+            ],
+        ], 201);
+    }
+
+    private function ensureCtaContacts(string $cta): string
+    {
+        $cta = trim($cta);
+        $url = trim((string) config('ai.business_url'));
+        $phone = trim((string) config('ai.business_phone'));
+        $lines = $cta !== '' ? [$cta] : [];
+
+        if ($url !== '' && ! str_contains($cta, $url)) {
+            $lines[] = "👉 {$url}";
+        }
+
+        if ($phone !== '' && (stripos($cta, 'whatsapp') === false || ! str_contains($cta, $phone))) {
+            $lines[] = "📲 WhatsApp: {$phone}";
+        }
+
+        return implode("\n", array_filter($lines));
+    }
+
+    private function formatHashtags(string $hashtags): string
+    {
+        $parts = preg_split('/[\s,]+/', trim($hashtags)) ?: [];
+        $tags = [];
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            if (! str_starts_with($part, '#')) {
+                $part = '#'.$part;
+            }
+            $tags[] = $part;
+        }
+
+        return implode(' ', array_unique($tags));
+    }
+
+    private function ensureUtf8(?string $value): string
+    {
+        $value = (string) $value;
+        if ($value === '' || mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
+
+        $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+
+        return $converted === false ? '' : $converted;
+    }
 
     public function create(Request $request)
     {
@@ -106,13 +185,50 @@ class VideoTaskController extends Controller
         $isSuperAdmin = $user->hasRole('Super Admin');
         $orgId = $user->activeOrganizationId();
 
-        $query = VideoTask::query()->withoutGlobalScope('organization');
+        $query = VideoTask::query()
+            ->withoutGlobalScope('organization')
+            ->where('is_pending', false);
         if (! $isSuperAdmin) {
             $query->where('organization_id', $orgId);
         }
 
-        $prevTask = $query->clone()->where('id', '<', $videoTask->id)->latest('id')->first(['id', 'title']);
-        $nextTask = $query->clone()->where('id', '>', $videoTask->id)->oldest('id')->first(['id', 'title']);
+        $prevTask = $query->clone()
+            ->where(function ($q) use ($videoTask) {
+                $q->where('task_date', '<', $videoTask->task_date)
+                    ->orWhere(function ($q2) use ($videoTask) {
+                        $q2->where('task_date', $videoTask->task_date)
+                            ->where(function ($q3) use ($videoTask) {
+                                $q3->where('time_range', '<', $videoTask->time_range)
+                                    ->orWhere(function ($q4) use ($videoTask) {
+                                        $q4->where('time_range', $videoTask->time_range)
+                                            ->where('id', '<', $videoTask->id);
+                                    });
+                            });
+                    });
+            })
+            ->orderByDesc('task_date')
+            ->orderByDesc('time_range')
+            ->orderByDesc('id')
+            ->first(['id', 'title']);
+
+        $nextTask = $query->clone()
+            ->where(function ($q) use ($videoTask) {
+                $q->where('task_date', '>', $videoTask->task_date)
+                    ->orWhere(function ($q2) use ($videoTask) {
+                        $q2->where('task_date', $videoTask->task_date)
+                            ->where(function ($q3) use ($videoTask) {
+                                $q3->where('time_range', '>', $videoTask->time_range)
+                                    ->orWhere(function ($q4) use ($videoTask) {
+                                        $q4->where('time_range', $videoTask->time_range)
+                                            ->where('id', '>', $videoTask->id);
+                                    });
+                            });
+                    });
+            })
+            ->orderBy('task_date')
+            ->orderBy('time_range')
+            ->orderBy('id')
+            ->first(['id', 'title']);
 
         return Inertia::render('VideoTasks/Show', [
             'task' => $this->serializeTask($videoTask),
@@ -213,11 +329,15 @@ class VideoTaskController extends Controller
 
         $validated = $request->validate([
             'status' => ['required', Rule::in(VideoTaskStatus::values())],
+            'youtube_url' => ['nullable', 'url'],
         ]);
 
-        $videoTask->update([
-            'status' => $validated['status'],
-        ]);
+        $data = ['status' => $validated['status']];
+        if ($request->has('youtube_url')) {
+            $data['youtube_url'] = $validated['youtube_url'] ?: null;
+        }
+
+        $videoTask->update($data);
         PlanningCalendarService::bustCache();
 
         return response()->json([
@@ -321,6 +441,7 @@ class VideoTaskController extends Controller
             'date' => ['nullable', 'date', 'after_or_equal:'.$videoTask->task_date->format('Y-m-d')],
             'time_range' => ['nullable', 'string', 'max:30'],
             'status' => ['required', Rule::in(['in_progress', 'completed'])],
+            'youtube_url' => ['nullable', 'url'],
         ]);
 
         $timeRange = $validated['time_range'] ?? null;
@@ -334,7 +455,15 @@ class VideoTaskController extends Controller
             );
         }
 
-        $session->update($validated);
+        $session->update([
+            'date' => $validated['date'] ?? $session->date,
+            'time_range' => $validated['time_range'] ?? $session->time_range,
+            'status' => $validated['status'],
+        ]);
+
+        if ($request->has('youtube_url')) {
+            $videoTask->update(['youtube_url' => $validated['youtube_url'] ?: null]);
+        }
 
         PlanningCalendarService::bustCache();
 
