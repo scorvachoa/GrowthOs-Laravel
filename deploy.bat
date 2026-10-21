@@ -34,7 +34,7 @@ if errorlevel 1 goto :error_git
 
 echo.
 echo [2/3] Actualizando servidor (git pull, dependencias, build, migraciones)...
-ssh -i "%SSH_KEY%" %HOST% "cd %APP% && git pull origin main && COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress && npm ci --no-audit --no-fund && npm run build && sudo -u www-data php artisan migrate --force && echo DEPLOY_OK"
+ssh -i "%SSH_KEY%" %HOST% "cd %APP% && sudo -u www-data env HOME=/tmp bash -c 'cd %APP% && git pull origin main && COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress && npm ci --no-audit --no-fund && npm run build && php artisan migrate --force && echo DEPLOY_OK'"
 if errorlevel 1 goto :error_ssh
 
 echo.
