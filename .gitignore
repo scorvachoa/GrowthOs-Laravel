@@ -24,6 +24,10 @@
 /-p/
 name('tasks.history.show')
 
+# Backups (nunca deben subirse al repo publico)
+*.sql
+*.tar.gz
+
 # IDE
 /.fleet
 /.idea

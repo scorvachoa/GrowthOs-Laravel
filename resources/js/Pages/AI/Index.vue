@@ -6,6 +6,7 @@ import { router, usePage } from '@inertiajs/vue3'
 import UseTaskModal from '@/Components/AI/UseTaskModal.vue'
 import axios from 'axios'
 import { Sparkles, FileText, CopyCheck, Quote, Download, CalendarPlus, History, Wand2, Lightbulb, AudioLines, CheckCircle2, Loader2 } from 'lucide-vue-next'
+import { writeClipboard } from '@/Composables/useCopyFeedback'
 
 const props = defineProps({
     recent: Array,
@@ -273,10 +274,10 @@ async function copyText(text, emptyMessage, successMessage) {
         showToast(emptyMessage, 'error')
         return
     }
-    try {
-        await navigator.clipboard.writeText(text)
+    const ok = await writeClipboard(text)
+    if (ok) {
         showToast(successMessage)
-    } catch {
+    } else {
         showToast('No se pudo copiar el contenido desde el navegador.', 'error')
     }
 }
