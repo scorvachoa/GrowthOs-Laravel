@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
@@ -13,16 +13,98 @@ const toggle = inject('toggleSidebar')
 const mobileOpen = inject('mobileSidebarOpen')
 const closeMobile = inject('closeMobileSidebar')
 
+const EXPANDED_KEY = 'sidebar_expanded'
+
+const loadExpanded = () => {
+    try {
+        return new Set(JSON.parse(localStorage.getItem(EXPANDED_KEY) || '[]'))
+    } catch {
+        return new Set()
+    }
+}
+
+const expandedRoutes = ref(loadExpanded())
+
+const persistExpanded = () => {
+    localStorage.setItem(EXPANDED_KEY, JSON.stringify([...expandedRoutes.value]))
+}
+
+const toggleExpanded = (route) => {
+    if (expandedRoutes.value.has(route)) {
+        expandedRoutes.value.delete(route)
+    } else {
+        // Acordeón: al abrir un grupo se cierran los demás
+        expandedRoutes.value = new Set([route])
+    }
+    persistExpanded()
+}
+
 const items = computed(() => {
     const permissions = page.props.auth?.user?.permissions ?? []
     const permissionList = Array.isArray(permissions)
         ? permissions
         : Object.values(permissions)
 
-    return navigation.filter(item =>
-        !item.permission || permissionList.includes(item.permission)
-    )
+    const roles = page.props.auth?.user?.roles ?? []
+    const roleList = Array.isArray(roles) ? roles : Object.values(roles)
+
+    const passes = entry => {
+        const allowedByPermission = !entry.permission || permissionList.includes(entry.permission)
+        const allowedByRole = !entry.roles || entry.roles.some(role => roleList.includes(role))
+        return allowedByPermission && allowedByRole
+    }
+
+    // Un grupo con hijos solo es visible si el padre pasa su regla
+    // y al menos uno de sus hijos es visible (p. ej. "Ausencias").
+    return navigation
+        .filter(item => {
+            if (item.children?.length) {
+                return passes(item) && item.children.some(passes)
+            }
+            return passes(item)
+        })
+        .map(item => ({
+            ...item,
+            children: item.children ? item.children.filter(passes) : undefined,
+        }))
 })
+
+// Ruta activa: la entrada que coincide con el prefijo MÁS LARGO
+// (incluye subentradas: en /youtube/comments se resalta el hijo "Comentarios").
+const path = computed(() => {
+    const clean = page.url.split('?')[0].replace(/\/+$/, '')
+    return clean || '/'
+})
+
+const activeRoute = computed(() => {
+    let best = null
+    let bestLength = -1
+
+    for (const item of items.value) {
+        for (const route of [item.route, ...(item.children?.map(child => child.route) ?? [])]) {
+            if (path.value === route || path.value.startsWith(route + '/')) {
+                if (route.length > bestLength) {
+                    best = route
+                    bestLength = route.length
+                }
+            }
+        }
+    }
+
+    return best
+})
+
+// Auto-expandir el grupo cuando su hijo es la ruta activa (acordeón: cierra los demás)
+watch(activeRoute, (route) => {
+    if (!route) return
+    const parent = items.value.find(item => item.children?.some(child => child.route === route))
+    if (parent && !expandedRoutes.value.has(parent.route)) {
+        expandedRoutes.value = new Set([parent.route])
+        persistExpanded()
+    }
+}, { immediate: true })
+
+const isExpanded = (item) => expandedRoutes.value.has(item.route)
 </script>
 
 <template>
@@ -53,7 +135,11 @@ const items = computed(() => {
                 v-for="item in items"
                 :key="item.title"
                 :item="item"
-                @click="closeMobile"
+                :active="item.route === activeRoute && !(item.children?.some(child => child.route === activeRoute) ?? false)"
+                :active-route="activeRoute"
+                :expanded="isExpanded(item)"
+                @toggle="toggleExpanded(item.route)"
+                @close="closeMobile"
             />
         </nav>
 

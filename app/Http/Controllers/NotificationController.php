@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TaskShare;
-use App\Models\User;
-use App\Models\VideoTask;
 use App\Models\ExtraTask;
+use App\Models\TaskShare;
+use App\Models\VideoTask;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -78,6 +77,7 @@ class NotificationController extends Controller
                 }
             }
             $n['share_status'] = $shareStatus;
+
             return $n;
         }));
 
@@ -152,7 +152,7 @@ class NotificationController extends Controller
 
     public function clearAll()
     {
-        Auth::user()->unreadNotifications()->update(['read_at' => now()]);
+        Auth::user()->notifications()->delete();
 
         return response()->json(['ok' => true]);
     }

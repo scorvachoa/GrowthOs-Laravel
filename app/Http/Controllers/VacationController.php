@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesAbsences;
 use App\Models\Vacation;
 use App\Services\PlanningCalendarService;
 use Carbon\Carbon;
@@ -11,10 +12,12 @@ use Inertia\Inertia;
 
 class VacationController extends Controller
 {
+    use AuthorizesAbsences;
+
     public function index(Request $request)
     {
         $user = $request->user();
-        $canManage = $user->hasRole(['Super Admin', 'Admin']);
+        $canManage = $this->canManageAbsences($user);
 
         $vacations = Vacation::query()
             ->with('user', 'approver')
@@ -48,7 +51,6 @@ class VacationController extends Controller
         return Inertia::render('Vacations/Index', [
             'vacations' => $vacations,
             'remaining_days' => max(0, 30 - $usedDays),
-            'can_approve' => $canManage,
         ]);
     }
 
@@ -76,7 +78,7 @@ class VacationController extends Controller
             return back()->withErrors(['start_date' => 'Excede el limite de 30 dias anuales']);
         }
 
-        Vacation::create([
+        $vacation = Vacation::create([
             'user_id' => $user->id,
             'start_date' => $start,
             'end_date' => $end,
@@ -87,17 +89,14 @@ class VacationController extends Controller
             'status' => 'pendiente',
         ]);
 
-        PlanningCalendarService::bustCache($user->id);
+        PlanningCalendarService::bustCache($vacation->organization_id);
 
         return redirect()->back()->with('success', 'Solicitud de vacaciones creada.');
     }
 
     public function approve(Vacation $vacation)
     {
-        $user = request()->user();
-        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $vacation->user?->organization_id)) {
-            abort(403);
-        }
+        $user = $this->ensureAbsenceApprovable($vacation);
 
         $vacation->update([
             'status' => 'aprobado',
@@ -105,17 +104,14 @@ class VacationController extends Controller
             'approved_at' => now(),
         ]);
 
-        PlanningCalendarService::bustCache($vacation->user_id);
+        PlanningCalendarService::bustCache($vacation->organization_id);
 
         return redirect()->back()->with('success', 'Vacaciones aprobadas.');
     }
 
     public function reject(Request $request, Vacation $vacation)
     {
-        $user = $request->user();
-        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $vacation->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceApprovable($vacation);
 
         $vacation->update(['status' => 'rechazado']);
 
@@ -124,10 +120,7 @@ class VacationController extends Controller
 
     public function update(Request $request, Vacation $vacation)
     {
-        $user = $request->user();
-        if ($vacation->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $vacation->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceModifiable($vacation);
 
         if ($vacation->status === 'aprobado') {
             return back()->with('error', 'No puedes editar vacaciones aprobadas.');
@@ -163,30 +156,22 @@ class VacationController extends Controller
             'reason' => $validated['reason'],
         ]);
 
-        PlanningCalendarService::bustCache($vacation->user_id);
+        PlanningCalendarService::bustCache($vacation->organization_id);
 
         return redirect()->back()->with('success', 'Vacaciones actualizadas.');
     }
 
     public function destroy(Vacation $vacation)
     {
-        $user = request()->user();
-        if ($vacation->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $vacation->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceModifiable($vacation);
 
         if ($vacation->status === 'aprobado') {
             return back()->with('error', 'No puedes eliminar vacaciones aprobadas.');
         }
 
         $vacation->delete();
-        PlanningCalendarService::bustCache($vacation->user_id);
+        PlanningCalendarService::bustCache($vacation->organization_id);
 
         return redirect()->back()->with('success', 'Solicitud eliminada.');
-    }
-
-    private function canManageOrg($user, ?int $orgId): bool
-    {
-        return $orgId && $user->activeOrganizationId() === $orgId && $user->hasRole(['Super Admin', 'Admin']);
     }
 }

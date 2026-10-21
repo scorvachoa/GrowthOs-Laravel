@@ -3,13 +3,19 @@ import { ref, computed, watch, inject, onMounted, nextTick } from 'vue'
 import { usePage, Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import TextInput from '@/Components/Forms/TextInput.vue'
+import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Sparkles, Loader2, Plus, X, Globe, Users } from 'lucide-vue-next'
+import AlertModal from '@/Components/Modals/AlertModal.vue'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useCopyFeedback } from '@/Composables/useCopyFeedback'
+import { localeLabel } from '@/config/localeLabels'
+import { useDebounce } from '@/Composables/useDebounce'
+import { Sparkles, Loader2, Plus, X, Users, Languages } from 'lucide-vue-next'
 
 const page = usePage()
 const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
-const permissions = page.props.auth?.user?.permissions ?? []
-const canGenerateAi = permissions.includes('generate ai')
+const { can } = usePermissions()
+const canGenerateAi = can('generate ai')
 
 const form = inject('taskForm')
 
@@ -51,6 +57,10 @@ onMounted(async () => {
             shareRoles.value[uid] = form.shared_roles[idx] || 'editor'
         })
     }
+
+    if (!props.taskId) {
+        fetchSourceCandidates()
+    }
 })
 
 watch(selectedUsers, (val) => {
@@ -58,44 +68,28 @@ watch(selectedUsers, (val) => {
     form.shared_roles = val.map(uid => shareRoles.value[uid] || 'editor')
 }, { immediate: true })
 
-const allLangLabels = { es: 'ES', en: 'EN', pt: 'PT', fr: 'FR', de: 'DE', it: 'IT', ja: 'JA', ko: 'KO', zh: 'ZH' }
-const langNames = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', ja: '日本語', ko: '한국어', zh: '中文' }
+const taskChannelLocale = computed(() => form.locale || 'es')
 
-const userLangs = computed(() => userSettings.value?.languages || ['es'])
-const availableToAdd = computed(() => userLangs.value.filter(l => !languages.value.includes(l)))
+const availableLocales = computed(() => {
+    const channel = (props.channels || []).find(c => c.id === form.channel_id)
+    const list = channel
+        ? (channel.locales?.length ? channel.locales : [])
+        : [...new Set((props.channels || []).flatMap(c => c.locales || []))]
+    return list.length ? list : ['es']
+})
 
-const languages = ref(['es'])
-const currentLang = ref('es')
-
-function initLanguages() {
-    const existing = form.translations ? Object.keys(form.translations) : []
-    const fromSettings = userLangs.value.filter(l => l !== 'es' && !existing.includes(l))
-    languages.value = ['es', ...existing.filter(l => l !== 'es'), ...fromSettings]
-}
-
-initLanguages()
-
-function getVal(field) {
-    if (currentLang.value === 'es') return form[field] || ''
-    return form.translations?.[currentLang.value]?.[field] ?? ''
-}
-
-function setVal(field, val) {
-    if (currentLang.value === 'es') {
-        form[field] = val
-    } else {
-        if (!form.translations) form.translations = {}
-        if (!form.translations[currentLang.value]) form.translations[currentLang.value] = { title: '', script: '', copy: '' }
-        form.translations[currentLang.value][field] = val
+watch(() => form.channel_id, (id) => {
+    const channel = (props.channels || []).find(c => c.id === id)
+    if (!channel) return
+    const locales = channel.locales?.length ? channel.locales : ['es']
+    if (!locales.includes(form.locale)) {
+        form.locale = locales[0]
     }
-}
-
-function switchLang(lang) {
-    currentLang.value = lang
-}
+})
 
 const scriptRef = ref(null)
 const copyRef = ref(null)
+const notesRef = ref(null)
 
 function autoResize(el) {
     if (!el) return
@@ -107,10 +101,11 @@ function resizeTextareas() {
     nextTick(() => {
         autoResize(scriptRef.value)
         autoResize(copyRef.value)
+        autoResize(notesRef.value)
     })
 }
 
-watch([currentLang, () => form.script, () => form.copy, () => form.translations], resizeTextareas, { deep: true })
+watch([() => form.script, () => form.copy, () => form.notes], resizeTextareas)
 
 onMounted(() => {
     resizeTextareas()
@@ -121,7 +116,7 @@ const copyAiError = ref('')
 
 const canCompleteCopyWithAi = computed(() => {
     if (!canGenerateAi || loadingCopy.value) return false
-    return getVal('script').trim().length >= 100 && getVal('copy').trim() === ''
+    return (form.script || '').trim().length >= 100 && (form.copy || '').trim() === ''
 })
 
 async function generateCopyWithAi() {
@@ -131,11 +126,10 @@ async function generateCopyWithAi() {
     loadingCopy.value = true
     try {
         const response = await axios.post('/tasks/generate-copy', {
-            script: getVal('script').trim(),
+            script: (form.script || '').trim(),
         })
         const data = response.data.copy || {}
-        setVal('copy', [data.title, data.description, data.cta, data.hashtags, data.tags].filter(Boolean).join('\n\n'))
-        form.copy_ai_generated = true
+        form.copy = [data.title, data.description, data.cta, data.hashtags, data.tags].filter(Boolean).join('\n\n')
         resizeTextareas()
     } catch (error) {
         copyAiError.value = 'No se pudo generar el copy con IA. Inténtalo de nuevo.'
@@ -144,47 +138,121 @@ async function generateCopyWithAi() {
     }
 }
 
+const loadingIdeas = ref(false)
+const ideasAiError = ref('')
+const aiTitles = ref([])
+const aiThumbnails = ref([])
+const { copiedKey: copiedIdea, copy } = useCopyFeedback()
+
+const canSuggestIdeas = computed(() => {
+    if (!canGenerateAi || loadingIdeas.value) return false
+    return (form.script || '').trim().length >= 50
+})
+
+async function generateIdeasWithAi() {
+    if (!canSuggestIdeas.value) return
+
+    ideasAiError.value = ''
+    aiTitles.value = []
+    aiThumbnails.value = []
+    loadingIdeas.value = true
+    try {
+        const response = await axios.post('/tasks/generate-title-thumbnails', {
+            script: (form.script || '').trim(),
+            title: (form.title || '').trim(),
+        })
+        aiTitles.value = response.data.titles || []
+        aiThumbnails.value = response.data.thumbnails || []
+        if (!aiTitles.value.length && !aiThumbnails.value.length) {
+            ideasAiError.value = 'La IA no devolvió sugerencias. Inténtalo de nuevo.'
+        }
+    } catch (error) {
+        ideasAiError.value = 'No se pudieron generar sugerencias con IA. Inténtalo de nuevo.'
+    } finally {
+        loadingIdeas.value = false
+    }
+}
+
+function applyAiTitle(t) {
+    form.title = t
+}
+
+function copyAiIdea(t) {
+    copy(t, t)
+}
+
 function onScriptInput(e) {
-    setVal('script', e.target.value)
+    form.script = e.target.value
     autoResize(e.target)
 }
 
 function onCopyInput(e) {
-    setVal('copy', e.target.value)
+    form.copy = e.target.value
     autoResize(e.target)
-    if (form.copy_ai_generated) form.copy_ai_generated = false
 }
 
-function addLang(lang) {
-    if (languages.value.includes(lang)) return
-    languages.value.push(lang)
-    if (!form.translations) {
-        form.translations = {}
-    }
-    form.translations[lang] = { title: '', script: '', copy: '' }
-    currentLang.value = lang
+function onNotesInput(e) {
+    form.notes = e.target.value
+    autoResize(e.target)
 }
 
-const confirmRemoveLang = ref(null)
+const sourceSearch = ref('')
+const sourceResults = ref([])
+const sourceLoading = ref(false)
+const selectedSource = ref(null)
+const sourceChannelFilter = ref(null)
+const translatingSource = ref(false)
+const translateFromError = ref('')
 
-function confirmRemove(lang) {
-    if (lang === 'es') return
-    confirmRemoveLang.value = lang
+const canUseTranslateFrom = computed(() => canGenerateAi && !props.taskId)
+
+async function fetchSourceCandidates() {
+    if (!canUseTranslateFrom.value) return
+    sourceLoading.value = true
+    try {
+        const params = {}
+        if (sourceSearch.value.trim()) params.q = sourceSearch.value.trim()
+        if (sourceChannelFilter.value) params.channel_id = sourceChannelFilter.value
+        const res = await axios.get('/tasks/translate-candidates', { params })
+        sourceResults.value = res.data.results || []
+    } catch {
+        sourceResults.value = []
+    } finally {
+        sourceLoading.value = false
+    }
 }
 
-function removeLang(lang) {
-    if (lang === 'es') return
-    languages.value = languages.value.filter(l => l !== lang)
-    if (form.translations) {
-        delete form.translations[lang]
-        if (Object.keys(form.translations).length === 0) {
-            form.translations = null
-        }
+useDebounce(sourceSearch, fetchSourceCandidates)
+
+watch(sourceChannelFilter, fetchSourceCandidates)
+
+function selectSource(task) {
+    selectedSource.value = task
+}
+
+function clearSource() {
+    selectedSource.value = null
+}
+
+async function translateFromSource() {
+    if (!selectedSource.value || translatingSource.value) return
+
+    translateFromError.value = ''
+    translatingSource.value = true
+    try {
+        const res = await axios.post(`/tasks/${selectedSource.value.id}/translate-content`, {
+            locale: taskChannelLocale.value,
+        })
+        form.title = res.data.title || form.title
+        form.script = res.data.script ?? form.script
+        form.copy = res.data.copy ?? form.copy
+        form.translated_from_task_id = selectedSource.value.id
+        resizeTextareas()
+    } catch (error) {
+        translateFromError.value = error.response?.data?.error || 'No se pudo traducir con DeepL. Inténtalo de nuevo.'
+    } finally {
+        translatingSource.value = false
     }
-    if (currentLang.value === lang) {
-        currentLang.value = 'es'
-    }
-    confirmRemoveLang.value = null
 }
 
 const useBlocks = computed(() => userSettings.value.use_blocks ?? true)
@@ -236,7 +304,7 @@ watch(() => form.task_date, async (date) => {
 }, { immediate: true })
 
 const embedUrl = computed(() => {
-    const url = getVal('youtube_url')
+    const url = form.youtube_url
     if (!url) return null
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
@@ -299,11 +367,12 @@ const editSessionOccupied = ref([])
 
 const confirmDeleteSession = ref(null)
 const deletingSession = ref(false)
+const sessionError = ref(null)
 
 watch(newSessionDate, async (date) => {
     if (!date || !useBlocks.value) { newSessionOccupied.value = []; return }
     try {
-        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: taskId } })
+        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: props.taskId } })
         newSessionOccupied.value = res.data.occupied || []
     } catch { newSessionOccupied.value = [] }
 })
@@ -311,7 +380,7 @@ watch(newSessionDate, async (date) => {
 watch(editSessionDate, async (date) => {
     if (!date || !useBlocks.value) { editSessionOccupied.value = []; return }
     try {
-        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: taskId } })
+        const res = await axios.get('/planning/occupied-blocks', { params: { date, except_task_id: props.taskId } })
         editSessionOccupied.value = res.data.occupied || []
     } catch { editSessionOccupied.value = [] }
 })
@@ -332,6 +401,7 @@ function buildSessionList(sessions) {
             date: props.taskDate,
             time_range: form.time_range,
             status: 'in_progress',
+            locale: taskChannelLocale.value,
             _is_initial: true,
         })
     }
@@ -340,6 +410,7 @@ function buildSessionList(sessions) {
         date: s.date,
         time_range: s.time_range,
         status: s.status,
+        locale: s.locale || 'es',
         _is_initial: false,
     }))
     return [...list, ...existing]
@@ -360,7 +431,7 @@ async function saveSession() {
         newSessionTimeRange.value = null
         newSessionCompleted.value = false
     } catch {
-        alert('Error al guardar la sesión')
+        sessionError.value = 'Error al guardar la sesión'
     } finally {
         savingSession.value = false
     }
@@ -375,7 +446,7 @@ async function deleteSession(session) {
         localSessions.value = buildSessionList(remaining)
         confirmDeleteSession.value = null
     } catch {
-        alert('Error al eliminar la sesión')
+        sessionError.value = 'Error al eliminar la sesión'
     } finally {
         deletingSession.value = false
     }
@@ -403,7 +474,7 @@ async function saveEditSession() {
         localSessions.value = buildSessionList(updated)
         editingSession.value = null
     } catch {
-        alert('Error al actualizar la sesión')
+        sessionError.value = 'Error al actualizar la sesión'
     } finally {
         savingEditSession.value = false
     }
@@ -422,27 +493,6 @@ function onSubmit() {
 
 <template>
     <form @submit.prevent="onSubmit" class="space-y-6">
-        <div class="flex items-center gap-1 flex-wrap">
-            <button v-for="lang in languages" :key="lang" type="button" @click="switchLang(lang)"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5"
-                :class="currentLang === lang
-                    ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
-                <Globe class="w-3 h-3" />
-                {{ allLangLabels[lang] || lang.toUpperCase() }}
-                <span v-if="lang !== 'es'" @click.stop="confirmRemove(lang)" class="ml-0.5 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30"
-                    :class="currentLang === lang ? 'text-white/70 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-red-500'">
-                    <X class="w-3 h-3" />
-                </span>
-            </button>
-            <template v-for="lang in availableToAdd" :key="'add-' + lang">
-                <button type="button" @click="addLang(lang)"
-                    class="px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <Plus class="w-3 h-3" /> {{ allLangLabels[lang] || lang.toUpperCase() }}
-                </button>
-            </template>
-        </div>
-
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div class="space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -473,9 +523,44 @@ function onSubmit() {
                     </div>
                 </div>
 
-                <TextInput :model-value="getVal('title')" @update:model-value="v => setVal('title', v)" label="Título del video" :error="form.errors.title" />
+                <div>
+                    <TextInput v-model="form.title" label="Título del video" :error="form.errors.title" />
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-if="canGenerateAi" class="mt-2">
+                        <button type="button" @click="generateIdeasWithAi" :disabled="!canSuggestIdeas"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            <Loader2 v-if="loadingIdeas" class="w-3 h-3 animate-spin" />
+                            <Sparkles v-else class="w-3 h-3" />
+                            {{ loadingIdeas ? 'Generando...' : 'Sugerir títulos y thumbnails' }}
+                        </button>
+                    </div>
+                    <div v-if="ideasAiError" class="mt-1 text-sm text-red-500">{{ ideasAiError }}</div>
+
+                    <div v-if="aiTitles.length || aiThumbnails.length"
+                        class="mt-3 p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 space-y-4">
+                        <div v-if="aiTitles.length">
+                            <p class="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase mb-2">Títulos sugeridos</p>
+                            <div class="space-y-1.5">
+                                <button type="button" v-for="t in aiTitles" :key="t" @click="applyAiTitle(t)"
+                                    class="w-full text-left px-3 py-2 rounded-lg text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 transition text-gray-700 dark:text-gray-300">
+                                    {{ t }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="aiThumbnails.length">
+                            <p class="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase mb-2">Ideas de thumbnail</p>
+                            <div class="space-y-1.5">
+                                <button type="button" v-for="t in aiThumbnails" :key="t" @click="copyAiIdea(t)"
+                                    class="w-full text-left px-3 py-2 rounded-lg text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 transition text-gray-700 dark:text-gray-300 flex items-start justify-between gap-2">
+                                    <span>{{ t }}</span>
+                                    <span class="text-xs text-purple-600 dark:text-purple-400 shrink-0">{{ copiedIdea === t ? 'Copiado' : 'Copiar' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
                         <select v-model="form.status"
@@ -483,6 +568,17 @@ function onSubmit() {
                             <option v-for="s in statuses" :key="s.value" :value="s.value">{{ s.label }}</option>
                         </select>
                         <div v-if="form.errors.status" class="mt-1 text-sm text-red-500">{{ form.errors.status }}</div>
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Idioma</label>
+                        <select v-model="form.locale"
+                            class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <option v-for="loc in availableLocales" :key="loc" :value="loc">
+                                {{ localeLabel(loc) }}
+                            </option>
+                        </select>
+                        <div v-if="form.errors.locale" class="mt-1 text-sm text-red-500">{{ form.errors.locale }}</div>
+                        <p v-else class="mt-1 text-xs text-gray-400 dark:text-gray-500">Idioma de la tarea</p>
                     </div>
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Canal</label>
@@ -496,7 +592,7 @@ function onSubmit() {
                 </div>
 
                 <div>
-                    <TextInput :model-value="getVal('youtube_url')" @update:model-value="v => setVal('youtube_url', v)" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
+                    <TextInput v-model="form.youtube_url" label="URL de YouTube / TikTok" type="url" :error="form.errors.youtube_url" />
                     <div v-if="embedUrl" class="mt-2">
                         <iframe v-if="embedUrl.type === 'youtube' && !embedUrl.shorts" :src="embedUrl.src"
                             class="w-full aspect-video rounded-xl"
@@ -518,9 +614,8 @@ function onSubmit() {
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Compartir con</span>
                     </div>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">Solo los usuarios seleccionados podran ver esta tarea</p>
-                    <div class="relative mb-3">
-                        <input v-model="shareSearch" type="text" placeholder="Buscar usuario..."
-                            class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                    <div class="mb-3">
+                        <SearchInput v-model="shareSearch" placeholder="Buscar usuario..." class="!w-full" />
                     </div>
                     <div v-if="selectedUsers.length" class="space-y-2 mb-3">
                         <div v-for="uid in selectedUsers" :key="uid"
@@ -560,7 +655,7 @@ function onSubmit() {
             <div class="space-y-5">
                 <div>
                     <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Guion</label>
-                    <textarea ref="scriptRef" :value="getVal('script')" @input="onScriptInput" rows="10"
+                    <textarea ref="scriptRef" :value="form.script" @input="onScriptInput" rows="10"
                         class="w-full resize-none overflow-hidden rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                     <div v-if="form.errors.script" class="mt-1 text-sm text-red-500">{{ form.errors.script }}</div>
                 </div>
@@ -568,13 +663,8 @@ function onSubmit() {
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Copy / Descripción</label>
-                        <span v-if="form.copy_ai_generated"
-                            class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-medium">
-                            <Sparkles class="w-3 h-3" />
-                            Completado con IA
-                        </span>
                     </div>
-                    <textarea ref="copyRef" :value="getVal('copy')" @input="onCopyInput" rows="6"
+                    <textarea ref="copyRef" :value="form.copy" @input="onCopyInput" rows="6"
                         class="w-full resize-none overflow-hidden rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                     <div v-if="form.errors.copy" class="mt-1 text-sm text-red-500">{{ form.errors.copy }}</div>
                     <div v-if="canGenerateAi" class="mt-2 flex items-center gap-3">
@@ -588,7 +678,75 @@ function onSubmit() {
                     <div v-if="copyAiError" class="mt-1 text-sm text-red-500">{{ copyAiError }}</div>
                 </div>
 
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Notas</label>
+                    <textarea ref="notesRef" :value="form.notes" @input="onNotesInput" rows="4"
+                        class="w-full resize-none overflow-hidden rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                    <div v-if="form.errors.notes" class="mt-1 text-sm text-red-500">{{ form.errors.notes }}</div>
+                </div>
+
             </div>
+        </div>
+
+        <div v-if="canUseTranslateFrom" class="border border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-2">
+                <Languages class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Traducir desde una tarea existente</h3>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                Busca la tarea origen, selecciónala y pulsa Traducir. El título, guion y copy se traducirán con DeepL al idioma seleccionado y la nueva tarea quedará vinculada.
+            </p>
+
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+                Idioma destino: <span class="font-semibold text-teal-700 dark:text-teal-300">{{ localeLabel(taskChannelLocale) }}</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+                <SearchInput v-model="sourceSearch" placeholder="Buscar por título o guion..." class="flex-1 !w-full" />
+                <select v-model="sourceChannelFilter"
+                    class="rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option :value="null">Todos los canales</option>
+                    <option v-for="ch in channels" :key="ch.id" :value="ch.id">{{ ch.name }}</option>
+                </select>
+            </div>
+
+            <div v-if="!selectedSource" class="max-h-52 overflow-y-auto space-y-1">
+                <div v-if="sourceLoading" class="text-xs text-gray-400 py-2">Buscando...</div>
+                <button v-for="task in sourceResults" :key="task.id" type="button" @click="selectSource(task)"
+                    class="w-full text-left px-3 py-2 rounded-lg text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-teal-400 dark:hover:border-teal-600 transition text-gray-700 dark:text-gray-300 flex items-center justify-between gap-2">
+                    <span class="truncate">{{ task.title }}</span>
+                    <span class="text-xs text-gray-400 shrink-0 flex items-center gap-1.5">
+                        <span v-if="task.channel" class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">{{ task.channel.name }}</span>
+                        <span class="px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-medium">{{ localeLabel(task.locale) }}</span>
+                        {{ task.task_date }}
+                    </span>
+                </button>
+                <p v-if="!sourceLoading && sourceResults.length === 0" class="text-xs text-gray-400 py-2">Sin resultados.</p>
+            </div>
+
+            <div v-else class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-teal-100 dark:bg-teal-900/30 text-sm">
+                <span class="text-teal-800 dark:text-teal-200 truncate">
+                    Origen: <strong>{{ selectedSource.title }}</strong>
+                    <span class="text-teal-600 dark:text-teal-400">({{ localeLabel(selectedSource.locale) }} · {{ selectedSource.task_date }})</span>
+                </span>
+                <button type="button" @click="clearSource" class="text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100 text-xs font-medium shrink-0">
+                    Cambiar
+                </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="button" @click="translateFromSource"
+                    :disabled="!selectedSource || !form.channel_id || translatingSource"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                    <Loader2 v-if="translatingSource" class="w-3 h-3 animate-spin" />
+                    <Languages v-else class="w-3 h-3" />
+                    {{ translatingSource ? 'Traduciendo...' : 'Traducir' }}
+                </button>
+                <span v-if="form.translated_from_task_id" class="text-xs text-teal-700 dark:text-teal-300 font-medium">
+                    Vinculada a la tarea #{{ form.translated_from_task_id }}
+                </span>
+            </div>
+            <p v-if="translateFromError" class="text-sm text-red-500">{{ translateFromError }}</p>
         </div>
 
         <div v-if="taskId" class="border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -603,6 +761,9 @@ function onSubmit() {
                     <div class="flex-1 flex items-center gap-4">
                         <span class="text-gray-700 dark:text-gray-300 font-medium">{{ session.date }}</span>
                         <span class="text-gray-500 dark:text-gray-400">{{ session.time_range || '—' }}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-medium">
+                            {{ localeLabel(session.locale) }}
+                        </span>
                         <span v-if="session._is_initial"
                             class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">
                             Inicial
@@ -741,36 +902,17 @@ function onSubmit() {
             </div>
         </div>
 
-        <div v-if="confirmRemoveLang" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="confirmRemoveLang = null">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">
-                        <X class="w-5 h-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar idioma</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
-                    </div>
-                </div>
-                <p class="text-sm text-gray-700 dark:text-gray-300 mb-6 px-2">
-                    ¿Eliminar el idioma <strong>{{ langNames[confirmRemoveLang] || confirmRemoveLang.toUpperCase() }}</strong>? Los datos se perderán.
-                </p>
-                <div class="flex justify-end gap-3">
-                    <button @click="confirmRemoveLang = null"
-                        class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                        Cancelar
-                    </button>
-                    <button @click="removeLang(confirmRemoveLang)"
-                        class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium flex items-center gap-2 transition">
-                        <X class="w-4 h-4" /> Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
         </Teleport>
 
+        <AlertModal
+            :show="sessionError !== null"
+            title="Error"
+            :message="sessionError || ''"
+            @close="sessionError = null"
+        />
+
         <div class="flex justify-end gap-3">
-            <Link :href="`/tasks/${props.taskId}`"
+            <Link :href="props.taskId ? `/tasks/${props.taskId}` : '/planning'"
                 class="px-5 py-3 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-medium transition text-sm">
                 Cancelar
             </Link>

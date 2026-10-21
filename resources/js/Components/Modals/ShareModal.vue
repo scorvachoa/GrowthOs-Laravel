@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { X, Users, Search } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { X, Users } from 'lucide-vue-next'
 import Modal from '@/Components/Modals/Modal.vue'
+import SearchInput from '@/Components/Forms/SearchInput.vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -112,11 +113,7 @@ async function save() {
                 </div>
             </div>
 
-            <div class="relative">
-                <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input v-model="search" type="text" placeholder="Buscar usuario..."
-                    class="w-full pl-9 pr-3 py-2 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500" />
-            </div>
+            <SearchInput v-model="search" placeholder="Buscar usuario..." class="!w-full" />
 
             <div class="max-h-48 overflow-y-auto space-y-1">
                 <button v-for="user in filteredUsers" :key="user.id" @click="toggleUser(user.id)"

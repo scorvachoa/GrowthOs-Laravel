@@ -1,12 +1,12 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { calendarStatusColors } from '@/config/statusConstants'
+import { usePermissions } from '@/Composables/usePermissions'
 import axios from 'axios'
 
 export function usePlanning(props) {
     const page = usePage()
-    const permissions = page.props.auth?.user?.permissions ?? []
-    const can = (perm) => permissions.includes(perm)
+    const { can } = usePermissions()
     const workingDays = computed(() => page.props.auth?.user?.settings?.working_days ?? [1,2,3,4,5])
 
     function isNonWorkingDay(dayOfWeek) {
@@ -56,7 +56,23 @@ export function usePlanning(props) {
     const editingExtra = ref(null)
     const pendingTasks = ref([])
     const showRestoreModal = ref(false)
+    const errorMessage = ref(null)
     const restoringTask = ref(null)
+
+    function errorText(e, fallback) {
+        const data = e?.response?.data
+        if (data && typeof data === 'object') {
+            const fromErrors = data.errors ? Object.values(data.errors).flat().join(' ') : ''
+            if (fromErrors) return fromErrors
+            if (data.message) return data.message
+        }
+        return fallback
+    }
+
+    function notifyError(e, fallback) {
+        console.error(fallback, e)
+        errorMessage.value = errorText(e, fallback)
+    }
 
     const statusLabels = computed(() => {
         const map = {}
@@ -64,6 +80,82 @@ export function usePlanning(props) {
             map[s.value] = s.label
         }
         return map
+    })
+
+    // ---- Filtros (canal / estado / propiedad) ----
+    const urlParams = new URLSearchParams(window.location.search)
+    const filters = ref({
+        channel_id: urlParams.get('channel_id') ? Number(urlParams.get('channel_id')) : null,
+        status: urlParams.get('status') || null,
+        owner: ['mine', 'shared'].includes(urlParams.get('owner')) ? urlParams.get('owner') : null,
+    })
+
+    const hasActiveFilters = computed(() =>
+        !!filters.value.channel_id || !!filters.value.status || !!filters.value.owner
+    )
+
+    function filterParams() {
+        const params = {}
+        if (filters.value.channel_id) params.channel_id = filters.value.channel_id
+        if (filters.value.status) params.status = filters.value.status
+        if (filters.value.owner) params.owner = filters.value.owner
+        return params
+    }
+
+    function setFilter(key, value) {
+        filters.value[key] = value
+        updateUrl()
+        fetchSnapshot()
+        if (selectedDate.value) fetchDayTasks(selectedDate.value)
+        if (viewMode.value === 'pending') fetchPendingTasks()
+    }
+
+    function clearFilters() {
+        filters.value = { channel_id: null, status: null, owner: null }
+        updateUrl()
+        fetchSnapshot()
+        if (selectedDate.value) fetchDayTasks(selectedDate.value)
+        if (viewMode.value === 'pending') fetchPendingTasks()
+    }
+
+    function currentUserId() {
+        return page.props.auth?.user?.id
+    }
+
+    // DaySidebar (endpoints propios) y Pendientes: filtrado en cliente.
+    function matchesOwner(task) {
+        const owner = filters.value.owner
+        if (!owner) return true
+        if (owner === 'mine') return task.created_by === currentUserId()
+        return !!task.shared_by_user_name
+    }
+
+    const filteredDayTasks = computed(() => {
+        const f = filters.value
+        if (!hasActiveFilters.value) return dayTasks.value
+        return dayTasks.value.filter(task => {
+            if (f.channel_id && task.channel_id !== f.channel_id) return false
+            if (f.status && task.status !== f.status) return false
+            return matchesOwner(task)
+        })
+    })
+
+    const filteredExtraTasks = computed(() => {
+        const f = filters.value
+        if (!hasActiveFilters.value) return extraTasks.value
+        // ExtraTask no tiene canal ni los mismos estados que VideoTask: solo se filtra por propiedad.
+        if (f.channel_id || f.status) return []
+        return extraTasks.value.filter(task => matchesOwner(task))
+    })
+
+    const filteredPendingTasks = computed(() => {
+        const f = filters.value
+        if (!hasActiveFilters.value) return pendingTasks.value
+        return pendingTasks.value.filter(task => {
+            if (f.channel_id && task.channel_id !== f.channel_id) return false
+            if (f.status && task.status !== f.status) return false
+            return matchesOwner(task)
+        })
     })
 
     const monthName = computed(() => {
@@ -257,7 +349,7 @@ export function usePlanning(props) {
     async function fetchSnapshot() {
         loading.value = true
         try {
-            const params = { year: currentYear.value, month: currentMonth.value }
+            const params = { year: currentYear.value, month: currentMonth.value, ...filterParams() }
             if (viewMode.value === 'week') {
                 params.week_start = currentWeekStart.value
             }
@@ -265,6 +357,7 @@ export function usePlanning(props) {
             snapshot.value = res.data
         } catch (e) {
             console.error('Failed to fetch snapshot', e)
+            errorMessage.value = 'No se pudo cargar el calendario. Recarga la página.'
         } finally {
             loading.value = false
         }
@@ -282,6 +375,7 @@ export function usePlanning(props) {
             dayObservation.value = obsRes.data
         } catch (e) {
             console.error('Failed to fetch day tasks', e)
+            errorMessage.value = 'No se pudo cargar la agenda del día.'
             dayTasks.value = []
             extraTasks.value = []
             dayObservation.value = { notes: '' }
@@ -367,6 +461,10 @@ export function usePlanning(props) {
         if (viewMode.value === 'week') {
             params.set('week_start', currentWeekStart.value)
         }
+        const active = filterParams()
+        if (active.channel_id) params.set('channel_id', active.channel_id)
+        if (active.status) params.set('status', active.status)
+        if (active.owner) params.set('owner', active.owner)
         window.history.replaceState({}, '', `/planning?${params}`)
     }
 
@@ -421,7 +519,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to update task status', e)
+            notifyError(e, 'No se pudo actualizar el estado de la tarea.')
         }
     }
 
@@ -438,7 +536,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to update extra task status', e)
+            notifyError(e, 'No se pudo actualizar el estado de la tarea extra.')
         }
     }
 
@@ -451,7 +549,7 @@ export function usePlanning(props) {
             dayObservation.value.notes = notes
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to save observation', e)
+            notifyError(e, 'No se pudo guardar la observación.')
         }
     }
 
@@ -465,7 +563,7 @@ export function usePlanning(props) {
             if (patchDate) await fetchDayTasks(patchDate)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to complete session', e)
+            notifyError(e, 'No se pudo completar la sesión.')
         }
     }
 
@@ -479,7 +577,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to edit session', e)
+            notifyError(e, 'No se pudo actualizar la sesión.')
         }
     }
 
@@ -489,7 +587,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to delete session', e)
+            notifyError(e, 'No se pudo eliminar la sesión.')
         }
     }
 
@@ -498,24 +596,56 @@ export function usePlanning(props) {
         return formatDate(d)
     }
 
+    const showQuickSessionModal = ref(false)
+    const quickSessionTask = ref(null)
+    const quickSessionDate = ref('')
+    const quickSessionTimeRange = ref(null)
+    const quickSessionOccupied = ref([])
+    const savingQuickSession = ref(false)
+
+    async function fetchQuickSessionBlocks() {
+        if (!quickSessionTask.value || !quickSessionDate.value) return
+        try {
+            const res = await axios.get('/planning/occupied-blocks', {
+                params: { date: quickSessionDate.value, except_task_id: quickSessionTask.value.id },
+            })
+            quickSessionOccupied.value = res.data.occupied || []
+            quickSessionTimeRange.value = res.data.available?.[0] || null
+        } catch {
+            quickSessionOccupied.value = []
+        }
+    }
+
     async function createSession(task) {
         if (!task.id) return
-        const today = todayStr()
-        try {
-            const blocksRes = await axios.get('/planning/occupied-blocks', {
-                params: { date: today, except_task_id: task.id }
-            })
-            const freeBlock = blocksRes.data.available?.[0] || null
+        quickSessionTask.value = task
+        quickSessionDate.value = todayStr()
+        quickSessionTimeRange.value = null
+        showQuickSessionModal.value = true
+        await fetchQuickSessionBlocks()
+    }
 
-            await axios.post(`/tasks/${task.id}/sessions`, {
-                date: today,
-                time_range: freeBlock,
+    function closeQuickSession() {
+        showQuickSessionModal.value = false
+        quickSessionTask.value = null
+    }
+
+    async function confirmQuickSession() {
+        if (!quickSessionTask.value || !quickSessionDate.value) return
+        savingQuickSession.value = true
+        try {
+            await axios.post(`/tasks/${quickSessionTask.value.id}/sessions`, {
+                date: quickSessionDate.value,
+                time_range: quickSessionTimeRange.value,
                 status: 'in_progress',
             })
+            closeQuickSession()
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to create session', e)
+            notifyError(e, 'No se pudo crear la sesión.')
+        } finally {
+            savingQuickSession.value = false
         }
     }
 
@@ -550,7 +680,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to save extra task', e)
+            notifyError(e, 'No se pudo guardar la tarea extra.')
         }
     }
 
@@ -569,7 +699,7 @@ export function usePlanning(props) {
             if (selectedDate.value) await fetchDayTasks(selectedDate.value)
             await fetchSnapshot()
         } catch (e) {
-            console.error('Failed to delete extra task', e)
+            notifyError(e, 'No se pudo eliminar la tarea extra.')
         }
     }
 
@@ -579,6 +709,7 @@ export function usePlanning(props) {
             pendingTasks.value = res.data
         } catch (e) {
             console.error('Failed to fetch pending tasks', e)
+            errorMessage.value = 'No se pudo cargar las tareas pendientes.'
         }
     }
 
@@ -587,7 +718,7 @@ export function usePlanning(props) {
             await axios.patch(`/tasks/${task.id}/pending`)
         } catch (e) {
             console.error('PATCH /pending failed:', e.response?.status, e.response?.data || e.message)
-            alert(e.response?.data?.message || 'Error al mover la tarea a pendientes.')
+            errorMessage.value = e.response?.data?.message || 'Error al mover la tarea a pendientes.'
             return
         }
         closeSidebar()
@@ -600,6 +731,7 @@ export function usePlanning(props) {
                 }
             } catch (e) {
                 console.error('Refresh after moveToPending failed:', e.response?.status, e.response?.data || e.message)
+                errorMessage.value = 'La acción se guardó pero no se pudo actualizar la vista. Recarga la página.'
             }
         }, 100)
     }
@@ -626,7 +758,7 @@ export function usePlanning(props) {
             const msg = e.response?.data?.message
                 || Object.values(e.response?.data?.errors || {}).flat().join('. ')
                 || 'Error al restaurar la tarea.'
-            alert(msg)
+            errorMessage.value = msg
             return
         }
         closeRestoreModal()
@@ -639,6 +771,7 @@ export function usePlanning(props) {
                 }
             } catch (e) {
                 console.error('Refresh after restoreFromPending failed:', e.response?.status, e.response?.data || e.message)
+                errorMessage.value = 'La acción se guardó pero no se pudo actualizar la vista. Recarga la página.'
             }
         }, 100)
     }
@@ -673,6 +806,7 @@ export function usePlanning(props) {
             } catch (e) {
                 if (seq === searchSeq) searchResults.value = []
                 console.error('Search failed', e)
+                errorMessage.value = 'La búsqueda falló. Intenta de nuevo.'
             } finally {
                 if (seq === searchSeq) searching.value = false
             }
@@ -748,7 +882,7 @@ export function usePlanning(props) {
         showSidebar, showDeleteModal, showExtraDeleteModal,
         deleteTarget, extraDeleteTarget, loading, showPdfModal,
         showExtraModal, editingExtra,
-        pendingTasks, showRestoreModal, restoringTask,
+        pendingTasks, showRestoreModal, restoringTask, errorMessage,
         monthName, daysInMonth, firstDayOfMonth, calendarDays,
         weekDays, weekName, hours, weekTaskPlacements,
         fetchSnapshot, fetchDayTasks, fetchPendingTasks,
@@ -760,8 +894,14 @@ export function usePlanning(props) {
         openExtraModal, closeExtraModal, saveExtraTask,
         confirmDeleteExtra, executeExtraDelete,
         createSession, completeSession, editSession, deleteSession,
+        showQuickSessionModal, quickSessionTask, quickSessionDate,
+        quickSessionTimeRange, quickSessionOccupied,
+        savingQuickSession,
+        fetchQuickSessionBlocks, closeQuickSession, confirmQuickSession,
         moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
         searchQuery, searchResults, searchedDates, showSearchResults, highlightDate, searching,
         goToSearchResult, clearSearch,
+        filters, hasActiveFilters, setFilter, clearFilters,
+        filteredDayTasks, filteredExtraTasks, filteredPendingTasks,
     }
 }

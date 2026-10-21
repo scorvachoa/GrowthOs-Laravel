@@ -1,5 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
+import { useFormat } from '@/Composables/useFormat'
 import { useForm, Link } from '@inertiajs/vue3'
 import RoleForm from './Components/RoleForm.vue'
 import { Pencil, ArrowLeft, Users, ShieldCheck, CalendarDays, Building2 } from 'lucide-vue-next'
@@ -12,6 +14,8 @@ const props = defineProps({
     organization: Object,
 })
 
+const { formatDate } = useFormat()
+
 const form = useForm({
     name: props.role.name,
     permissions: props.selectedPermissions || [],
@@ -23,20 +27,11 @@ const submit = () => form.put(route('roles.update', props.role.id))
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
-                        <Pencil class="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Editar rol</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ props.role.name }}</p>
-                    </div>
-                </div>
+            <PageHeader title="Editar rol" :subtitle="props.role.name">
                 <Link href="/roles" class="inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
                     <ArrowLeft class="w-4 h-4" /> Volver
                 </Link>
-            </div>
+            </PageHeader>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 flex items-center gap-3">
@@ -63,7 +58,7 @@ const submit = () => form.put(route('roles.update', props.role.id))
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Creado</p>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ role.created_at ? new Date(role.created_at).toLocaleDateString() : '-' }}</p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ role.created_at ? formatDate(role.created_at) : '-' }}</p>
                     </div>
                 </div>
             </div>

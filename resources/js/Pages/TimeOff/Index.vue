@@ -1,15 +1,18 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { Plus, X, Check, AlertTriangle, CalendarClock, Pencil, Search, Eye } from 'lucide-vue-next'
+import { Plus, X, Check, AlertTriangle, CalendarClock, Pencil, Eye } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useAbsenceActions } from '@/Composables/useAbsenceActions'
+import { useDebounce } from '@/Composables/useDebounce'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
 import { statusColors, statusLabels } from '@/config/statusConstants'
 
 const props = defineProps({
     timeOffs: Array,
-    can_approve: Boolean,
     filters: {
         type: Object,
         default: () => ({}),
@@ -17,20 +20,15 @@ const props = defineProps({
 })
 
 const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 const userSettings = page.props.auth?.user?.settings ?? {}
 const workStart = userSettings.default_work_start || '09:00'
 const workEnd = userSettings.default_work_end || '18:00'
 
 const search = ref(props.filters?.search || '')
 
-let debounceTimer
-watch(search, (value) => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-        router.get('/time-off', { search: value }, { preserveState: true, replace: true })
-    }, 400)
+useDebounce(search, (value) => {
+    router.get('/time-off', { search: value }, { preserveState: true, replace: true })
 })
 
 const showDetail = ref(false)
@@ -97,48 +95,7 @@ function submitForm() {
     })
 }
 
-const showApprove = ref(false)
-const showReject = ref(false)
-const showDelete = ref(false)
-const targetItem = ref(null)
-
-function confirmApprove(t) {
-    targetItem.value = t
-    showApprove.value = true
-}
-
-function executeApprove() {
-    if (!targetItem.value) return
-    router.patch(`/time-off/${targetItem.value.id}/approve`, {}, {
-        preserveScroll: true,
-        onSuccess: () => { showApprove.value = false; targetItem.value = null },
-    })
-}
-
-function confirmReject(t) {
-    targetItem.value = t
-    showReject.value = true
-}
-
-function executeReject() {
-    if (!targetItem.value) return
-    router.patch(`/time-off/${targetItem.value.id}/reject`, {}, {
-        preserveScroll: true,
-        onSuccess: () => { showReject.value = false; targetItem.value = null },
-    })
-}
-
-function confirmDelete(t) {
-    targetItem.value = t
-    showDelete.value = true
-}
-
-function executeDelete() {
-    if (!targetItem.value) return
-    router.delete(`/time-off/${targetItem.value.id}`, {
-        onSuccess: () => { showDelete.value = false; targetItem.value = null },
-    })
-}
+const { showApprove, showReject, showDelete, targetItem, confirmApprove, executeApprove, confirmReject, executeReject, confirmDelete, executeDelete } = useAbsenceActions('/time-off')
 
 const showEdit = ref(false)
 const editingId = ref(null)
@@ -185,18 +142,13 @@ const typeLabels = { medico: 'Médico', personal: 'Personal', tramite: 'Trámite
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Permisos</h1>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <SearchInput v-model="search" />
-                    <button @click="openForm"
-                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition">
-                        <Plus class="w-4 h-4" /> Solicitar permiso
-                    </button>
-                </div>
-            </div>
+            <PageHeader title="Permisos">
+                <SearchInput v-model="search" />
+                <button @click="openForm"
+                    class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition">
+                    <Plus class="w-4 h-4" /> Solicitar permiso
+                </button>
+            </PageHeader>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div v-if="timeOffs.length === 0" class="text-center py-12 text-gray-400 dark:text-gray-500">

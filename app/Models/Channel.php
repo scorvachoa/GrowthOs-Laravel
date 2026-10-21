@@ -13,8 +13,13 @@ class Channel extends Model
     protected $fillable = [
         'name',
         'color',
+        'locales',
         'youtube_channel_id',
         'channel_url',
         'organization_id',
+    ];
+
+    protected $casts = [
+        'locales' => 'array',
     ];
 }

@@ -6,6 +6,8 @@ import Modal from '@/Components/Modals/Modal.vue'
 const props = defineProps({
     show: Boolean,
     task: { type: Object, default: null },
+    optional: { type: Boolean, default: false },
+    confirmLabel: { type: String, default: 'Completar' },
 })
 
 const emit = defineEmits(['close', 'confirm'])
@@ -42,7 +44,9 @@ function submit() {
             </div>
             <div>
                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Enlace del video</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Añade el enlace al publicar o completar</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ optional ? 'Añade el enlace del video programado (opcional)' : 'Añade el enlace al publicar o completar' }}
+                </p>
             </div>
         </div>
         <p v-if="task?.title" class="text-sm text-gray-700 dark:text-gray-300 mb-3 truncate">
@@ -69,11 +73,19 @@ function submit() {
                 Cancelar
             </button>
             <button
+                v-if="optional"
+                type="button"
+                class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                @click="emit('confirm', null)"
+            >
+                Sin enlace
+            </button>
+            <button
                 type="button"
                 class="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition"
                 @click="submit"
             >
-                Completar
+                {{ confirmLabel }}
             </button>
         </div>
     </Modal>

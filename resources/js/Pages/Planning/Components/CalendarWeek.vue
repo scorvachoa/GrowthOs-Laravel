@@ -22,10 +22,6 @@ function taskStartHour(task) {
     return parseInt(task.time_range?.split('-')[0]?.split(':')[0]) || 0
 }
 
-function taskEndHour(task) {
-    return parseInt(task.time_range?.split('-')[1]?.split(':')[0]) || 0
-}
-
 function blockForHour(hour, blocks) {
     return blocks?.find(b => {
         const [s, e] = b.split('-').map(p => parseInt(p.split(':')[0]))

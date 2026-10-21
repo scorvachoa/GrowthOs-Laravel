@@ -23,7 +23,8 @@ class OrganizationPolicy
 
     public function create(User $user): bool
     {
-        return $user->can('create empresa');
+        // Solo Super Admin puede crear empresas: un Admin de una empresa no debe poder abrir cuentas nuevas.
+        return $user->hasRole('Super Admin') && $user->can('create empresa');
     }
 
     public function update(User $user, Organization $organization): bool

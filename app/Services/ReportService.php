@@ -62,7 +62,7 @@ class ReportService
     public function loadTasksForRange(?int $orgId, Carbon $start, Carbon $end): Collection
     {
         return VideoTask::query()
-            ->with('channel', 'sessions')
+            ->with(['channel', 'sessions'])
             ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
             ->where('is_pending', false)
             ->where(function ($q) use ($start, $end) {
@@ -89,7 +89,6 @@ class ReportService
 
     public function buildDayGroups(?int $orgId, Collection $tasks, Collection $extraTasks, Carbon $start, Carbon $end): array
     {
-        $labels = VideoTaskStatus::labels();
         $observations = DayObservation::query()
             ->where('organization_id', $orgId)
             ->where('task_date', '>=', $start)
@@ -131,7 +130,7 @@ class ReportService
                 $items[] = [
                     'time_range' => $task->time_range,
                     'title' => $task->title,
-                    'status_label' => $labels[$task->status] ?? $task->status,
+                    'status_label' => VideoTaskStatus::labelFor($task->status),
                     'youtube_url' => $task->youtube_url,
                     'type' => 'video',
                     'channel_name' => $task->channel?->name,
@@ -192,7 +191,7 @@ class ReportService
         $pdf->setPaper('letter');
 
         $filename = 'reporte_'.$scope.'_'.$start->format('Y-m-d').'_'.now()->timestamp.'.pdf';
-        Storage::disk('public')->put('reports/'.$filename, $pdf->output());
+        Storage::disk('local')->put('reports/'.$filename, $pdf->output());
 
         return $filename;
     }

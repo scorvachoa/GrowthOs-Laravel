@@ -2,8 +2,9 @@
 import AppLayout from '@/Layouts/AppLayout.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
+import AlertModal from '@/Components/Modals/AlertModal.vue'
 import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
-import { ChevronLeft, ChevronRight, FileDown, Clock, Search, SearchX, Calendar } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, FileDown, Clock, Search, SearchX, Calendar, Filter, X } from 'lucide-vue-next'
 
 import CalendarMonth from './Components/CalendarMonth.vue'
 import CalendarWeek from './Components/CalendarWeek.vue'
@@ -16,30 +17,37 @@ import { onMounted, onUnmounted, ref } from 'vue'
 const props = defineProps({
     calendar: Object,
     initial_view: String,
+    channels: { type: Array, default: () => [] },
 })
 
 const {
     can, statusColors, statusLabels, workingDays,
-    currentYear, currentMonth, currentWeekStart, viewMode,
-    snapshot, selectedDate, dayTasks, extraTasks, dayObservation,
+    viewMode,
+    snapshot, selectedDate, dayObservation,
     showSidebar, showDeleteModal, showExtraDeleteModal,
     deleteTarget, extraDeleteTarget, loading, showPdfModal,
     showExtraModal, editingExtra,
-    pendingTasks, showRestoreModal, restoringTask,
+    showRestoreModal, restoringTask, errorMessage,
     monthName, calendarDays,
     weekDays, weekName, hours, weekTaskPlacements,
-    fetchSnapshot, fetchDayTasks, fetchPendingTasks,
+    fetchSnapshot, fetchPendingTasks,
     goToday, prevMonth, nextMonth, prevWeek, nextWeek, setView,
     openDay, closeSidebar,
     createTask, viewTask, editTask,
     confirmDeleteTask, executeDelete,
     updateTaskStatus, updateExtraTaskStatus, saveObservation,
     createSession, completeSession, editSession, deleteSession,
+    showQuickSessionModal, quickSessionTask, quickSessionDate,
+    quickSessionTimeRange, quickSessionOccupied,
+    savingQuickSession,
+    fetchQuickSessionBlocks, closeQuickSession, confirmQuickSession,
     openExtraModal, closeExtraModal, saveExtraTask,
     confirmDeleteExtra, executeExtraDelete,
     moveToPending, openRestoreModal, closeRestoreModal, restoreFromPending,
     searchQuery, searchResults, searchedDates, showSearchResults, highlightDate, searching,
     goToSearchResult, clearSearch,
+    filters, hasActiveFilters, setFilter, clearFilters,
+    filteredDayTasks, filteredExtraTasks, filteredPendingTasks,
 } = usePlanning(props)
 
 const searchContainer = ref(null)
@@ -166,6 +174,47 @@ onUnmounted(() => {
                     </button>
                 </div>
 
+                <!-- Filtros -->
+                <div class="flex flex-wrap items-center gap-2 mb-4 sm:mb-6">
+                    <Filter class="w-4 h-4 text-gray-400 shrink-0" />
+
+                    <select :value="filters.channel_id || ''" @change="setFilter('channel_id', $event.target.value ? Number($event.target.value) : null)"
+                        class="px-3 py-1.5 text-sm rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        <option value="">Todos los canales</option>
+                        <option v-for="ch in props.channels" :key="ch.id" :value="ch.id">{{ ch.name }}</option>
+                    </select>
+
+                    <select :value="filters.status || ''" @change="setFilter('status', $event.target.value || null)"
+                        class="px-3 py-1.5 text-sm rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        <option value="">Todos los estados</option>
+                        <option v-for="s in snapshot.statuses || []" :key="s.value" :value="s.value">{{ s.label }}</option>
+                    </select>
+
+                    <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700">
+                        <button @click="setFilter('owner', null)"
+                            class="px-3 py-1.5 text-xs font-medium transition"
+                            :class="!filters.owner ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
+                            Todas
+                        </button>
+                        <button @click="setFilter('owner', 'mine')"
+                            class="px-3 py-1.5 text-xs font-medium transition border-l border-gray-300 dark:border-gray-700"
+                            :class="filters.owner === 'mine' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
+                            Mías
+                        </button>
+                        <button @click="setFilter('owner', 'shared')"
+                            class="px-3 py-1.5 text-xs font-medium transition border-l border-gray-300 dark:border-gray-700"
+                            :class="filters.owner === 'shared' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'">
+                            Compartidas
+                        </button>
+                    </div>
+
+                    <button v-if="hasActiveFilters" @click="clearFilters"
+                        class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl transition">
+                        <X class="w-3.5 h-3.5" />
+                        Limpiar
+                    </button>
+                </div>
+
                 <div v-if="loading" class="text-center py-12 text-gray-500">Cargando...</div>
 
                 <template v-if="!loading">
@@ -193,10 +242,10 @@ onUnmounted(() => {
                         @viewTask="viewTask" />
 
                     <div v-if="viewMode === 'pending'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <div v-if="pendingTasks.length === 0" class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                        <div v-if="filteredPendingTasks.length === 0" class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
                             No hay tareas pendientes
                         </div>
-                        <div v-for="task in pendingTasks" :key="task.id"
+                        <div v-for="task in filteredPendingTasks" :key="task.id"
                             class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition">
                             <div class="flex items-start justify-between mb-2">
                                 <h4 class="font-medium text-gray-900 dark:text-white text-sm line-clamp-2">{{ task.title }}</h4>
@@ -254,8 +303,8 @@ onUnmounted(() => {
             <transition name="slide">
                 <DaySidebar v-if="showSidebar && selectedDate"
                     :selected-date="selectedDate"
-                    :day-tasks="dayTasks"
-                    :extra-tasks="extraTasks"
+                    :day-tasks="filteredDayTasks"
+                    :extra-tasks="filteredExtraTasks"
                     :statuses="snapshot.statuses"
                     :status-labels="statusLabels"
                     :holiday="snapshot.holidays_map?.[selectedDate]"
@@ -305,6 +354,53 @@ onUnmounted(() => {
             @confirm="executeExtraDelete" />
 
         <ExportPdfModal :show="showPdfModal" @close="showPdfModal = false" />
+
+        <AlertModal
+            :show="errorMessage !== null"
+            title="Error"
+            :message="errorMessage || ''"
+            @close="errorMessage = null"
+        />
+
+        <Teleport to="body">
+            <div v-if="showQuickSessionModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" @click.self="closeQuickSession">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Nueva sesión de trabajo</h3>
+                    <p v-if="quickSessionTask" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate">
+                        {{ quickSessionTask.title }}
+                    </p>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</label>
+                            <input v-model="quickSessionDate" type="date" @change="fetchQuickSessionBlocks"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                        <div v-if="snapshot.work_blocks?.length">
+                            <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Bloque horario</label>
+                            <select v-model="quickSessionTimeRange"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="null">Sin bloque</option>
+                                <option v-for="block in snapshot.work_blocks" :key="block" :value="block"
+                                    :disabled="quickSessionOccupied.includes(block)">
+                                    {{ block }}<template v-if="quickSessionOccupied.includes(block)"> (ocupado)</template>
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" @click="closeQuickSession"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition">
+                            Cancelar
+                        </button>
+                        <button type="button" @click="confirmQuickSession"
+                            class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition"
+                            :disabled="savingQuickSession">
+                            {{ savingQuickSession ? 'Creando...' : 'Crear sesión' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <RestorePendingModal
             :show="showRestoreModal"

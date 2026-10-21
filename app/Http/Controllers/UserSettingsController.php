@@ -2,24 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BackupService;
-use App\Support\WorkBlocks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class UserSettingsController extends Controller
 {
-    public function index(BackupService $backupService)
+    public function index()
     {
         $user = Auth::user();
         $settings = $user->merged_settings;
-        $workBlocks = WorkBlocks::fromSettings($settings);
 
         return Inertia::render('Settings/Index', [
             'settings' => $settings,
-            'workBlocks' => $workBlocks,
-            'backup_schedule' => $user->hasRole('Super Admin') ? $backupService->getSchedule() : null,
         ]);
     }
 
@@ -27,7 +22,7 @@ class UserSettingsController extends Controller
     {
         $user = Auth::user();
 
-        $settingsPermissions = ['configure work hours', 'configure youtube', 'configure dashboard', 'configure backup'];
+        $settingsPermissions = ['configure work hours', 'configure youtube', 'configure dashboard'];
         if (! $user->hasAnyPermission($settingsPermissions)) {
             abort(403);
         }
@@ -46,8 +41,6 @@ class UserSettingsController extends Controller
             'default_report_scope' => 'sometimes|string|in:mensual,semanal,dia,anual',
             'dashboard_default_view' => 'sometimes|string|in:week,month,year',
             'youtube_max_recent_videos' => 'sometimes|integer|min:1|max:50',
-            'languages' => 'sometimes|array',
-            'languages.*' => 'string|size:2',
         ]);
 
         $settings = $user->settings ?? [];
@@ -71,22 +64,5 @@ class UserSettingsController extends Controller
         $user->save();
 
         return redirect()->route('settings.index')->with('success', 'Configuracion actualizada');
-    }
-
-    public function updateBackupSchedule(Request $request, BackupService $backupService)
-    {
-        $user = Auth::user();
-        if (! $user->hasPermissionTo('configure backup')) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'time' => 'required|string|date_format:H:i',
-            'day' => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
-        ]);
-
-        $backupService->setSchedule($validated['time'], $validated['day']);
-
-        return redirect()->route('settings.index')->with('success', 'Horario de backup actualizado');
     }
 }

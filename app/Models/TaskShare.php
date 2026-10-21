@@ -41,14 +41,4 @@ class TaskShare extends Model
     {
         return $this->accepted_at !== null;
     }
-
-    public function isEditor(): bool
-    {
-        return $this->role === 'editor';
-    }
-
-    public function isReader(): bool
-    {
-        return $this->role === 'reader';
-    }
 }

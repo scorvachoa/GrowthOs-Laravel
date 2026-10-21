@@ -6,19 +6,22 @@ use App\Enums\VideoTaskStatus;
 use App\Http\Requests\StoreVideoTaskRequest;
 use App\Http\Resources\VideoTaskResource;
 use App\Models\Channel;
-use App\Models\User;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
-use App\Notifications\TaskSharedNotification;
 use App\Services\AI\AIContentService;
+use App\Services\AI\DeepLService;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
+use App\Services\TaskShareService;
+use App\Support\TimeRange;
 use App\Support\WorkBlocks;
 use App\Traits\TaskAuthorization;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class VideoTaskController extends Controller
@@ -28,6 +31,7 @@ class VideoTaskController extends Controller
     public function __construct(
         protected PlanningValidator $planningValidator,
         protected AIContentService $ai,
+        protected DeepLService $deepl,
     ) {}
 
     public function generateCopy(Request $request)
@@ -55,6 +59,262 @@ class VideoTaskController extends Controller
                 'tags' => $this->ensureUtf8($copy['tags'] ?? ''),
             ],
         ], 201);
+    }
+
+    public function generateTitlesAndThumbnails(Request $request)
+    {
+        $validated = $request->validate([
+            'script' => ['required', 'string', 'min:10', 'max:5000'],
+            'title' => ['nullable', 'string', 'max:300'],
+        ]);
+
+        $script = $this->ensureUtf8(trim($validated['script']));
+        $title = $this->ensureUtf8(trim((string) ($validated['title'] ?? '')));
+
+        try {
+            $ideas = $this->ai->generateTitlesAndThumbnails($script, $title);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'No se pudieron generar títulos y thumbnails con IA. Inténtalo de nuevo.'], 502);
+        }
+
+        return response()->json([
+            'titles' => array_values(array_filter(array_map(fn ($t) => $this->ensureUtf8($t), $ideas['titles'] ?? []))),
+            'thumbnails' => array_values(array_filter(array_map(fn ($t) => $this->ensureUtf8($t), $ideas['thumbnails'] ?? []))),
+        ], 201);
+    }
+
+    public function translate(Request $request)
+    {
+        $validated = $request->validate([
+            'target_lang' => ['required', Rule::in($this->deepl->supportedTargets())],
+            'title' => ['nullable', 'string', 'max:500'],
+            'script' => ['nullable', 'string', 'max:10000'],
+            'copy' => ['nullable', 'string', 'max:20000'],
+        ]);
+
+        $fields = array_filter([
+            'title' => trim((string) ($validated['title'] ?? '')),
+            'script' => trim((string) ($validated['script'] ?? '')),
+            'copy' => trim((string) ($validated['copy'] ?? '')),
+        ], fn ($value) => $value !== '');
+
+        if ($fields === []) {
+            return response()->json(['error' => 'No hay contenido para traducir.'], 422);
+        }
+
+        try {
+            $translated = $this->deepl->translate(array_values($fields), $validated['target_lang']);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'No se pudo traducir con DeepL. Verifica DEEPL_API_KEY o inténtalo de nuevo.'], 502);
+        }
+
+        $result = array_fill_keys(array_keys($fields), '');
+        foreach (array_keys($fields) as $index => $key) {
+            $result[$key] = $translated[$index] ?? '';
+        }
+
+        return response()->json($result);
+    }
+
+    public function translateTask(Request $request, VideoTask $videoTask)
+    {
+        $this->ensureVisible($videoTask);
+
+        $settings = Auth::user()->merged_settings;
+        $useBlocks = $settings['use_blocks'] ?? true;
+        $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
+
+        $rules = [
+            'locale' => ['required', Rule::in($this->deepl->supportedTargets())],
+            'channel_id' => ['required', Rule::exists('channels', 'id')->where(function ($q) {
+                $q->where('organization_id', Auth::user()->activeOrganizationId());
+            })],
+            'task_date' => ['required', 'date'],
+        ];
+
+        if ($useBlocks) {
+            $rules['time_range'] = ['required', Rule::in(WorkBlocks::fromSettings($settings))];
+        } else {
+            $rules['time_range'] = ['required', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $channel = Channel::find($validated['channel_id']);
+        if (! $channel || ! in_array($validated['locale'], $channel->locales ?: [], true)) {
+            return response()->json(['error' => 'El canal seleccionado no corresponde al idioma elegido.'], 422);
+        }
+
+        if (! $useBlocks && ! TimeRange::endsAfterStart($validated['time_range'])) {
+            return response()->json(['error' => TimeRange::INVALID_MESSAGE], 422);
+        }
+
+        $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
+
+        if ($useBlocks) {
+            $this->planningValidator->assertSlotAvailable(
+                $validated['task_date'],
+                $validated['time_range']
+            );
+        }
+
+        try {
+            $translated = $this->translateTaskFields($videoTask, $validated['locale']);
+        } catch (\RuntimeException $e) {
+            report($e);
+
+            return response()->json(['error' => $e->getMessage()], 502);
+        }
+
+        $groupId = $videoTask->translation_group_id ?: (string) Str::uuid();
+        if (! $videoTask->translation_group_id) {
+            $videoTask->update(['translation_group_id' => $groupId]);
+        }
+
+        $task = VideoTask::create([
+            'task_date' => $validated['task_date'],
+            'time_range' => $validated['time_range'],
+            'title' => $translated['title'] !== '' ? $translated['title'] : $videoTask->title,
+            'script' => ($translated['script'] ?? '') !== '' ? $translated['script'] : null,
+            'copy' => ($translated['copy'] ?? '') !== '' ? $translated['copy'] : null,
+            'youtube_url' => null,
+            'status' => 'pending',
+            'created_by' => Auth::id(),
+            'channel_id' => $validated['channel_id'],
+            'locale' => $validated['locale'],
+            'key_phrases' => null,
+            'is_pending' => false,
+            'translation_group_id' => $groupId,
+            'translated_from_task_id' => $videoTask->id,
+        ]);
+
+        PlanningCalendarService::bustCache();
+
+        return response()->json([
+            'ok' => true,
+            'task_id' => $task->id,
+            'redirect' => '/tasks/'.$task->id,
+        ], 201);
+    }
+
+    public function translateContent(Request $request, VideoTask $videoTask)
+    {
+        $this->ensureVisible($videoTask);
+
+        $validated = $request->validate([
+            'locale' => ['required', Rule::in($this->deepl->supportedTargets())],
+        ]);
+
+        if (trim((string) $videoTask->title) === '') {
+            return response()->json(['error' => 'No hay contenido para traducir.'], 422);
+        }
+
+        try {
+            $translated = $this->translateTaskFields($videoTask, $validated['locale']);
+        } catch (\RuntimeException $e) {
+            report($e);
+
+            return response()->json(['error' => $e->getMessage()], 502);
+        }
+
+        return response()->json($translated);
+    }
+
+    public function translateCandidates(Request $request)
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'channel_id' => ['nullable', 'integer'],
+        ]);
+
+        $search = trim($validated['q'] ?? '');
+
+        $tasks = VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
+            ->when($search !== '', fn ($q) => $q->where(function ($qq) use ($search) {
+                $qq->where('title', 'like', "%{$search}%")
+                    ->orWhere('script', 'like', "%{$search}%");
+            }))
+            ->when($validated['channel_id'] ?? null, fn ($q, $channelId) => $q->where('channel_id', $channelId))
+            ->with('channel:id,name,color')
+            ->orderByDesc('task_date')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['id', 'title', 'task_date', 'time_range', 'status', 'channel_id', 'locale'])
+            ->map(fn (VideoTask $task) => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'task_date' => $task->task_date->format('Y-m-d'),
+                'time_range' => $task->time_range,
+                'status' => $task->status,
+                'status_label' => VideoTaskStatus::labelFor($task->status),
+                'locale' => $task->locale ?: 'es',
+                'channel' => $task->channel
+                    ? ['id' => $task->channel->id, 'name' => $task->channel->name, 'color' => $task->channel->color]
+                    : null,
+            ])
+            ->values()
+            ->all();
+
+        return response()->json(['results' => $tasks]);
+    }
+
+    private function translateTaskFields(VideoTask $videoTask, string $locale): array
+    {
+        $fields = array_filter([
+            'title' => trim((string) $videoTask->title),
+            'script' => trim((string) ($videoTask->script ?? '')),
+            'copy' => trim((string) ($videoTask->copy ?? '')),
+        ], fn ($value) => $value !== '');
+
+        if ($fields === []) {
+            throw new \RuntimeException('No hay contenido para traducir.');
+        }
+
+        try {
+            $translated = $this->deepl->translate(array_values($fields), $locale);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('No se pudo traducir con DeepL. Verifica DEEPL_API_KEY o inténtalo de nuevo.', 0, $e);
+        }
+
+        $result = array_fill_keys(array_keys($fields), '');
+        foreach (array_keys($fields) as $index => $key) {
+            $result[$key] = $translated[$index] ?? '';
+        }
+
+        return $result;
+    }
+
+    private function sessionLocales(): array
+    {
+        return $this->deepl->supportedTargets();
+    }
+
+    private function resolveTaskLocale(?string $channelId, ?string $locale): string
+    {
+        if (! $channelId) {
+            return $locale ?: 'es';
+        }
+
+        $channel = Channel::find((int) $channelId);
+        $locales = $channel?->locales ?: ['es'];
+
+        if (! $locale) {
+            return $locales[0] ?? 'es';
+        }
+
+        if (! in_array($locale, $locales, true)) {
+            throw ValidationException::withMessages([
+                'locale' => 'El idioma elegido no está disponible en el canal seleccionado.',
+            ]);
+        }
+
+        return $locale;
     }
 
     private function ensureCtaContacts(string $cta): string
@@ -118,39 +378,34 @@ class VideoTaskController extends Controller
                     : '',
             ],
             'statuses' => VideoTaskStatus::options(),
-            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color', 'locales']),
         ]);
     }
 
-    public function store(StoreVideoTaskRequest $request)
+    public function store(StoreVideoTaskRequest $request, TaskShareService $shareService)
     {
         $validated = $request->validated();
         $validated['created_by'] = auth()->id();
 
         $sharedUserIds = $validated['shared_user_ids'] ?? null;
         $sharedRoles = $validated['shared_roles'] ?? [];
-        unset($validated['shared_user_ids'], $validated['shared_roles']);
+        $translatedFrom = $validated['translated_from_task_id'] ?? null;
+        unset($validated['shared_user_ids'], $validated['shared_roles'], $validated['translated_from_task_id']);
+
+        $validated['locale'] = $this->resolveTaskLocale($validated['channel_id'] ?? null, $validated['locale'] ?? null);
 
         $task = VideoTask::create($validated);
 
-        if ($sharedUserIds !== null) {
-            foreach ($sharedUserIds as $idx => $userId) {
-                if ((int) $userId === auth()->id()) {
-                    continue;
-                }
-                $role = $sharedRoles[$idx] ?? 'editor';
-                $share = $task->shares()->create([
-                    'shared_with_user_id' => $userId,
-                    'shared_by_user_id' => auth()->id(),
-                    'role' => $role,
-                ]);
-                $recipient = User::find($userId);
-                if ($recipient) {
-                    $recipient->notify(new TaskSharedNotification(
-                        auth()->user(), $task, 'video_task', $share
-                    ));
-                }
+        if ($translatedFrom) {
+            $source = VideoTask::find($translatedFrom);
+            if (! $source || (int) $source->organization_id !== (int) auth()->user()->activeOrganizationId()) {
+                throw ValidationException::withMessages(['translated_from_task_id' => 'La tarea origen no existe.']);
             }
+            $this->linkTranslationSource($task, $source);
+        }
+
+        if ($sharedUserIds !== null) {
+            $shareService->sync($task, $sharedUserIds, $sharedRoles);
         }
 
         PlanningCalendarService::bustCache();
@@ -233,8 +488,9 @@ class VideoTaskController extends Controller
         return Inertia::render('VideoTasks/Show', [
             'task' => $this->serializeTask($videoTask),
             'statuses' => VideoTaskStatus::options(),
-            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color', 'locales']),
             'activities' => $activities,
+            'translation_history' => $this->translationHistory($videoTask),
             'prev_task' => $prevTask ? ['id' => $prevTask->id, 'title' => $prevTask->title] : null,
             'next_task' => $nextTask ? ['id' => $nextTask->id, 'title' => $nextTask->title] : null,
         ]);
@@ -249,11 +505,11 @@ class VideoTaskController extends Controller
         return Inertia::render('VideoTasks/Edit', [
             'task' => $this->serializeTask($videoTask),
             'statuses' => VideoTaskStatus::options(),
-            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color']),
+            'channels' => Channel::query()->orderBy('name')->get(['id', 'name', 'color', 'locales']),
         ]);
     }
 
-    public function update(StoreVideoTaskRequest $request, VideoTask $videoTask)
+    public function update(StoreVideoTaskRequest $request, VideoTask $videoTask, TaskShareService $shareService)
     {
         $this->ensureVisible($videoTask);
         $this->ensureCanEdit($videoTask);
@@ -263,31 +519,14 @@ class VideoTaskController extends Controller
         $sharedRoles = $validated['shared_roles'] ?? [];
         unset($validated['shared_user_ids'], $validated['shared_roles']);
 
+        $channelId = array_key_exists('channel_id', $validated) ? $validated['channel_id'] : $videoTask->channel_id;
+        $locale = array_key_exists('locale', $validated) ? $validated['locale'] : $videoTask->locale;
+        $validated['locale'] = $this->resolveTaskLocale($channelId, $locale);
+
         $videoTask->update($validated);
 
         if ($sharedUserIds !== null) {
-            $existing = $videoTask->shares()->pluck('shared_with_user_id')->toArray();
-            $videoTask->shares()->where('shared_by_user_id', auth()->id())->delete();
-            foreach ($sharedUserIds as $idx => $userId) {
-                if ((int) $userId === auth()->id()) {
-                    continue;
-                }
-                $role = $sharedRoles[$idx] ?? 'editor';
-                $videoTask->shares()->create([
-                    'shared_with_user_id' => $userId,
-                    'shared_by_user_id' => auth()->id(),
-                    'role' => $role,
-                ]);
-                if (! in_array((int) $userId, $existing)) {
-                    $recipient = User::find($userId);
-                    if ($recipient) {
-                        $share = $videoTask->shares()->where('shared_with_user_id', $userId)->first();
-                        $recipient->notify(new TaskSharedNotification(
-                            auth()->user(), $videoTask, 'video_task', $share
-                        ));
-                    }
-                }
-            }
+            $shareService->sync($videoTask, $sharedUserIds, $sharedRoles);
         }
 
         PlanningCalendarService::bustCache();
@@ -353,9 +592,6 @@ class VideoTaskController extends Controller
 
         $settings = Auth::user()->merged_settings;
         $useBlocks = $settings['use_blocks'];
-        $blockHours = $settings['block_hours'];
-        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
-        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
         $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
 
         $rules = [
@@ -363,7 +599,7 @@ class VideoTaskController extends Controller
         ];
 
         if ($useBlocks) {
-            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $blocks = WorkBlocks::fromSettings($settings);
             $rules['time_range'] = ['required', Rule::in($blocks)];
         } else {
             $rules['time_range'] = ['required', 'string', 'max:30'];
@@ -371,11 +607,8 @@ class VideoTaskController extends Controller
 
         $validated = $request->validate($rules);
 
-        if (! $useBlocks && isset($validated['time_range']) && str_contains($validated['time_range'], '-')) {
-            [$start, $end] = explode('-', $validated['time_range'], 2);
-            if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
-                return back()->withErrors(['time_range' => 'La hora fin debe ser mayor a la hora de inicio'])->withInput();
-            }
+        if (! $useBlocks && isset($validated['time_range']) && ! TimeRange::endsAfterStart($validated['time_range'])) {
+            return back()->withErrors(['time_range' => TimeRange::INVALID_MESSAGE])->withInput();
         }
 
         $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
@@ -406,9 +639,10 @@ class VideoTaskController extends Controller
             'date' => ['required', 'date', 'after_or_equal:'.$videoTask->task_date->format('Y-m-d')],
             'time_range' => ['nullable', 'string', 'max:30'],
             'status' => ['nullable', Rule::in(['in_progress', 'completed'])],
+            'locale' => ['nullable', 'string', Rule::in($this->sessionLocales())],
         ]);
 
-        if ($validated['time_range']) {
+        if ($validated['time_range'] ?? null) {
             $this->planningValidator->assertSlotAvailable(
                 $validated['date'],
                 $validated['time_range'],
@@ -420,6 +654,7 @@ class VideoTaskController extends Controller
             'date' => $validated['date'],
             'time_range' => $validated['time_range'] ?? null,
             'status' => $validated['status'] ?? 'in_progress',
+            'locale' => $validated['locale'] ?? ($videoTask->locale ?: 'es'),
         ]);
 
         PlanningCalendarService::bustCache();
@@ -431,6 +666,7 @@ class VideoTaskController extends Controller
                 'date' => $session->date->format('Y-m-d'),
                 'time_range' => $session->time_range,
                 'status' => $session->status,
+                'locale' => $session->locale,
             ],
         ]);
     }
@@ -442,6 +678,7 @@ class VideoTaskController extends Controller
             'time_range' => ['nullable', 'string', 'max:30'],
             'status' => ['required', Rule::in(['in_progress', 'completed'])],
             'youtube_url' => ['nullable', 'url'],
+            'locale' => ['nullable', 'string', Rule::in($this->sessionLocales())],
         ]);
 
         $timeRange = $validated['time_range'] ?? null;
@@ -459,6 +696,7 @@ class VideoTaskController extends Controller
             'date' => $validated['date'] ?? $session->date,
             'time_range' => $validated['time_range'] ?? $session->time_range,
             'status' => $validated['status'],
+            'locale' => $validated['locale'] ?? $session->locale,
         ]);
 
         if ($request->has('youtube_url')) {
@@ -474,6 +712,7 @@ class VideoTaskController extends Controller
                 'date' => $session->date->format('Y-m-d'),
                 'time_range' => $session->time_range,
                 'status' => $session->status,
+                'locale' => $session->locale,
             ],
         ]);
     }
@@ -491,23 +730,97 @@ class VideoTaskController extends Controller
 
     public function pending()
     {
+        $currentUserId = Auth::id();
+
         $tasks = VideoTask::query()
             ->visibleTo()
             ->where('is_pending', true)
-            ->with('channel')
+            ->with('channel', 'shares.sharedByUser')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(fn (VideoTask $task) => [
-                'id' => $task->id,
-                'title' => $task->title,
-                'status' => $task->status,
-                'original_date' => $task->task_date->format('Y-m-d'),
-                'time_range' => $task->time_range,
-                'channel' => $task->channel ? ['name' => $task->channel->name, 'color' => $task->channel->color] : null,
-                'created_at' => $task->created_at->format('Y-m-d'),
-            ]);
+            ->map(function (VideoTask $task) use ($currentUserId) {
+                $myShare = $task->shares->firstWhere('shared_with_user_id', $currentUserId);
+
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'status' => $task->status,
+                    'original_date' => $task->task_date->format('Y-m-d'),
+                    'time_range' => $task->time_range,
+                    'channel_id' => $task->channel_id,
+                    'created_by' => $task->created_by,
+                    'channel' => $task->channel ? ['id' => $task->channel->id, 'name' => $task->channel->name, 'color' => $task->channel->color] : null,
+                    'shared_by_user_name' => $myShare?->sharedByUser?->name,
+                    'created_at' => $task->created_at->format('Y-m-d'),
+                ];
+            });
 
         return response()->json($tasks);
+    }
+
+    public function todaySummary()
+    {
+        return response()->json([
+            'today' => $this->todayTasksQuery()->count(),
+            'overdue' => $this->overdueTasksQuery()->count(),
+        ]);
+    }
+
+    public function todayTasks()
+    {
+        $today = $this->todayTasksQuery()
+            ->with('channel:id,name,color')
+            ->orderBy('time_range')
+            ->get(['id', 'title', 'task_date', 'time_range', 'status', 'channel_id'])
+            ->map(fn ($task) => $this->serializeSummaryTask($task));
+
+        $overdue = $this->overdueTasksQuery()
+            ->with('channel:id,name,color')
+            ->orderBy('task_date')
+            ->orderBy('time_range')
+            ->get(['id', 'title', 'task_date', 'time_range', 'status', 'channel_id'])
+            ->map(fn ($task) => array_merge($this->serializeSummaryTask($task), [
+                'days_overdue' => (int) round(abs(Carbon::today()->diffInDays($task->task_date))),
+            ]));
+
+        return response()->json([
+            'today' => $today,
+            'overdue' => $overdue,
+        ]);
+    }
+
+    private function todayTasksQuery()
+    {
+        $today = Carbon::today();
+
+        return VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
+            ->where('task_date', '>=', $today)
+            ->where('task_date', '<', $today->copy()->addDay());
+    }
+
+    private function overdueTasksQuery()
+    {
+        return VideoTask::query()
+            ->visibleTo()
+            ->where('is_pending', false)
+            ->overdue();
+    }
+
+    private function serializeSummaryTask(VideoTask $task): array
+    {
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'task_date' => $task->task_date->format('Y-m-d'),
+            'time_range' => $task->time_range,
+            'status' => $task->status,
+            'status_label' => VideoTaskStatus::labelFor($task->status),
+            'channel' => $task->channel
+                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                : null,
+        ];
     }
 
     public function moveToPending(VideoTask $videoTask)
@@ -529,9 +842,6 @@ class VideoTaskController extends Controller
 
         $settings = Auth::user()->merged_settings;
         $useBlocks = $settings['use_blocks'];
-        $blockHours = $settings['block_hours'];
-        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
-        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
         $workingDays = $settings['working_days'] ?? [1, 2, 3, 4, 5];
 
         $rules = [
@@ -539,7 +849,7 @@ class VideoTaskController extends Controller
         ];
 
         if ($useBlocks) {
-            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $blocks = WorkBlocks::fromSettings($settings);
             $rules['time_range'] = ['required', Rule::in($blocks)];
         } else {
             $rules['time_range'] = ['required', 'string', 'max:30'];
@@ -547,11 +857,8 @@ class VideoTaskController extends Controller
 
         $validated = $request->validate($rules);
 
-        if (! $useBlocks && isset($validated['time_range']) && str_contains($validated['time_range'], '-')) {
-            [$start, $end] = explode('-', $validated['time_range'], 2);
-            if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
-                return response()->json(['errors' => ['time_range' => ['La hora fin debe ser mayor a la hora de inicio']]], 422);
-            }
+        if (! $useBlocks && isset($validated['time_range']) && ! TimeRange::endsAfterStart($validated['time_range'])) {
+            return response()->json(['errors' => ['time_range' => [TimeRange::INVALID_MESSAGE]]], 422);
         }
 
         $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);
@@ -576,6 +883,60 @@ class VideoTaskController extends Controller
             'ok' => true,
             'task_id' => $videoTask->id,
         ]);
+    }
+
+    private function linkTranslationSource(VideoTask $task, VideoTask $source): void
+    {
+        $groupId = $source->translation_group_id ?: (string) Str::uuid();
+
+        if (! $source->translation_group_id) {
+            $source->update(['translation_group_id' => $groupId]);
+        }
+
+        $task->update([
+            'translation_group_id' => $groupId,
+            'translated_from_task_id' => $source->id,
+        ]);
+    }
+
+    private function translationHistory(VideoTask $task): array
+    {
+        if (! $task->translation_group_id && ! $task->translated_from_task_id) {
+            return [];
+        }
+
+        $query = VideoTask::query()
+            ->visibleTo()
+            ->with('channel:id,name,color')
+            ->orderBy('task_date')
+            ->orderBy('id');
+
+        if ($task->translation_group_id) {
+            $query->where('translation_group_id', $task->translation_group_id);
+        } else {
+            $query->where(function ($q) use ($task) {
+                $q->where('id', $task->translated_from_task_id)
+                    ->orWhere('translated_from_task_id', $task->id);
+            });
+        }
+
+        return $query->get()
+            ->map(fn (VideoTask $t) => [
+                'id' => $t->id,
+                'title' => $t->title,
+                'status' => $t->status,
+                'status_label' => VideoTaskStatus::labelFor($t->status),
+                'task_date' => $t->task_date->format('Y-m-d'),
+                'time_range' => $t->time_range,
+                'locale' => $t->locale ?: 'es',
+                'channel_name' => $t->channel?->name,
+                'channel_color' => $t->channel?->color,
+                'youtube_url' => $t->youtube_url,
+                'is_original' => $t->translated_from_task_id === null,
+                'is_self' => $t->id === $task->id,
+            ])
+            ->values()
+            ->all();
     }
 
     private function serializeTask(VideoTask $task): array

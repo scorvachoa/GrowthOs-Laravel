@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import VideoTaskForm from './Components/VideoTaskForm.vue'
 import { useForm, Link } from '@inertiajs/vue3'
 import { provide } from 'vue'
@@ -16,11 +17,12 @@ const form = useForm({
     title: '',
     script: '',
     copy: '',
-    copy_ai_generated: false,
-    translations: null,
+    notes: '',
+    translated_from_task_id: null,
     youtube_url: '',
     status: 'pending',
     channel_id: null,
+    locale: 'es',
     shared_user_ids: [],
 })
 
@@ -34,10 +36,9 @@ const submit = () => {
 <template>
     <AppLayout>
         <div class="">
-            <div class="flex items-center justify-between mb-6">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Crear Tarea</h1>
+            <PageHeader title="Crear Tarea" class="mb-6">
                 <Link href="/planning" class="text-indigo-600 hover:text-indigo-700">Volver al calendario</Link>
-            </div>
+            </PageHeader>
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
                 <VideoTaskForm :statuses="statuses" :channels="channels" submit-label="Crear Tarea" @submit="submit" />
             </div>

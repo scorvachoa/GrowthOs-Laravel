@@ -2,17 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\AuthorizesPlanningTask;
+use App\Support\TimeRange;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreExtraTaskRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return $this->isMethod('POST')
-            ? $this->user()->can('create planning')
-            : $this->user()->can('edit planning');
-    }
+    use AuthorizesPlanningTask;
 
     public function rules(): array
     {
@@ -34,11 +31,8 @@ class StoreExtraTaskRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $timeRange = $this->input('time_range');
-            if ($timeRange && str_contains($timeRange, '-')) {
-                [$start, $end] = explode('-', $timeRange, 2);
-                if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
-                    $validator->errors()->add('time_range', 'La hora fin debe ser mayor a la hora de inicio');
-                }
+            if ($timeRange && ! TimeRange::endsAfterStart($timeRange)) {
+                $validator->errors()->add('time_range', TimeRange::INVALID_MESSAGE);
             }
         });
     }

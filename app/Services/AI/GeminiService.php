@@ -9,7 +9,10 @@ class GeminiService
 {
     private const MODEL_NAME = 'gemini-2.5-flash';
 
-    private const REQUEST_TIMEOUT = 45;
+    private const REQUEST_TIMEOUT = 15;
+
+    /** Límite total (segundos) de generateContent: con la UI síncrona, el peor caso no debe superarlo. */
+    private const TOTAL_DEADLINE = 20;
 
     private const MAX_RETRIES_PER_KEY = 2;
 
@@ -34,11 +37,16 @@ class GeminiService
     public function generateContent(string $prompt): string
     {
         $errors = [];
+        $deadline = microtime(true) + self::TOTAL_DEADLINE;
 
         for ($attempt = 0; $attempt < $this->totalKeys; $attempt++) {
+            if (microtime(true) >= $deadline) {
+                break;
+            }
+
             $key = $this->nextKey();
             try {
-                return $this->callWithRetry($prompt, $key);
+                return $this->callWithRetry($prompt, $key, $deadline);
             } catch (\Exception $e) {
                 $errorType = $this->isRateLimitError($e) ? 'rate-limit' : get_class($e);
                 $errors[] = "key #{$this->currentIndex}: {$errorType}";
@@ -52,29 +60,44 @@ class GeminiService
         throw new \RuntimeException("No fue posible generar contenido con las API keys disponibles. {$details}");
     }
 
-    private function callWithRetry(string $prompt, string $key): string
+    private function callWithRetry(string $prompt, string $key, float $deadline): string
     {
         $lastError = null;
 
         for ($retry = 0; $retry < self::MAX_RETRIES_PER_KEY; $retry++) {
+            if (microtime(true) >= $deadline) {
+                break;
+            }
+
             try {
-                return $this->callGemini($prompt, $key);
+                $timeout = max(1, min(
+                    self::REQUEST_TIMEOUT,
+                    (int) ceil($deadline - microtime(true))
+                ));
+
+                return $this->callGemini($prompt, $key, $timeout);
             } catch (\Exception $e) {
                 $lastError = $e;
                 if ($retry < self::MAX_RETRIES_PER_KEY - 1) {
-                    usleep(300000 * ($retry + 1));
+                    $sleepMicros = 300000 * ($retry + 1);
+                    if (microtime(true) + $sleepMicros / 1_000_000 >= $deadline) {
+                        break;
+                    }
+                    usleep($sleepMicros);
                 }
             }
         }
 
-        throw $lastError;
+        throw $lastError ?? new \RuntimeException(
+            'Gemini: tiempo agotado ('.self::TOTAL_DEADLINE.'s).'
+        );
     }
 
-    private function callGemini(string $prompt, string $apiKey): string
+    private function callGemini(string $prompt, string $apiKey, int $timeout): string
     {
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/'.self::MODEL_NAME.':generateContent';
 
-        $response = Http::timeout(self::REQUEST_TIMEOUT)
+        $response = Http::timeout($timeout)
             ->withHeaders([
                 'x-goog-api-key' => $apiKey,
             ])

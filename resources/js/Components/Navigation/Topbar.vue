@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
-import { Menu, LogOut, Sun, Moon, HardDrive, Bell, Check, X } from 'lucide-vue-next'
+import { Menu, LogOut, Sun, Moon, Bell, Check, X, CalendarDays, AlertTriangle, ArrowRight } from 'lucide-vue-next'
 import { useTheme } from '@/Composables/useTheme'
+import Modal from '@/Components/Modals/Modal.vue'
 
 const { isDark, toggleDark } = useTheme()
 
@@ -40,6 +41,51 @@ const notifOpen = ref(false)
 const notifRef = ref(null)
 let notifInterval = null
 
+const todaySummary = ref({ today: 0, overdue: 0 })
+
+async function fetchTodaySummary() {
+    try {
+        const res = await fetch('/tasks/today-summary', {
+            headers: { 'Accept': 'application/json' }
+        })
+        if (!res.ok) return
+        todaySummary.value = await res.json()
+    } catch (e) {}
+}
+
+function goToPlanning() {
+    notifOpen.value = false
+    summaryOpen.value = false
+    router.get('/planning')
+}
+
+const summaryOpen = ref(false)
+const summaryLoading = ref(false)
+const todayTaskList = ref([])
+const overdueTaskList = ref([])
+
+async function fetchSummaryLists() {
+    summaryLoading.value = true
+    try {
+        const res = await fetch('/tasks/today-tasks', {
+            headers: { 'Accept': 'application/json' }
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        todayTaskList.value = data.today
+        overdueTaskList.value = data.overdue
+    } catch (e) {
+    } finally {
+        summaryLoading.value = false
+    }
+}
+
+function openSummary() {
+    notifOpen.value = false
+    summaryOpen.value = true
+    fetchSummaryLists()
+}
+
 async function fetchNotifications() {
     try {
         const res = await fetch('/notifications/unread', {
@@ -50,6 +96,11 @@ async function fetchNotifications() {
         notifications.value = data.notifications
         unreadCount.value = data.unread_count
     } catch (e) {}
+}
+
+function refreshTopbar() {
+    fetchNotifications()
+    fetchTodaySummary()
 }
 
 async function markAsRead(id) {
@@ -174,8 +225,12 @@ onMounted(() => {
     document.addEventListener('click', onDocClick)
     window.addEventListener('share-accepted', onShareUpdated)
     window.addEventListener('share-rejected', onShareUpdated)
-    fetchNotifications()
-    notifInterval = setInterval(fetchNotifications, 30000)
+    refreshTopbar()
+    notifInterval = setInterval(refreshTopbar, 30000)
+})
+
+watch(activeCompany, () => {
+    fetchTodaySummary()
 })
 
 onUnmounted(() => {
@@ -235,12 +290,6 @@ onUnmounted(() => {
                     {{ activeCompany?.name || appName }}
                 </h2>
             </div>
-
-            <Link v-if="user?.permissions?.includes('view backup')" href="/backup"
-                class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition shrink-0"
-                title="Backup">
-                <HardDrive class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            </Link>
         </div>
 
         <div class="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -278,6 +327,27 @@ onUnmounted(() => {
                                 Marcar todas como leídas
                             </button>
                         </div>
+                    </div>
+
+                    <div v-if="user?.permissions?.includes('view planning')"
+                        class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                        <button @click="openSummary"
+                            class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition text-left">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <CalendarDays class="w-4 h-4 text-indigo-500 shrink-0" />
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Tareas de hoy</span>
+                                <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ todaySummary.today }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <AlertTriangle class="w-4 h-4" :class="todaySummary.overdue > 0 ? 'text-red-500' : 'text-gray-300 dark:text-gray-600'" />
+                                <span class="text-sm font-bold"
+                                    :class="todaySummary.overdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'">
+                                    {{ todaySummary.overdue }}
+                                </span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wide">vencidas</span>
+                                <ArrowRight class="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" />
+                            </div>
+                        </button>
                     </div>
 
                     <div class="overflow-y-auto flex-1">
@@ -356,6 +426,74 @@ onUnmounted(() => {
             </button>
 
         </div>
+
+        <Modal :show="summaryOpen" @close="summaryOpen = false">
+            <div class="space-y-5">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Resumen de tareas</h3>
+                    <button @click="summaryOpen = false"
+                        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                        <X class="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div v-if="summaryLoading" class="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                    Cargando tareas...
+                </div>
+
+                <template v-else>
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <CalendarDays class="w-4 h-4 text-indigo-500" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Tareas de hoy</h4>
+                            <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ todayTaskList.length }}</span>
+                        </div>
+                        <p v-if="todayTaskList.length === 0" class="text-sm text-gray-400 dark:text-gray-500 italic">
+                            Sin tareas para hoy
+                        </p>
+                        <div v-else class="space-y-1.5">
+                            <Link v-for="t in todayTaskList" :key="`today-${t.id}`" :href="`/tasks/${t.id}`"
+                                @click="summaryOpen = false"
+                                class="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition group">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0">{{ t.time_range }}</span>
+                                <span class="text-sm text-gray-900 dark:text-white truncate flex-1">{{ t.title }}</span>
+                                <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: t.channel?.color || '#6366f1' }"></span>
+                                <ArrowRight class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 shrink-0" />
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <AlertTriangle class="w-4 h-4 text-red-500" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Tareas vencidas</h4>
+                            <span class="text-sm font-bold text-red-600 dark:text-red-400">{{ overdueTaskList.length }}</span>
+                        </div>
+                        <p v-if="overdueTaskList.length === 0" class="text-sm text-gray-400 dark:text-gray-500 italic">
+                            Sin tareas vencidas
+                        </p>
+                        <div v-else class="space-y-1.5">
+                            <Link v-for="t in overdueTaskList" :key="`overdue-${t.id}`" :href="`/tasks/${t.id}`"
+                                @click="summaryOpen = false"
+                                class="flex items-center gap-3 px-3 py-2 rounded-xl border border-red-100 dark:border-red-900/40 hover:border-red-300 dark:hover:border-red-800 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition group">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0">{{ t.time_range }}</span>
+                                <span class="text-sm text-gray-900 dark:text-white truncate flex-1">{{ t.title }}</span>
+                                <span class="text-[10px] font-semibold text-red-600 dark:text-red-400 shrink-0">
+                                    hace {{ t.days_overdue }} {{ t.days_overdue === 1 ? 'día' : 'días' }}
+                                </span>
+                                <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: t.channel?.color || '#6366f1' }"></span>
+                                <ArrowRight class="w-4 h-4 text-gray-300 group-hover:text-red-500 shrink-0" />
+                            </Link>
+                        </div>
+                    </div>
+                </template>
+
+                <button @click="goToPlanning"
+                    class="w-full px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+                    Ver calendario completo
+                </button>
+            </div>
+        </Modal>
 
     </header>
 </template>

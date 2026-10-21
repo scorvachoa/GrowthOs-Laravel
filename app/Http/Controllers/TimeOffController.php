@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesAbsences;
 use App\Models\TimeOff;
 use App\Services\PlanningCalendarService;
 use Illuminate\Http\Request;
@@ -10,10 +11,12 @@ use Inertia\Inertia;
 
 class TimeOffController extends Controller
 {
+    use AuthorizesAbsences;
+
     public function index(Request $request)
     {
         $user = $request->user();
-        $canManage = $user->hasRole(['Super Admin', 'Admin']);
+        $canManage = $this->canManageAbsences($user);
 
         $timeOffs = TimeOff::query()
             ->with('user', 'approver')
@@ -39,7 +42,6 @@ class TimeOffController extends Controller
 
         return Inertia::render('TimeOff/Index', [
             'timeOffs' => $timeOffs,
-            'can_approve' => $canManage,
         ]);
     }
 
@@ -53,7 +55,7 @@ class TimeOffController extends Controller
             'reason' => ['required', 'string', 'max:2000'],
         ]);
 
-        TimeOff::create([
+        $timeOff = TimeOff::create([
             'user_id' => $request->user()->id,
             'date' => $validated['date'],
             'start_time' => $validated['start_time'] ?? null,
@@ -63,17 +65,14 @@ class TimeOffController extends Controller
             'status' => 'pendiente',
         ]);
 
-        PlanningCalendarService::bustCache($request->user()->id);
+        PlanningCalendarService::bustCache($timeOff->organization_id);
 
         return redirect()->back()->with('success', 'Solicitud de permiso creada.');
     }
 
     public function approve(TimeOff $timeOff)
     {
-        $user = request()->user();
-        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
-            abort(403);
-        }
+        $user = $this->ensureAbsenceApprovable($timeOff);
 
         $timeOff->update([
             'status' => 'aprobado',
@@ -81,17 +80,14 @@ class TimeOffController extends Controller
             'approved_at' => now(),
         ]);
 
-        PlanningCalendarService::bustCache($timeOff->user_id);
+        PlanningCalendarService::bustCache($timeOff->organization_id);
 
         return redirect()->back()->with('success', 'Permiso aprobado.');
     }
 
     public function reject(Request $request, TimeOff $timeOff)
     {
-        $user = $request->user();
-        if (! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceApprovable($timeOff);
 
         $timeOff->update(['status' => 'rechazado']);
 
@@ -100,10 +96,7 @@ class TimeOffController extends Controller
 
     public function update(Request $request, TimeOff $timeOff)
     {
-        $user = $request->user();
-        if ($timeOff->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceModifiable($timeOff);
 
         if ($timeOff->status === 'aprobado') {
             return back()->with('error', 'No puedes editar permisos aprobados.');
@@ -125,30 +118,22 @@ class TimeOffController extends Controller
             'reason' => $validated['reason'],
         ]);
 
-        PlanningCalendarService::bustCache($timeOff->user_id);
+        PlanningCalendarService::bustCache($timeOff->organization_id);
 
         return redirect()->back()->with('success', 'Permiso actualizado.');
     }
 
     public function destroy(TimeOff $timeOff)
     {
-        $user = request()->user();
-        if ($timeOff->user_id !== $user->id && ! $user->hasRole('Super Admin') && ! $this->canManageOrg($user, $timeOff->user?->organization_id)) {
-            abort(403);
-        }
+        $this->ensureAbsenceModifiable($timeOff);
 
         if ($timeOff->status === 'aprobado') {
             return back()->with('error', 'No puedes eliminar permisos aprobados.');
         }
 
         $timeOff->delete();
-        PlanningCalendarService::bustCache($timeOff->user_id);
+        PlanningCalendarService::bustCache($timeOff->organization_id);
 
         return redirect()->back()->with('success', 'Solicitud eliminada.');
-    }
-
-    private function canManageOrg($user, ?int $orgId): bool
-    {
-        return $orgId && $user->activeOrganizationId() === $orgId && $user->hasRole(['Super Admin', 'Admin']);
     }
 }

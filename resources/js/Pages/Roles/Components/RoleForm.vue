@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Download, Eye, FileDown, Upload, Settings, Search, SearchX, Umbrella, CalendarClock, HardDrive } from 'lucide-vue-next'
+import { Shield, ShieldCheck, LayoutDashboard, Users, Shield as ShieldIcon, ClipboardList, BarChart3, Youtube, Sparkles, Lightbulb, Building2, Settings, Search, SearchX, Umbrella, CalendarClock } from 'lucide-vue-next'
 
 const props = defineProps({
     form: Object,
@@ -37,7 +37,6 @@ const groups = computed(() => {
         'view configuracion': Settings,
         'view vacations': Umbrella,
         'view time off': CalendarClock,
-        'view backup': HardDrive,
     }
 
     const groupMap = {
@@ -77,7 +76,6 @@ const groups = computed(() => {
         'configure work hours': 'Configuración',
         'configure youtube': 'Configuración',
         'configure dashboard': 'Configuración',
-        'configure backup': 'Configuración',
         'view vacations': 'Vacaciones',
         'create vacations': 'Vacaciones',
         'edit vacations': 'Vacaciones',
@@ -90,12 +88,9 @@ const groups = computed(() => {
         'delete time off': 'Permisos',
         'approve time off': 'Permisos',
         'reject time off': 'Permisos',
-        'view backup': 'Backup',
-        'create backup': 'Backup',
-        'download backups': 'Backup',
     }
 
-    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos', 'Backup']
+    const groupOrder = ['Dashboard', 'Usuarios', 'Roles', 'Planificación', 'Ideas', 'Reportes', 'YouTube', 'Generador IA', 'Empresa', 'Configuración', 'Vacaciones', 'Permisos']
     const grouped = {}
 
     for (const p of props.permissions || []) {

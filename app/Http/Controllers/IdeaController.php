@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Models\Idea;
+use App\Services\AI\AIContentService;
 use App\Services\IdeaService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,7 +13,8 @@ use Inertia\Inertia;
 class IdeaController extends Controller
 {
     public function __construct(
-        protected IdeaService $ideaService
+        protected IdeaService $ideaService,
+        protected AIContentService $ai,
     ) {}
 
     public function index(Request $request)
@@ -51,6 +53,42 @@ class IdeaController extends Controller
             'sort' => $sort,
             'status' => $status,
         ]);
+    }
+
+    public function generate(Request $request)
+    {
+        $validated = $request->validate([
+            'channel_id' => ['required', 'integer', Rule::exists('channels', 'id')->where(fn ($q) => $q->where('organization_id', $request->user()->activeOrganizationId()))],
+            'count' => ['nullable', 'integer', 'min:1', 'max:20'],
+        ]);
+
+        $channel = Channel::findOrFail($validated['channel_id']);
+        $count = $validated['count'] ?? 10;
+
+        $existing = Idea::query()
+            ->where('channel_id', $channel->id)
+            ->where('is_used', false)
+            ->limit(60)
+            ->pluck('content')
+            ->all();
+
+        try {
+            $ideas = $this->ai->generateIdeas($channel->name, $existing, $count);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'No se pudieron generar ideas con IA. Inténtalo de nuevo.'], 502);
+        }
+
+        if ($ideas === []) {
+            return response()->json(['error' => 'La IA no devolvió ideas nuevas. Inténtalo de nuevo.'], 422);
+        }
+
+        $created = $this->ideaService->createBulk($channel->id, $ideas);
+
+        session()->flash('success', "{$created} ideas generadas con IA");
+
+        return response()->json(['created' => $created], 201);
     }
 
     public function store(Request $request)

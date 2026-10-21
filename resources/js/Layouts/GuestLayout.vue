@@ -1,5 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
+import ErrorModal from '@/Components/UI/ErrorModal.vue';
 </script>
 
 <template>
@@ -16,5 +17,7 @@ import { Link } from '@inertiajs/vue3';
                 <slot />
             </div>
         </div>
+
+        <ErrorModal />
     </div>
 </template>

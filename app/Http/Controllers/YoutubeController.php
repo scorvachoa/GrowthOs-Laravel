@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Models\VideoTask;
-use App\Services\YouTubeService;
+use App\Services\YouTube\CommentsService;
+use App\Services\YouTube\YouTubeService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -14,7 +15,8 @@ use Inertia\Inertia;
 class YoutubeController extends Controller
 {
     public function __construct(
-        protected YouTubeService $youtube
+        protected YouTubeService $youtube,
+        protected CommentsService $comments
     ) {}
 
     public function index()
@@ -94,6 +96,54 @@ class YoutubeController extends Controller
                 'api_connected' => $this->youtube->available(),
             ],
             'recent_published' => $recentPublished,
+        ]);
+    }
+
+    /**
+     * Multi-channel inbox with the latest comments from YouTube.
+     */
+    public function comments()
+    {
+        $userId = Auth::id();
+
+        $data = Cache::remember("youtube_comments_{$userId}", 120, function () {
+            $channels = Channel::query()
+                ->whereNotNull('youtube_channel_id')
+                ->where('youtube_channel_id', '!=', '')
+                ->orderBy('name')
+                ->get();
+
+            $since = now()->subDays(7)->timestamp;
+
+            $avatars = $this->comments->channelAvatars(
+                $channels->pluck('youtube_channel_id')->all()
+            );
+
+            $threads = $channels
+                ->flatMap(fn ($channel) => $this->comments->channelThreads($channel, 20))
+                ->filter(function ($thread) use ($since) {
+                    $ts = strtotime($thread['published_at'] ?? '');
+
+                    return $ts !== false && $ts >= $since;
+                })
+                ->sortByDesc('published_at')
+                ->values();
+
+            return [
+                'channels' => $channels->map(fn ($channel) => [
+                    'id' => $channel->id,
+                    'name' => $channel->name,
+                    'color' => $channel->color,
+                    'thumbnail' => $avatars[$channel->youtube_channel_id] ?? null,
+                ])->values(),
+                'threads' => $threads,
+            ];
+        });
+
+        return Inertia::render('Youtube/Comments', [
+            'channels' => $data['channels'],
+            'threads' => $data['threads'],
+            'api_connected' => $this->comments->available(),
         ]);
     }
 

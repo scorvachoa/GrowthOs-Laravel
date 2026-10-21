@@ -1,41 +1,18 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import { usePermissions } from '@/Composables/usePermissions'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
-import { ToggleLeft, Clock, Eye, BarChart3, Monitor, HardDrive, Globe, X, Plus } from 'lucide-vue-next'
+import { ToggleLeft, Clock, Eye, BarChart3, Monitor } from 'lucide-vue-next'
 
-const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 const canEdit = (section) => can(section)
 
 const props = defineProps({
     settings: Object,
-    workBlocks: Array,
-    backup_schedule: Object,
 })
-
-const scheduleForm = reactive({
-    time: props.backup_schedule?.time || '03:00',
-    day: props.backup_schedule?.day || 'sunday',
-})
-
-const scheduleProcessing = ref(false)
-
-function saveSchedule() {
-    scheduleProcessing.value = true
-    router.post(route('settings.backup-schedule'), { ...scheduleForm }, {
-        preserveState: false,
-        preserveScroll: true,
-        onFinish: () => { scheduleProcessing.value = false },
-    })
-}
-
-const dayLabels = {
-    monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
-    thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo',
-}
 
 const days = [
     { value: 0, label: 'Dom' },
@@ -60,12 +37,18 @@ const form = reactive({
     default_report_scope: props.settings.default_report_scope,
     dashboard_default_view: props.settings.dashboard_default_view,
     youtube_max_recent_videos: props.settings.youtube_max_recent_videos,
-    languages: [...(props.settings.languages || ['es'])],
 })
 
 const processing = ref(false)
 const workTimeError = ref('')
 const lunchTimeError = ref('')
+
+const page = usePage()
+const serverErrors = computed(() => {
+    const errs = page.props.errors || {}
+    return Object.keys(errs).length ? errs : null
+})
+const serverErrorList = computed(() => serverErrors.value ? Object.values(serverErrors.value).flat() : [])
 
 function validateWorkTime() {
     if (form.default_work_start && form.default_work_end && form.default_work_end <= form.default_work_start) {
@@ -82,36 +65,6 @@ function validateLunchTime() {
         lunchTimeError.value = ''
     }
 }
-
-const allAvailableLangs = [
-    { code: 'en', label: 'English' },
-    { code: 'pt', label: 'Português' },
-    { code: 'fr', label: 'Français' },
-    { code: 'de', label: 'Deutsch' },
-    { code: 'it', label: 'Italiano' },
-    { code: 'ja', label: '日本語' },
-    { code: 'ko', label: '한국어' },
-    { code: 'zh', label: '中文' },
-]
-
-const availableToAdd = computed(() =>
-    allAvailableLangs.filter(l => !(form.languages || []).includes(l.code))
-)
-
-const newLang = ref('')
-
-function addLanguage() {
-    if (!newLang.value || (form.languages || []).includes(newLang.value)) return
-    form.languages = [...(form.languages || []), newLang.value]
-    newLang.value = ''
-}
-
-function removeLanguage(lang) {
-    if (lang === 'es') return
-    form.languages = (form.languages || []).filter(l => l !== lang)
-}
-
-const langNames = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', ja: '日本語', ko: '한국어', zh: '中文' }
 
 const previewBlocks = computed(() => {
     if (!form.use_blocks) return []
@@ -155,12 +108,17 @@ function submit() {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Configuración</h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-1">Preferencias personales</p>
-            </div>
+            <PageHeader title="Configuración" subtitle="Preferencias personales" />
 
             <form @submit.prevent="submit" class="space-y-6">
+
+                <div v-if="serverErrorList.length"
+                    class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-300 mb-1">No se pudo guardar:</p>
+                    <ul class="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-0.5">
+                        <li v-for="(msg, i) in serverErrorList" :key="i">{{ msg }}</li>
+                    </ul>
+                </div>
 
                 <!-- Fila 1: Horario + Bloques -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -345,85 +303,6 @@ function submit() {
                                     <option value="anual">Anual</option>
                                 </select>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fila 3: Idiomas + Backup -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                    <!-- Idiomas -->
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="p-2 rounded-lg bg-sky-100 dark:bg-sky-900/50">
-                                <Globe class="w-5 h-5 text-sky-600 dark:text-sky-400" />
-                            </div>
-                            <div>
-                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Idiomas</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Idiomas disponibles para traducciones en las tareas</p>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <span v-for="lang in form.languages" :key="lang"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
-                                :class="lang === 'es'
-                                    ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
-                                <Globe class="w-3.5 h-3.5" />
-                                {{ langNames[lang] || lang.toUpperCase() }}
-                                <button v-if="lang !== 'es'" type="button" @click="removeLanguage(lang)"
-                                    class="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                                    <X class="w-3 h-3" />
-                                </button>
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <select v-model="newLang"
-                                class="flex-1 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="" disabled>Seleccionar idioma...</option>
-                                <option v-for="l in availableToAdd" :key="l.code" :value="l.code">{{ l.label }} ({{ l.code.toUpperCase() }})</option>
-                            </select>
-                            <button type="button" @click="addLanguage" :disabled="!newLang"
-                                class="p-2.5 rounded-xl bg-sky-100 dark:bg-sky-900/50 hover:bg-sky-200 dark:hover:bg-sky-900 text-sky-600 dark:text-sky-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Agregar idioma">
-                                <Plus class="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Backup automático -->
-                    <div v-if="canEdit('configure backup')" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                                <HardDrive class="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                            </div>
-                            <div>
-                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup automático</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Programa la generación automática de backups</p>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Hora</label>
-                                    <input type="time" v-model="scheduleForm.time"
-                                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark] text-sm focus:ring-indigo-500 focus:border-indigo-500" />
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Día</label>
-                                    <select v-model="scheduleForm.day"
-                                        class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option v-for="(label, key) in dayLabels" :key="key" :value="key">{{ label }}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <PrimaryButton @click="saveSchedule" :disabled="scheduleProcessing" class="w-full justify-center">
-                                {{ scheduleProcessing ? 'Guardando...' : 'Guardar horario de backup' }}
-                            </PrimaryButton>
-                            <p class="text-xs text-gray-400 text-center">Los backups se guardan en el servidor y están disponibles en la página de Backup.</p>
                         </div>
                     </div>
                 </div>

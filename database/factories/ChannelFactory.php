@@ -14,8 +14,9 @@ class ChannelFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->word(),
+            'name' => 'channel_'.fake()->unique()->numberBetween(1, 1000000),
             'color' => '#'.fake()->hexColor(),
+            'locales' => ['es'],
             'organization_id' => Organization::factory(),
         ];
     }

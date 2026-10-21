@@ -6,8 +6,30 @@ import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { useErrorModal } from './Composables/useErrorModal';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+const { open: openErrorModal } = useErrorModal();
+
+function errorInfoForStatus(status) {
+    switch (status) {
+        case 401:
+            return { title: 'Sesión expirada', message: 'Tu sesión ha caducado. Inicia sesión de nuevo.', goBack: false };
+        case 403:
+            return { title: 'Acceso denegado', message: 'No tienes permisos para realizar esta acción.', goBack: true };
+        case 404:
+            return { title: 'No encontrado', message: 'El recurso solicitado no existe o fue eliminado.', goBack: true };
+        case 429:
+            return { title: 'Demasiadas solicitudes', message: 'Has hecho demasiados intentos. Espera un momento y vuelve a intentarlo.', goBack: false };
+        case 500:
+        case 502:
+        case 503:
+            return { title: 'Error del servidor', message: 'Ocurrió un error en el servidor. Intenta de nuevo; si persiste, contacta al administrador.', goBack: false };
+        default:
+            return { title: 'Algo salió mal', message: 'La operación no se pudo completar. Intenta de nuevo.', goBack: false };
+    }
+}
 
 // Refresh CSRF token from every Inertia response
 router.on('success', (event) => {
@@ -19,9 +41,15 @@ router.on('success', (event) => {
     }
 })
 
-// Reload page on 419 (CSRF token mismatch)
-router.on('invalid', (response) => {
-    if (response?.status === 419) window.location.reload()
+// Respuestas no-Inertia (403, 404, 500…): modal global en vez de HTML crudo
+router.on('invalid', (event) => {
+    const status = event.detail?.response?.status
+    if (status === 419) {
+        window.location.reload()
+        return false
+    }
+    openErrorModal(errorInfoForStatus(status))
+    return false
 })
 window.axios.interceptors.response.use(
     r => r,

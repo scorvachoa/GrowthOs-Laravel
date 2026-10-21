@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -93,7 +94,6 @@ class User extends Authenticatable
             'youtube_max_recent_videos' => 10,
             'app_locale' => 'es',
             'timezone' => 'America/Lima',
-            'languages' => ['es'],
         ];
     }
 
@@ -111,5 +111,16 @@ class User extends Authenticatable
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    /**
+     * Estampa la organización del usuario (o del causer) en su propia actividad.
+     */
+    public function tapActivity(Activity $activity, string $event)
+    {
+        if (! $activity->organization_id) {
+            $activity->organization_id = $this->organization_id
+                ?? auth()->user()?->activeOrganizationId();
+        }
     }
 }

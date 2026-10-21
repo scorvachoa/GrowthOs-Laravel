@@ -1,16 +1,18 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { router, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useDebounce } from '@/Composables/useDebounce'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
 import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
 import { Users, Plus, Pencil, Trash2, Shield, Mail, CalendarDays, ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 const isSuperAdmin = page.props.auth?.user?.roles?.includes('Super Admin')
 const currentUserId = page.props.auth?.user?.id
 
@@ -45,12 +47,8 @@ const confirmDelete = () => {
     })
 }
 
-let debounceTimer
-watch(search, (value) => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-        router.get('/users', { search: value }, { preserveState: true, replace: true })
-    }, 400)
+useDebounce(search, (value) => {
+    router.get('/users', { search: value }, { preserveState: true, replace: true })
 })
 
 const initials = (name) => {
@@ -69,19 +67,14 @@ const roleColor = (role) => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Usuarios</h1>
-                </div>
-                <div class="flex gap-3">
-                    <SearchInput v-model="search" />
-                    <Link v-if="can('create users')" href="/users/create">
-                        <PrimaryButton class="inline-flex items-center gap-2">
-                            <Plus class="w-4 h-4 mr-1.5" /> Nuevo usuario
-                        </PrimaryButton>
-                    </Link>
-                </div>
-            </div>
+            <PageHeader title="Usuarios">
+                <SearchInput v-model="search" />
+                <Link v-if="can('create users')" href="/users/create">
+                    <PrimaryButton class="inline-flex items-center gap-2">
+                        <Plus class="w-4 h-4 mr-1.5" /> Nuevo usuario
+                    </PrimaryButton>
+                </Link>
+            </PageHeader>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <!-- Skeleton loader -->

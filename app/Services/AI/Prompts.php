@@ -249,6 +249,116 @@ tag 1, tag 2, tag 3
 PROMPT;
     }
 
+    public static function buildTitlesThumbnailsPrompt(string $script, string $title = ''): string
+    {
+        $businessType = self::businessType();
+        $currentTitle = trim($title) !== '' ? "\nTITULO ACTUAL:\n{$title}" : '';
+
+        return <<<PROMPT
+Actua como un YouTube Content Manager especializado en {$businessType}.
+
+A partir del siguiente guion, genera 5 titulos alternativos y 5 ideas de thumbnail para un YouTube Short.
+{$currentTitle}
+
+GUION:
+{$script}
+
+REGLAS IMPORTANTES:
+- NO uses markdown.
+- NO agregues explicaciones fuera de las secciones.
+- Escribe en espanol natural, claro y persuasivo.
+- NO inventes informacion historica falsa.
+- Cada titulo debe combinar keyword + curiosidad y tener maximo 60 caracteres.
+- Las ideas de thumbnail deben describir una imagen clara y filmable: sujeto, encuadre y texto en pantalla si aplica.
+- Las ideas deben ser visuales y concretas, no conceptos abstractos.
+
+FORMATO OBLIGATORIO DE SALIDA:
+- Devuelve SOLO estas 2 secciones, en este orden exacto:
+TITULOS
+THUMBNAILS
+- Numeras cada item de 1 a 5 en linea independiente, sin dos puntos al final del encabezado.
+- Debajo de cada encabezado escribe sus items numerados.
+- No agregues texto antes de TITULOS ni despues de THUMBNAILS.
+- No cambies los nombres de las etiquetas.
+
+EJEMPLO DE ESTRUCTURA ESPERADA:
+
+TITULOS
+1. Primer titulo sugerido
+2. Segundo titulo sugerido
+
+THUMBNAILS
+1. Idea de thumbnail uno: sujeto, encuadre y texto en pantalla
+2. Idea de thumbnail dos: sujeto, encuadre y texto en pantalla
+PROMPT;
+    }
+
+    public static function buildIdeasPrompt(string $channelName, array $existingIdeas, int $count): string
+    {
+        $businessType = self::businessType();
+        $existingSection = $existingIdeas !== []
+            ? "\nIDEAS EXISTENTES DEL CANAL (NO las repitas ni las parafrasees):\n- ".implode("\n- ", array_slice($existingIdeas, 0, 60))
+            : '';
+
+        return <<<PROMPT
+Actua como un estratega de contenido especializado en {$businessType}.
+
+Genera {$count} ideas de videos cortos (YouTube Shorts) para el canal "{$channelName}".
+{$existingSection}
+
+REGLAS:
+- Cada idea es UNA sola linea corta y concreta (maximo 15 palabras) que describa el tema del video.
+- NO uses numeracion, markdown, comillas, hashtags ni emojis decorativos.
+- NO incluyas explicaciones ni texto adicional antes o despues de las ideas.
+- NO repitas ni parafrasees las ideas existentes.
+- Varia los formatos: curiosidades, errores comunes, comparaciones, rankings, preguntas frecuentes, datos sorprendentes, "lo que nadie te cuenta".
+- Escribe en espanol natural.
+- Devuelve SOLO las ideas, una por linea.
+PROMPT;
+    }
+
+    public static function buildWeeklySummaryPrompt(array $context): string
+    {
+        $businessType = self::businessType();
+        $json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) ?: '{}';
+
+        return <<<PROMPT
+Actua como un analista de operaciones de contenido especializado en {$businessType}.
+
+A partir de los datos JSON del Dashboard, escribe un resumen semanal para el equipo de contenido.
+
+DATOS:
+{$json}
+
+FORMATO OBLIGATORIO DE SALIDA:
+- NO uses markdown, ni encabezados con #, ni tablas, ni negritas.
+- Divide el texto en 4 bloques separados por una linea en blanco.
+- Cada bloque inicia con su etiqueta en MAYUSCULAS seguida de dos puntos:
+RESUMEN GENERAL:
+(parrafo de 2-3 frases con el estado global de la semana)
+
+LO QUE FUNCIONO:
+- viñeta
+- viñeta
+
+ATENCION REQUERIDA:
+- viñeta
+- viñeta
+
+PROXIMOS PASOS:
+- viñeta
+- viñeta
+
+REGLAS:
+- Escribe en espanol natural, directo y profesional.
+- Usa SOLO los datos proporcionados; no inventes cifras ni nombres.
+- Si un dato es 0 o esta vacio, no lo menciones como logro.
+- Si una tarea muestra estado "Completado" pero "estado_tarea" distinto (ej. Edicion), el trabajo esta terminado via sesiones pero el estado de la tarea quedo desactualizado: reportalo en ATENCION REQUERIDA para que se actualice.
+- Maximo 200 palabras en total.
+- Cada viñeta inicia con "- ".
+PROMPT;
+    }
+
     public static function buildPhrasesPrompt(string $script): string
     {
         $businessType = self::businessType();

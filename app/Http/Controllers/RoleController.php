@@ -48,7 +48,9 @@ class RoleController extends Controller
                 'users_count' => $role->users_count,
             ]);
 
-        $companies = Organization::orderBy('name')->get(['id', 'name']);
+        $companies = $user->hasRole('Super Admin')
+            ? Organization::orderBy('name')->get(['id', 'name'])
+            : Organization::where('id', $user->activeOrganizationId())->get(['id', 'name']);
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
@@ -78,7 +80,7 @@ class RoleController extends Controller
             'permissions' => ['array'],
         ]);
 
-        $role = Role::create([
+        $role = Role::firstOrCreate([
             'name' => $validated['name'],
             'organization_id' => $request->user()->activeOrganizationId(),
         ]);

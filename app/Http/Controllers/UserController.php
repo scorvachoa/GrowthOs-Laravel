@@ -47,27 +47,29 @@ class UserController extends Controller
                 'created_at' => $user->created_at?->diffForHumans(),
             ]);
 
-        $superAdmins = User::query()
-            ->with('roles')
-            ->whereHas('roles', fn ($r) => $r->where('name', 'Super Admin'))
-            ->when(
-                $request->search,
-                fn ($query) => $query->where(
-                    'name',
-                    'like',
-                    "%{$request->search}%"
+        $superAdmins = $request->user()->hasRole('Super Admin')
+            ? User::query()
+                ->with('roles')
+                ->whereHas('roles', fn ($r) => $r->where('name', 'Super Admin'))
+                ->when(
+                    $request->search,
+                    fn ($query) => $query->where(
+                        'name',
+                        'like',
+                        "%{$request->search}%"
+                    )
                 )
-            )
-            ->latest()
-            ->get()
-            ->map(fn ($user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->getRoleNames()->first(),
-                'organization_id' => $user->organization_id,
-                'created_at' => $user->created_at?->diffForHumans(),
-            ]);
+                ->latest()
+                ->get()
+                ->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->getRoleNames()->first(),
+                    'organization_id' => $user->organization_id,
+                    'created_at' => $user->created_at?->diffForHumans(),
+                ])
+            : collect();
 
         return Inertia::render('Users/Index', [
             'users' => $users,
@@ -107,14 +109,6 @@ class UserController extends Controller
         );
 
         return redirect()->route('users.index')->with('success', 'Usuario creado correctamente.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
     }
 
     /**

@@ -1,6 +1,6 @@
 # GrowthOS
 
-GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC con 51 permisos, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros, selección múltiple y edición en masa), historial de cambios por tarea, reportes PDF con logo/color corporativo, dashboard con KPIs reales, módulo de vacaciones y permisos, traducciones multi-idioma configurables, respaldo de datos exportable, generación de contenido con IA (Gemini + ElevenLabs), interfaz 100 % en español latino, e integración con YouTube API.
+GrowthOS es una plataforma SaaS interna para gestión de contenido audiovisual, construida con **Laravel 12**, **Vue 3** e **Inertia.js**. Incluye autenticación, RBAC con 47 permisos, planificación semanal de tareas de video con sesiones de trabajo multi-día, módulo de ideas (con paginación, filtros, selección múltiple y edición en masa), historial de cambios por tarea, modelo **una tarea por idioma** (cada canal admite uno o varios idiomas y cada tarea elige el suyo) con traducción de tareas a través de tareas vinculadas usando DeepL, reportes PDF con logo/color corporativo, dashboard con KPIs reales y resumen semanal generado con IA que analiza la semana considerando las sesiones de trabajo, módulo de vacaciones y permisos, generación de contenido con IA (Gemini + ElevenLabs), interfaz 100 % en español latino, e integración con YouTube API.
 
 > **Repositorio:** [https://github.com/scorvachoa/GrowthOs-Laravel](https://github.com/scorvachoa/GrowthOs-Laravel)
 
@@ -40,7 +40,6 @@ npm run dev
 | MySQL | Base de datos |
 | [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles y permisos |
 | [Spatie Activity Log](https://github.com/spatie/laravel-activitylog) | Auditoría de cambios en usuarios y video tareas |
-| Laravel Sanctum | API tokens (preparado) |
 | Inertia Laravel 2 | SPA server-driven |
 
 ### Frontend
@@ -89,6 +88,13 @@ npm run dev
 | Ideas (eliminar) | — | `delete ideas` |
 | Ideas (importar/exportar) | — | `import ideas`, `export ideas` |
 | Compartir tareas | — | `edit planning` |
+| Tareas de video (detalle) | `/tasks/{id}` | `view planning` |
+| Sesiones de trabajo (crear/editar) | — | `edit planning` |
+| Sesiones de trabajo (eliminar) | — | `delete planning` |
+| Traducción DeepL | `/tasks/translate` | `generate ai` (10 req/min) |
+| Traducir tarea (crea hermana) | `/tasks/{id}/translate` | `create planning` + `generate ai` (10 req/min) |
+| Traducir contenido (rellena form) | `/tasks/{id}/translate-content` | `create planning` + `generate ai` (10 req/min) |
+| Candidatas a traducir | `/tasks/translate-candidates` | `view planning` |
 | Reportes PDF (ver) | `/dashboard`, `/planning` | `view reports` |
 | Reportes PDF (exportar) | — | `download reports` |
 | Historial de reportes (ver) | `/report-history` | `view reports` |
@@ -111,9 +117,6 @@ npm run dev
 | Permisos (editar) | — | `edit time off` |
 | Permisos (aprobar/rechazar) | — | `approve time off`, `reject time off` |
 | Permisos (eliminar) | — | `delete time off` |
-| Respaldo de datos (ver) | `/backup` | `view backup` |
-| Respaldo de datos (crear) | — | `create backup` |
-| Respaldo de datos (eliminar) | — | `delete backup` |
 | Manual | `/manual` | Todos los autenticados |
 
 ### Autenticación (Laravel Breeze + Inertia)
@@ -125,27 +128,25 @@ npm run dev
 ### RBAC
 Roles por defecto tras `db:seed`:
 
-| Rol | Permisos |
-|-----|----------|
-| **Super Admin** | Todos |
-| **Employee** | Sin permisos asignados (extensible) |
+| Rol | Alcance | Permisos |
+|-----|---------|----------|
+| **Super Admin** | Global (sin empresa fija) | Todos + puede cambiar de empresa |
+| **Admin** | Por empresa | Todos excepto gestión de roles |
+| **Employee** | Por empresa | Ninguno por defecto (asignable) |
 
-Permisos del sistema (51 en total, agrupados por módulo):
+Permisos del sistema (47 en total, agrupados por módulo):
 
 ```
 Dashboard:       view dashboard
 Usuarios:        view users, create users, edit users, delete users
 Roles:           view roles, create roles, edit roles, delete roles
 Planificación:   view planning, create planning, edit planning, delete planning, export planning
-Tareas extra:    view extra tasks, create extra tasks, edit extra tasks, delete extra tasks
 Ideas:           view ideas, create ideas, edit ideas, delete ideas, import ideas, export ideas
 Reportes:        view reports, download reports, delete reports
 YouTube:         view youtube
+IA:              generate ai, view ai history, download ai
 Empresa:         view empresa, create empresa, edit empresa, delete empresa
-Canales:         create channels, edit channels, delete channels
-AI:              view ai, generate ai, view ai history, download ai
-Config:          view configuracion, configure work hours, configure youtube, configure dashboard, configure backup
-Respaldos:       view backup, create backup, download backups, delete backup
+Configuración:   view configuracion, configure work hours, configure youtube, configure dashboard
 Vacaciones:      view vacations, create vacations, edit vacations, approve vacations, reject vacations, delete vacations
 Permisos:        view time off, create time off, edit time off, approve time off, reject time off, delete time off
 ```
@@ -163,6 +164,21 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - CRUD de roles
 - Sincronización de permisos por rol
 - Protección de rutas con middleware `can:*`
+
+### Traducción multi-idioma (DeepL)
+- **Una tarea = un idioma**: cada canal puede tener **uno o varios idiomas** (chips en Empresa, `channels.locales` JSON) y cada tarea guarda su propio idioma en `video_tasks.locale`, elegido entre los idiomas de su canal (selector "Idioma" en el editor).
+- Botón **"Traducir"** en el detalle de tarea: modal con idioma, canal destino (filtrado por idioma), fecha y bloque; crea una tarea hermana con título/guion/copy traducidos por DeepL (`status: pending`, sin URL ni frases clave) y queda vinculada a la original.
+- En el formulario de crear tarea, sección **"Traducir desde una tarea existente"**: busca una tarea origen (`GET /tasks/translate-candidates`), la selecciona y con `POST /tasks/{id}/translate-content` rellena título/guion/copy ya traducidos; guarda `translated_from_task_id` en el nuevo registro.
+- Vinculación: columnas `video_tasks.translation_group_id` (agrupa la familia) y `translated_from_task_id` (origen). El detalle de tarea muestra **"Tareas vinculadas por traducción"** (`translation_history`) con badges Original/Actual.
+- La tabla `video_task_translations` fue eliminada; las traducciones existentes se explotaron a tareas nuevas en la migración (asignando sus sesiones a la tarea creada).
+- Columna `locales` en canales (`channels.locales`, JSON, default `["es"]`), columna `video_tasks.locale` (default `es`) e idioma heredado a las sesiones de trabajo.
+- Endpoints: `POST /tasks/translate` (rellena campos, `generate ai` + 10 req/min), `POST /tasks/{id}/translate` y `POST /tasks/{id}/translate-content` (con `create planning` + `generate ai` + throttle), `GET /tasks/translate-candidates` (`view planning`); requiere `DEEPL_API_KEY`.
+- El canal destino debe soportar el idioma seleccionado (422 si no coincide); al guardar la tarea, `locale` debe pertenecer a `channel.locales`; se mantiene la regla global de bloque ocupado.
+
+### Resumen semanal con IA (session-aware)
+- Botón en el Dashboard: genera un análisis con Gemini en 4 bloques (RESUMEN GENERAL, LO QUE FUNCIONÓ, ATENCIÓN REQUERIDA, PROXIMOS PASOS), cacheado por semana y organización.
+- El análisis considera las **sesiones de trabajo**: una tarea con todas sus sesiones completadas cuenta como "Completado" aunque su estado siga en "Edición"; cada fila incluye `estado_tarea` y `sesiones x/y completadas`.
+- La IA señala en ATENCIÓN REQUERIDA los estados desactualizados para que el equipo los actualice.
 
 ### PDF - Reportes
 - Observaciones por día con subtítulo "Observaciones" en el color de la empresa y borde izquierdo coloreado
@@ -195,17 +211,19 @@ Permisos:        view time off, create time off, edit time off, approve time off
 - DaySidebar: selectores de estado más anchos (`min-w-[130px]`)
 - **Ideas**: paginación (50 por página), filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, barra de acciones masivas (Marcar como usadas, pendientes, eliminar, editar contenido), paginación mantiene filtros (channel_id, búsqueda, sort, status)
 - **Vacaciones y Permisos**: listado con mismo formato que Usuarios (tabla con búsqueda, paginación, hover), formulario modal, aprobación/rechazo, modal de detalle con botón ojo
-- **Respaldo de datos**: exportación de todas las tablas del sistema en JSON comprimido, restauración con validación por empresa, programación semanal desde Configuración
 - **Dashboard adaptativo**: grid de columnas se ajusta dinámicamente si el usuario no tiene permiso `view users`
 - **Dashboard sesiones del día**: muestra las sesiones de trabajo activas de hoy con indicador ámbar "Sesión"
 - **Sidebar reordenado**: por flujo de trabajo (Dashboard → Planificación → Tareas → YouTube → Ideas → AI → Historial → Usuarios → Roles → Vacaciones → Permisos → Empresa → Configuración → Manual)
 - **Planning mes**: tareas extra visibles como barras ámbar individuales lado a lado
 - **YouTube**: gráficos con Chart.js (vue-chartjs) en vez de SVG custom
 - **403 personalizado**: página SPA con botones "Volver" e "Ir al Dashboard"
-- **Configuración**: rediseñada en grid balanceado (3 filas de 2 columnas: Horario+Bloques, YouTube+Dashboard, Idiomas+Backup)
-- **Respaldo en topbar**: icono `HardDrive` fijo en la topbar, eliminado del sidebar
+- **Configuración**: rediseñada en grid balanceado (2 filas de 2 columnas: Horario+Bloques, YouTube+Dashboard)
 - **Sesiones de trabajo multi-día**: tabla `work_sessions` permite continuar tareas en días posteriores. Las tareas se muestran en el calendario tanto en su fecha original como en las fechas de sesión, cada una con su propio bloque horario y estado.
-- **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión en la fecha de hoy con el primer bloque libre disponible; botón "Completar" marca la sesión como completada; editar/eliminar sesión con selector de bloque verificado.
+- **Gestión de sesiones desde sidebar**: botón "+ Sesión" crea sesión con mini-modal (fecha y bloque horario) usando el primer bloque libre disponible; botón "Completar" marca la sesión como completada; editar/eliminar sesión con selector de bloque verificado. El idioma se hereda de la tarea.
+- **Chips de idioma por tarea y sesión**: cada tarea y sesión muestra su idioma (ES, EN, PT...) en el calendario y en la vista de detalle, según el idioma de la tarea.
+- **Traducción con DeepL**: botón "Traducir" en el detalle de tarea (crea tarea hermana vinculada) y sección "Traducir desde una tarea existente" en el formulario de crear (rellena el contenido ya traducido).
+- **Modales del sistema**: los `alert`/`confirm` nativos del navegador fueron reemplazados por `AlertModal` (errores y avisos) y `ConfirmDelete` (confirmaciones).
+- **Resumen semanal session-aware**: el análisis IA de la semana cuenta como "Completado" toda tarea con todas sus sesiones completadas, incluye el estado real de la tarea y las sesiones `x/y`, y cachea el resultado con clave versionada.
 - **Compartir tareas**: desde el sidebar del calendario o la vista de detalle, puedes compartir tareas con otros usuarios asignando roles (editor puede editar, lector solo ve). Gestión desde `/tasks/{id}`.
 - **Historial de cambios en tareas**: cada tarea muestra un historial con las modificaciones realizadas, ordenado por fecha. Las entradas personalizadas muestran "Movido a pendiente" y "Restaurado desde pendiente". Haz clic en una entrada para ver los detalles completos.
 - **URLs generalizadas**: rutas unificadas bajo `/tasks/*` para tareas de video y `/tasks/extra/*` para tareas extra. Las URLs antiguas (`/video-tasks`, `/extra-tasks`) siguen funcionando como redirects. El historial de tareas se eliminó (duplicaba Planificación); el detalle vive en `/tasks/{id}`.
@@ -314,30 +332,37 @@ npm run dev
 
 ```
 app/
+├── Console/Commands/        # GenerateIdeas (tanda semanal de ideas por canal)
 ├── Enums/                   # VideoTaskStatus (backed string enum PHP 8)
 ├── Http/
 │   ├── Controllers/         # Dashboard, Planning, VideoTask, ExtraTask, TaskReport, ReportHistory,
 │   │                        # Settings, Users, Roles, Profile, Youtube, Idea, AI,
-│   │                        # Backup, Vacation, TimeOff, Manual, Company, Notification
+│   │                        # Vacation, TimeOff, Manual, Company, Notification
 │   ├── Middleware/          # HandleInertiaRequests (auth + flash compartidos)
 │   └── Requests/           # Validación (Store/Update User, Profile, etc.)
-├── Models/                  # User, VideoTask, WorkSession, ExtraTask, ReportHistory, Organization, Channel,
-│   │                        # Idea, GeneratedVideo, Vacation, TimeOff, DayObservation
-├── Policies/                # UserPolicy, ChannelPolicy, VideoTaskPolicy, IdeaPolicy, ExtraTaskPolicy
+├── Models/                  # User, VideoTask, WorkSession, ExtraTask, ReportHistory,
+│   │                        # Organization, Channel, Idea, GeneratedVideo, Vacation, TimeOff, DayObservation
+├── Policies/                # User, Organization, Channel, VideoTask, WorkSession, Idea, ExtraTask,
+│   │                        # GeneratedVideo, ReportHistory, Vacation, TimeOff (11 policies)
 ├── Services/
-│   ├── AI/                  # GeminiService, ElevenLabsService, AIContentService, Prompts,
-│   │                        # ScriptCleaner, CopyParser, PhraseCleaner
-│   └── BackupService, PlanningCalendarService, DashboardService, UserService, IdeaService,
-│       YouTubeService, ReportService
+│   ├── AI/                  # GeminiService, ElevenLabsService, DeepLService, AIContentService, Prompts,
+│   │                        # ScriptCleaner, CopyParser, PhraseCleaner, TitlesThumbnailsParser
+│   └── PlanningCalendarService, PlanningValidator, PeruHolidayService, DashboardService,
+│       UserService, IdeaService, YouTubeService, ReportService
 ├── Support/                 # WorkBlocks (lógica de bloques de trabajo)
-└── Traits/                  # BelongsToOrganization, OwnedByUser (global scopes)
+└── Traits/                  # BelongsToOrganization, OwnedByUser, SharedWithUser (global scopes)
 
 database/
 ├── migrations/              # users, permissions, activity_log, video_tasks, extra_tasks, report_history,
 │                           # organizations, channels, ideas, generated_videos, day_observations,
-│                           # vacations, time_offs, work_sessions,
-│                           # add_organization_id_to_org_bound_tables
+│                           # vacations, time_offs, work_sessions, add_locale_to_channels,
+│                           # add_translation_links_to_video_tasks, explode/drop_video_task_translations,
+│                           # multi_language_channels_and_task_locale
 └── seeders/                 # RolesAndPermissionsSeeder, AdminUserSeeder
+
+tests/
+├── Feature/                 # auth, policies, servicios, traducción de tareas, sesiones, planning, dashboard semanal
+└── Unit/                    # WorkBlocks, PlanningValidator, CopyParser, PhraseCleaner, VideoTaskStatus, holidays
 
 resources/views/pdf/         # report.blade.php (template PDF con logo, color empresa y footer)
 
@@ -346,10 +371,10 @@ resources/js/
 │   ├── AI/                  # UseTaskModal (envío al planificador desde AI Generator)
 │   ├── ExportPdfModal.vue   # Modal reutilizable para exportar PDF (Dashboard + Planning)
 │   ├── Forms/               # TextInput, SearchInput
-│   ├── Modals/              # Modal, ConfirmDelete, ShareModal
+│   ├── Modals/              # Modal, ConfirmDelete, AlertModal, ShareModal
 │   ├── Navigation/          # Sidebar, Topbar, SidebarItem
 │   └── UI/                  # PrimaryButton, FlashMessage, Pagination, StatCard
-├── Composables/             # useTheme (modo claro/oscuro)
+├── Composables/             # useTheme, usePermissions, useDebounce, useCopyFeedback, useAbsenceActions
 ├── config/
 │   └── navigation.js        # Menú lateral filtrado por permiso
 ├── Layouts/
@@ -357,7 +382,6 @@ resources/js/
 └── Pages/
     ├── AI/                  # Index (generador 4 columnas) + History (historial con descarga TXT y envío a planificador)
     ├── Auth/
-    ├── Backup/              # Index (exportación, restauración, programación, scope selector)
     ├── Dashboard/           # KPIs reales con statcards + gráficos Chart.js + Exportar PDF
     ├── Ideas/               # Index (tabs por canal, búsqueda, sort, paginación con filtros, filtro estado, selección múltiple, edición en masa, CRUD, import/export txt)
     ├── Manual/              # Manual.vue (documentación del sistema)
@@ -366,11 +390,12 @@ resources/js/
     ├── Profile/
     ├── Reports/             # History.vue (historial de reportes PDF)
     ├── Roles/               # Index + Create + Edit + RoleForm
-    ├── Settings/            # Index (horario laboral, YouTube, dashboard, respaldo, empresa + canales inline)
+    ├── Settings/            # Index (horario laboral, YouTube, dashboard, empresa + canales inline)
     ├── TimeOff/             # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
     ├── Users/               # Index + Create + Edit
     ├── Vacations/           # Index (listado con búsqueda, formulario modal, aprobar/rechazar)
-    ├── VideoTasks/          # Create, Edit, Show (historial de cambios + sesiones + compartir), Components/VideoTaskForm
+    ├── VideoTasks/          # Create, Edit, Show (historial + sesiones + compartir + traducciones vinculadas + modal Traducir),
+    │                        # Components/VideoTaskForm (selector de idioma + traducir desde una tarea existente)
     └── Youtube/             # Index (tabs canal, gráficos Chart.js, cards/lista videos)
 
 GrowthOS.vbs                  # Inicio rápido sin consolas (doble clic)
@@ -387,11 +412,12 @@ INICIAR.txt                   # Instrucciones de uso del script de inicio
 - **Policies + middleware `can`** — autorización en backend (no solo en UI)
 - **Inertia** — una sola app Vue sin API REST duplicada para el panel
 - **Componentes Vue reutilizables** — DRY en formularios y UI
-- **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `translations`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
+- **Activity Log** — `spatie/laravel-activitylog` registra automáticamente cambios en `User`, `VideoTask` (incluyendo `script`, `copy`, `key_phrases`) y `WorkSession` (quién, qué, cuándo)
 - **PDF generation** — `barryvdh/laravel-dompdf` con plantilla Blade agrupada por días, logo empresa (base64), color corporativo, links en cursiva y footer con nombre del sistema. Incluye tareas extra con descripción detallada.
 - **AI Generator** — Módulo de generación de contenido con **Google Gemini 2.5 Flash** (rotación de hasta 5 API keys con retry automático y manejo de rate-limit) y **ElevenLabs** (TTS a MP3). Servicios: `GeminiService`, `ElevenLabsService`, `AIContentService`, `ScriptCleaner`, `CopyParser`, `PhraseCleaner`, `Prompts` (configurables por `.env`). Prompts reestructurados: Hook→Promesa→Desarrollo→Revelación→Cierre, 7 tipos de gancho, 6 fórmulas de contenido, micro-ganchos cada 5-10s. Persistencia en tabla `generated_videos` con flag `used_in_planner`. Envío directo al planificador desde el generador y el historial.
-- **Permisos granulares** — cada acción CRUD tiene su propio permiso (51 permisos en 13 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
-- **Backup de datos** — exportación completa del tenant en JSON con streaming chunked (500 registros por lote), restauración con transacciones, scoping por organización, programación semanal dinámica
+- **Permisos granulares** — cada acción CRUD tiene su propio permiso (47 permisos en 12 grupos). Las rutas se protegen con middleware `can:*` en backend y la UI oculta botones según los permisos del usuario.
+- **Traducciones (DeepL)** — `DeepLService` con `DEEPL_API_KEY`; una tarea por idioma, tareas hermanas vinculadas vía `translation_group_id`/`translated_from_task_id`, historial de traducciones en el detalle y candidatas a traducir con búsqueda.
+- **Resumen semanal session-aware** — `DashboardService::weeklySummaryContext()` calcula el estado efectivo de cada tarea contando sus sesiones completadas (`withCount`) y cachea el resultado con clave versionada `weekly_summary:v2:{empresa}:{semana}`.
 - **CSRF handling** — token refrescado cliente-side en cada navegación Inertia, recarga automática en error 419
 - **Blade 403** — página de error personalizada con Vite CSS en vez de CDN Tailwind
 - **Inicio rápido** — script `GrowthOS.vbs` para iniciar el entorno de desarrollo sin consolas (servidor PHP + Vite + navegador)
@@ -428,6 +454,48 @@ php artisan test     # Tests PHPUnit
 
 ---
 
+## Despliegue en producción
+
+1. **Entorno:** usar `.env.production` como plantilla (copia a `.env` con `php artisan key:generate` o exporta `APP_ENV=production` en el servidor para que Laravel lo cargue).
+2. **Cookies seguras:** `SESSION_SECURE_COOKIE` queda en `true` automáticamente cuando `APP_ENV=production` (ver `config/session.php`).
+3. **Scheduler (obligatorio):** las tareas de `routes/console.php` (ideas con IA los lunes 06:00 y auto-publicación de videos cada 15 min) solo se ejecutan si corre `schedule:run` cada minuto:
+
+```cron
+* * * * * cd /ruta/al/growthos && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Windows (Programador de tareas, cada 1 minuto): `C:\ruta\php\php.exe C:\ruta\al\growthos\artisan schedule:run`
+
+4. **Post-despliegue:** `php artisan migrate --force`, `php artisan optimize` y `php artisan permission:cache-reset`.
+
+5. **Ventana de mantenimiento (migraciones destructivas):** cualquier migración que reescriba o elimine datos (p. ej. `explode_video_task_translations_into_tasks`, `drop_*`) se ejecuta con la app en mantenimiento y con un volcado físico previo de la base de datos. El rollback de Laravel **no revierte datos** ya escritos; el volcado es la única garantía de recuperación.
+
+```bash
+# 1) Modo mantenimiento (los usuarios ven la página de "estamos en mantenimiento")
+php artisan down --retry=30
+
+# 2) Volcado físico de la base de datos (ajustar credenciales)
+mysqldump --single-transaction --routines --triggers \
+  -u USUARIO -p NOMBRE_BD | gzip > respaldo_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 3) Migrar con el modo producción forzado
+php artisan migrate --force
+
+# 4) Volver a dar servicio
+php artisan up
+```
+
+Si la migración falla, restaurar desde el volcado antes de reintentar:
+
+```bash
+gunzip -c respaldo_YYYYMMDD_HHMMSS.sql.gz | mysql -u USUARIO -p NOMBRE_BD
+php artisan up
+```
+
+Verificar el resultado (`php artisan migrate:status` en verde) y solo entonces levantar `php artisan up`.
+
+---
+
 ## Variables de entorno relevantes
 
 | Variable | Descripción |
@@ -438,6 +506,7 @@ php artisan test     # Tests PHPUnit
 | `VITE_APP_NAME` | Nombre mostrado en el frontend |
 | `YOUTUBE_API_KEY` | API Key de YouTube Data API v3 para estadisticas de canales |
 | `GEMINI_API_KEY` | API Key de Google Gemini. Soporta hasta 5 keys para rotación: `GEMINI_API_KEY`, `GEMINI_KEY_1` a `GEMINI_KEY_4` |
+| `DEEPL_API_KEY` | API Key de DeepL para traducir tareas (`POST /tasks/translate`) |
 | `ELEVENLABS_API_KEY` | API Key de ElevenLabs para generación de audio MP3 |
 | `ELEVENLABS_VOICE_ID` | Voice ID de ElevenLabs para narración |
 | `ELEVENLABS_MODEL_ID` | Modelo ElevenLabs (default: `eleven_multilingual_v2`) |
@@ -505,11 +574,7 @@ php artisan test     # Tests PHPUnit
 - [x] Overflow-x-hidden global para mobile
 - [x] Topbar sticky → fixed con padding compensado
 - [x] Vacaciones y Permisos (CRUD, aprobar/rechazar, formulario modal, tabla con búsqueda)
-- [x] Respaldo de datos (BackupService con export streaming chunked, restore, schedule)
-- [x] Backup scope selector (Super Admin elige empresa en /backup)
-- [x] Backup page reworked: export/import/delete con ConfirmDelete modal
-- [x] Backup schedule en Settings con permiso granular `configure backup`
-- [x] Permisos granulares en Configuración (`configure work hours`, `configure youtube`, `configure dashboard`, `configure backup`)
+- [x] Permisos granulares en Configuración (`configure work hours`, `configure youtube`, `configure dashboard`)
 - [x] Eliminado permiso master `edit configuracion`
 - [x] Chart.js en /youtube (reemplaza SVG custom)
 - [x] 403 personalizado (SPA + Blade con Vite CSS)
@@ -517,21 +582,19 @@ php artisan test     # Tests PHPUnit
 - [x] Dashboard adaptativo (grid dinámico según permisos)
 - [x] Sidebar reordenado por flujo de trabajo
 - [x] Manual del sistema
-- [x] Backup scope selector (Super Admin elige empresa en /backup)
 - [x] Dashboard multi-empresa (Super Admin ve stats de todas o por empresa)
 - [x] Ideas: paginación, filtro Todas/Pendientes/Usadas, selección múltiple con checkboxes, edición en masa
 - [x] Company picker forzoso para Super Admin sin empresa activa
 - [x] CSRF token refrescado cliente-side, recarga en 419
 - [x] Sesiones de trabajo multi-día (WorkSessions): tareas continuadas en días posteriores, visibles en calendario y PDF
-- [x] Multi-idioma en VideoTasks (EN/PT): pestañas de idioma en crear, editar y ver; columna `translations` JSON
+- [x] Multi-idioma en VideoTasks: una tarea por idioma (columna `video_tasks.locale`), canales con uno o varios idiomas (`channels.locales`), tareas vinculadas por traducción
 - [x] Leyenda de colores unificada en planificación con todos los estados de tarea y sesión
 - [x] Gestión de sesiones desde sidebar: crear sesión en fecha actual, completar sesión
 - [x] Edición y eliminación de sesiones con modal de confirmación desde el formulario de tarea
 - [x] Activity log expandido: seguimiento de cambios en `script`, `copy`, `translations`, `key_phrases` de VideoTask + logging propio en WorkSession
-- [x] Idiomas configurables desde `/settings` con add/remove (ES siempre presente)
+- [x] Sección Idiomas de `/settings` eliminada (el idioma de cada tarea se elige entre los idiomas de su canal; el modal Traducir lista los idiomas con canal)
 - [x] `youtube_url` por idioma (ES en columna directa, otros en `translations[lang].youtube_url`)
 - [x] Modal de detalle (ojo) en Vacaciones y Permisos
-- [x] Sesiones de trabajo incluidas en backup export/import
 - [x] Dashboard muestra sesiones activas del día
 - [x] Orphan sessions: sesiones visibles en calendario aunque la tarea original esté en otra semana
 - [x] PDF incluye sesiones de trabajo con youtube_url
@@ -542,10 +605,9 @@ php artisan test     # Tests PHPUnit
 - [x] `UpdateUserRequest` corrección de referencia `$this->user` → `$this->route('user')`
 - [x] TimeOffController/VacationController usan `activeOrganizationId()` en vez de `organization_id`
 - [x] `VideoTask` cast `key_phrases` como `array`
-- [x] `@tailwindcss/vite` versionado a `^3.0.0` (compatible con Tailwind v3)
+- [x] `@tailwindcss/vite` eliminado: dependencia sin uso (Tailwind v3 corre por `postcss.config.js`) cuyo rango `^3.0.0` estaba desincronizado de `package-lock.json` y rompía `npm ci`
 - [x] `organization_id` añadido a tablas `work_sessions`, `time_off`, `vacations` con migración retroactiva
 - [x] `BelongsToOrganization` trait aplicado a modelos `WorkSession`, `TimeOff`, `Vacation`
-- [x] `BackupService::import` excluye `created_at`, `updated_at`, `deleted_at` del restore
 - [x] `HandleInertiaRequests` lazy load de compañía activa para Super Admin
 - [x] `PlanningValidator` excluye sesiones de la misma tarea al validar slot
 - [x] `phpunit.xml` SQLite en memoria para tests
@@ -571,16 +633,23 @@ php artisan test     # Tests PHPUnit
 - [x] Activity log mejorado: layout timeline, avatar gradiente, español, expandible/collapse, fechas formateadas
 - [x] Diseño consistente entre Edit.vue y Show.vue (mismo header, card, sesión, botones)
 - [x] Limpieza de archivos no utilizados (9 componentes Vue, directorio vacío)
+- [x] Traducciones multi-idioma con DeepL (botón "Traducir" en detalle, traducir desde tarea existente, endpoints con throttle 10 req/min)
+- [x] Sesiones de trabajo con `locale` heredado de la tarea y chips de idioma en el calendario
+- [x] Mini-modal de sesión rápida en planificación (fecha y bloque horario)
+- [x] Resumen semanal con IA session-aware (estado efectivo por sesiones, clave de caché versionada v2)
+- [x] `alert`/`confirm` nativos reemplazados por modales del sistema (`AlertModal`, `ConfirmDelete`)
+- [x] Suite de tests PHPUnit con SQLite en memoria (auth, policies, servicios, traducción de tareas, sesiones, planning, dashboard semanal)
+- [x] Limpieza de flags de IA/DeepL (`title_ai_generated`, `copy_ai_generated`, `translated_with`, `translation_engines` eliminados de código y BD)
+- [x] Manual y página de bienvenida actualizados con el modelo una tarea por idioma, sesiones con idioma y resumen semanal IA
 
 ### Pendiente
-- [ ] Tests de autorización, CRUD y servicios
+- [ ] Ampliar cobertura de tests (CRUD restante de módulos)
 - [ ] 2FA (autenticación de dos factores)
 - [ ] Notificaciones in-app y por email
 - [ ] Búsqueda global (Cmd+K / Ctrl+K)
 - [ ] Arrastrar y soltar en calendario semanal
 - [ ] Atajos de teclado (Ctrl+Enter, Escape)
 - [ ] Reportes PDF programados vía cron
-- [ ] Backups automáticos a cloud (S3, Dropbox)
 - [ ] Dependencias y bloqueos entre tareas
 
 ---

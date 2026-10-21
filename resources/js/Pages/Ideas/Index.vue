@@ -1,15 +1,18 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import axios from 'axios'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useCopyFeedback } from '@/Composables/useCopyFeedback'
+import { useDebounce } from '@/Composables/useDebounce'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import Pagination from '@/Components/UI/Pagination.vue'
 import SkeletonLoader from '@/Components/UI/SkeletonLoader.vue'
 
-const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
-import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpDown, ArrowUpZA, ArrowDownAZ, Clock, ArrowUp, ArrowDown, Check, Square, CheckSquare } from 'lucide-vue-next'
+const { can } = usePermissions()
+import { Lightbulb, Search, Upload, Download, Plus, X, CheckCircle2, Circle, FileText, Pencil, Trash2, Copy, ArrowUpZA, ArrowDownAZ, ArrowUp, ArrowDown, Check, Square, CheckSquare, Sparkles, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps({
     channels: Array,
@@ -25,13 +28,22 @@ const props = defineProps({
 
 const activeTab = ref(props.selected_channel_id)
 const searchQuery = ref(props.query || '')
+const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()) || currentStatus.value !== 'all')
+const clearIdeaFilters = () => { searchQuery.value = ''; setStatus('all') }
 const currentSort = ref(props.sort || 'date_desc')
 const currentStatus = ref(props.status || 'all')
+
+const page = usePage()
+const serverErrors = computed(() => {
+    const errs = page.props.errors || {}
+    return Object.keys(errs).length ? errs : null
+})
+const serverErrorList = computed(() => serverErrors.value ? Object.values(serverErrors.value).flat() : [])
 const showModal = ref(false)
 const newIdeasText = ref('')
 const editingIdea = ref(null)
 const deletingIdea = ref(null)
-const copiedId = ref(null)
+const { copiedKey: copiedId, copy } = useCopyFeedback()
 const deleteMessage = computed(() => deletingIdea.value ? `¿Eliminar "${deletingIdea.value.content}"?` : '')
 
 const selectedIds = ref(new Set())
@@ -106,9 +118,7 @@ function executeDelete() {
 }
 
 function copyContent(idea) {
-    navigator.clipboard.writeText(idea.content)
-    copiedId.value = idea.id
-    setTimeout(() => { copiedId.value = null }, 1500)
+    copy(idea.content, idea.id)
 }
 
 function importTxt(e) {
@@ -127,14 +137,28 @@ function exportTxt() {
     window.open(`/ideas/export?channel_id=${activeTab.value}`, '_blank')
 }
 
-let debounceTimer
-watch(searchQuery, () => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-        selectedIds.value = new Set()
-        selectAll.value = false
+const generatingIdeas = ref(false)
+const generateError = ref('')
+
+async function generateAiIdeas() {
+    if (!activeTab.value || generatingIdeas.value) return
+
+    generateError.value = ''
+    generatingIdeas.value = true
+    try {
+        await axios.post('/ideas/generate', { channel_id: activeTab.value, count: 10 })
         nav()
-    }, 400)
+    } catch (error) {
+        generateError.value = error.response?.data?.error || 'No se pudieron generar ideas con IA. Inténtalo de nuevo.'
+    } finally {
+        generatingIdeas.value = false
+    }
+}
+
+useDebounce(searchQuery, () => {
+    selectedIds.value = new Set()
+    selectAll.value = false
+    nav()
 })
 
 function toggleSelect(ideaId) {
@@ -171,6 +195,13 @@ function bulkAction(action, extraData = {}) {
     })
 }
 
+const confirmBulkDelete = ref(false)
+
+function executeBulkDelete() {
+    confirmBulkDelete.value = false
+    bulkAction('delete')
+}
+
 const showBulkEdit = ref(false)
 const bulkEditContents = ref({})
 
@@ -205,16 +236,34 @@ const statusOptions = [
 <template>
     <AppLayout>
         <div class="ideas-scroll-wrapper flex flex-col min-h-0 overflow-hidden">
-            <div class="flex items-center justify-between mb-6 flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
-                        <Lightbulb class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <PageHeader title="Ideas" class="mb-6 flex-shrink-0">
+                <template #title>
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 rounded-xl bg-amber-100 dark:bg-amber-900">
+                            <Lightbulb class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Ideas</h1>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Gestion masiva de ideas por canal</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Ideas</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Gestion masiva de ideas por canal</p>
-                    </div>
-                </div>
+                </template>
+                <p v-if="generateError" class="text-sm text-red-500 max-w-xs text-right">{{ generateError }}</p>
+                <button v-if="can('create ideas') && can('generate ai')" @click="generateAiIdeas"
+                    :disabled="generatingIdeas || !activeTab"
+                    class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium transition flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Loader2 v-if="generatingIdeas" class="w-4 h-4 animate-spin" />
+                    <Sparkles v-else class="w-4 h-4" />
+                    {{ generatingIdeas ? 'Generando...' : 'Generar con IA' }}
+                </button>
+            </PageHeader>
+
+            <div v-if="serverErrorList.length"
+                class="mb-4 flex-shrink-0 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+                <p class="text-sm font-medium text-red-700 dark:text-red-300 mb-1">No se pudo guardar:</p>
+                <ul class="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-0.5">
+                    <li v-for="(msg, i) in serverErrorList" :key="i">{{ msg }}</li>
+                </ul>
             </div>
 
             <div v-if="channels.length === 0"
@@ -314,7 +363,7 @@ const statusOptions = [
                                             class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1.5">
                                             <Circle class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Pendientes</span>
                                         </button>
-                                        <button @click="bulkAction('delete')"
+                                        <button @click="confirmBulkDelete = true"
                                             class="p-1.5 sm:px-3 sm:py-1.5 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5">
                                             <Trash2 class="w-3.5 h-3.5" /> <span class="hidden sm:inline">Eliminar</span>
                                         </button>
@@ -330,7 +379,11 @@ const statusOptions = [
                                 <div class="flex-1 flex items-center justify-center px-6 py-4">
                                     <div class="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">
                                         <FileText class="w-10 h-10 mx-auto mb-2 opacity-40" />
-                                        No hay ideas en este canal
+                                        <p>{{ hasActiveFilters ? 'No hay ideas que coincidan con tu búsqueda' : 'No hay ideas en este canal' }}</p>
+                                        <button v-if="hasActiveFilters" @click="clearIdeaFilters"
+                                            class="mt-3 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition">
+                                            Limpiar filtros
+                                        </button>
                                     </div>
                                 </div>
                             </template>
@@ -432,6 +485,10 @@ const statusOptions = [
                         <textarea v-model="newIdeasText" rows="16" placeholder="Idea 1&#10;Idea 2&#10;Idea 3"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-amber-500 focus:border-amber-500"
                             required></textarea>
+                        <div v-if="serverErrorList.length"
+                            class="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 space-y-0.5">
+                            <p v-for="(msg, i) in serverErrorList" :key="i" class="text-sm text-red-600 dark:text-red-400">{{ msg }}</p>
+                        </div>
                         <button type="submit"
                             class="w-full px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center justify-center gap-2">
                             <Plus class="w-4 h-4" /> Guardar ideas
@@ -454,6 +511,10 @@ const statusOptions = [
                         <textarea v-model="editingIdea.content" rows="4"
                             class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-amber-500 focus:border-amber-500"
                             required></textarea>
+                        <div v-if="serverErrorList.length"
+                            class="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 space-y-0.5">
+                            <p v-for="(msg, i) in serverErrorList" :key="i" class="text-sm text-red-600 dark:text-red-400">{{ msg }}</p>
+                        </div>
                         <div class="flex justify-end gap-3">
                             <button type="button" @click="editingIdea = null"
                                 class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300">
@@ -475,6 +536,14 @@ const statusOptions = [
             :message="deleteMessage"
             @close="deletingIdea = null"
             @confirm="executeDelete"
+        />
+
+        <ConfirmDeleteModal
+            :show="confirmBulkDelete"
+            title="Eliminar ideas seleccionadas"
+            :message="`Se eliminarán ${selectedIds.size} ideas. Esta acción no se puede deshacer.`"
+            @close="confirmBulkDelete = false"
+            @confirm="executeBulkDelete"
         />
 
         <transition name="fade">

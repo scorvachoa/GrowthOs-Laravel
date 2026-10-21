@@ -8,7 +8,9 @@ use App\Models\GeneratedVideo;
 use App\Models\Idea;
 use App\Models\Organization;
 use App\Models\ReportHistory;
+use App\Models\TimeOff;
 use App\Models\User;
+use App\Models\Vacation;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
 use App\Observers\NotificationObserver;
@@ -18,7 +20,9 @@ use App\Policies\GeneratedVideoPolicy;
 use App\Policies\IdeaPolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\ReportHistoryPolicy;
+use App\Policies\TimeOffPolicy;
 use App\Policies\UserPolicy;
+use App\Policies\VacationPolicy;
 use App\Policies\VideoTaskPolicy;
 use App\Policies\WorkSessionPolicy;
 use Illuminate\Notifications\DatabaseNotification;
@@ -43,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GeneratedVideo::class, GeneratedVideoPolicy::class);
         Gate::policy(ReportHistory::class, ReportHistoryPolicy::class);
         Gate::policy(WorkSession::class, WorkSessionPolicy::class);
+        Gate::policy(Vacation::class, VacationPolicy::class);
+        Gate::policy(TimeOff::class, TimeOffPolicy::class);
 
         DatabaseNotification::observe(NotificationObserver::class);
     }

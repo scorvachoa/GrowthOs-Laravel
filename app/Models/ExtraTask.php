@@ -27,9 +27,4 @@ class ExtraTask extends Model
             'task_date' => 'date',
         ];
     }
-
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
 }

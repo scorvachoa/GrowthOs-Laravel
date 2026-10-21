@@ -3,32 +3,26 @@
 namespace App\Http\Requests;
 
 use App\Enums\VideoTaskStatus;
+use App\Http\Requests\Concerns\AuthorizesPlanningTask;
 use App\Services\PlanningValidator;
+use App\Support\TimeRange;
 use App\Support\WorkBlocks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreVideoTaskRequest extends FormRequest
 {
+    use AuthorizesPlanningTask;
+
     public function __construct(
         protected PlanningValidator $planningValidator,
     ) {
         parent::__construct();
     }
 
-    public function authorize(): bool
-    {
-        return $this->isMethod('POST')
-            ? $this->user()->can('create planning')
-            : $this->user()->can('edit planning');
-    }
-
     public function rules(): array
     {
         $settings = $this->user()->merged_settings;
-        $blockHours = $settings['block_hours'] ?? 2;
-        $startHour = WorkBlocks::parseHour($settings['default_work_start'] ?? '09:00');
-        $endHour = WorkBlocks::parseHour($settings['default_work_end'] ?? '18:00');
         $useBlocks = $settings['use_blocks'] ?? true;
 
         $rules = [
@@ -36,9 +30,12 @@ class StoreVideoTaskRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'script' => ['nullable', 'string'],
             'copy' => ['nullable', 'string'],
-            'copy_ai_generated' => ['nullable', 'boolean'],
-            'translations' => ['nullable', 'array'],
+            'notes' => ['nullable', 'string'],
+            'translated_from_task_id' => ['nullable', 'integer', Rule::exists('video_tasks', 'id')->where(function ($q) {
+                $q->where('organization_id', $this->user()->activeOrganizationId())->whereNull('deleted_at');
+            })],
             'youtube_url' => ['nullable', 'url'],
+            'locale' => ['nullable', 'string', 'max:5', 'alpha_dash'],
             'channel_id' => ['nullable', Rule::exists('channels', 'id')->where(function ($q) {
                 $q->where('organization_id', $this->user()->activeOrganizationId());
             })],
@@ -50,7 +47,7 @@ class StoreVideoTaskRequest extends FormRequest
         ];
 
         if ($useBlocks) {
-            $blocks = WorkBlocks::generate($blockHours, $startHour, $endHour);
+            $blocks = WorkBlocks::fromSettings($settings);
             $rules['time_range'] = ['required', Rule::in($blocks)];
         } else {
             $rules['time_range'] = ['required', 'string', 'max:30'];
@@ -78,11 +75,8 @@ class StoreVideoTaskRequest extends FormRequest
                 $this->planningValidator->assertSlotAvailable($taskDate, $timeRange, $taskId);
             }
 
-            if (! $useBlocks && $timeRange && str_contains($timeRange, '-')) {
-                [$start, $end] = explode('-', $timeRange, 2);
-                if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
-                    $validator->errors()->add('time_range', 'La hora fin debe ser mayor a la hora de inicio');
-                }
+            if (! $useBlocks && $timeRange && ! TimeRange::endsAfterStart($timeRange)) {
+                $validator->errors()->add('time_range', TimeRange::INVALID_MESSAGE);
             }
         });
     }

@@ -31,7 +31,7 @@ class PlanningCalendarService
         }
     }
 
-    public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null): array
+    public function snapshot(int $year, int $month, ?Carbon $weekStart = null, ?array $workBlocks = null, array $filters = []): array
     {
         $workBlocks ??= WorkBlocks::all();
         $weekStart = $weekStart ?? Carbon::today()->startOfWeek(Carbon::MONDAY);
@@ -39,15 +39,15 @@ class PlanningCalendarService
         $monthStart = Carbon::create($year, $month, 1)->startOfDay();
         $monthEnd = $monthStart->copy()->addMonth();
 
-        $monthTasks = $this->loadMonthTasks($monthStart, $monthEnd);
-        $monthExtraTasks = $this->loadMonthExtraTasks($monthStart, $monthEnd);
+        $monthTasks = $this->loadMonthTasks($monthStart, $monthEnd, $filters);
+        $monthExtraTasks = $this->loadMonthExtraTasks($monthStart, $monthEnd, $filters);
         $observationsMap = $this->loadObservationsMap($monthStart, $monthEnd);
         $absencesMap = $this->loadAbsencesMap($monthStart, $monthEnd);
 
         [$tasksCount, $blocksMap, $tasksDetailMap] = $this->buildMonthMaps($monthTasks, $workBlocks);
         $hasExtraTasksMap = $this->buildExtraTasksMap($monthExtraTasks);
 
-        [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap] = $this->buildWeekMaps($weekStart, $workBlocks);
+        [$weekBlockMap, $weekTasksDetailMap, $weekExtraTasksDetailMap] = $this->buildWeekMaps($weekStart, $workBlocks, $filters);
 
         $pendingCount = VideoTask::visibleTo()->where('is_pending', true)->count();
 
@@ -72,7 +72,31 @@ class PlanningCalendarService
         ];
     }
 
-    private function loadMonthTasks(Carbon $start, Carbon $end): Collection
+    /**
+     * Aplica filtros opcionales (canal, estado, propiedad) a una query de tareas.
+     * owner: 'mine' = creadas por mí, 'shared' = compartidas conmigo.
+     */
+    private function applyTaskFilters($query, array $filters, bool $hasChannelColumn = true): void
+    {
+        if ($hasChannelColumn && ! empty($filters['channel_id'])) {
+            $query->where('channel_id', (int) $filters['channel_id']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        $owner = $filters['owner'] ?? null;
+        if ($owner === 'mine') {
+            $query->where('created_by', Auth::id());
+        } elseif ($owner === 'shared') {
+            $query->whereHas('shares', fn ($q) => $q
+                ->where('shared_with_user_id', Auth::id())
+                ->whereNotNull('accepted_at'));
+        }
+    }
+
+    private function loadMonthTasks(Carbon $start, Carbon $end, array $filters = []): Collection
     {
         $tasks = VideoTask::query()
             ->visibleTo()
@@ -82,6 +106,7 @@ class PlanningCalendarService
             ->where('is_pending', false)
             ->orderBy('task_date')
             ->orderBy('time_range')
+            ->tap(fn ($q) => $this->applyTaskFilters($q, $filters))
             ->get();
 
         $map = [];
@@ -104,6 +129,8 @@ class PlanningCalendarService
                     'time_range' => $session->time_range,
                     'title' => $task->title,
                     'status' => $session->status,
+                    'channel_id' => $task->channel_id,
+                    'created_by' => $task->created_by,
                     'channel' => $task->channel,
                     'sessions' => collect(),
                     'is_session' => true,
@@ -114,11 +141,11 @@ class PlanningCalendarService
         $orphanSessions = WorkSession::where('date', '>=', $start)
             ->where('date', '<', $end)
             ->with('videoTask.channel')
-            ->whereHas('videoTask', fn ($q) => $q
-                ->visibleTo()
-                ->where('task_date', '<', $start)
-                ->orWhere('task_date', '>=', $end)
-            )
+            ->whereHas('videoTask', function ($q) use ($start, $end, $filters) {
+                $q->visibleTo()
+                    ->where(fn ($qq) => $qq->where('task_date', '<', $start)->orWhere('task_date', '>=', $end));
+                $this->applyTaskFilters($q, $filters);
+            })
             ->get();
 
         foreach ($orphanSessions as $session) {
@@ -133,6 +160,8 @@ class PlanningCalendarService
                 'time_range' => $session->time_range,
                 'title' => $task->title,
                 'status' => $session->status,
+                'channel_id' => $task->channel_id,
+                'created_by' => $task->created_by,
                 'channel' => $task->channel,
                 'sessions' => collect(),
                 'is_session' => true,
@@ -142,13 +171,20 @@ class PlanningCalendarService
         return collect($map)->map(fn ($day) => collect($day));
     }
 
-    private function loadMonthExtraTasks(Carbon $start, Carbon $end): Collection
+    private function loadMonthExtraTasks(Carbon $start, Carbon $end, array $filters = []): Collection
     {
         return ExtraTask::query()
             ->visibleTo()
             ->with('shares.sharedByUser')
             ->where('task_date', '>=', $start)
             ->where('task_date', '<', $end)
+            ->tap(function ($q) use ($filters) {
+                // ExtraTask no tiene canal: se excluyen al filtrar por canal.
+                if (! empty($filters['channel_id'])) {
+                    $q->whereRaw('1 = 0');
+                }
+                $this->applyTaskFilters($q, $filters, false);
+            })
             ->get()
             ->groupBy(fn (ExtraTask $task) => $task->task_date->format('Y-m-d'));
     }
@@ -258,7 +294,7 @@ class PlanningCalendarService
         return $map;
     }
 
-    private function buildWeekMaps(Carbon $weekStart, array $workBlocks): array
+    private function buildWeekMaps(Carbon $weekStart, array $workBlocks, array $filters = []): array
     {
         $weekEnd = $weekStart->copy()->addDays(7);
 
@@ -270,6 +306,7 @@ class PlanningCalendarService
             ->where('is_pending', false)
             ->orderBy('task_date')
             ->orderBy('time_range')
+            ->tap(fn ($q) => $this->applyTaskFilters($q, $filters))
             ->get();
 
         $weekExtraTasks = ExtraTask::query()
@@ -277,6 +314,12 @@ class PlanningCalendarService
             ->with('shares.sharedByUser')
             ->where('task_date', '>=', $weekStart)
             ->where('task_date', '<', $weekEnd)
+            ->tap(function ($q) use ($filters) {
+                if (! empty($filters['channel_id'])) {
+                    $q->whereRaw('1 = 0');
+                }
+                $this->applyTaskFilters($q, $filters, false);
+            })
             ->orderBy('task_date')
             ->orderBy('time_range')
             ->get();
@@ -321,6 +364,8 @@ class PlanningCalendarService
                     'title' => $task->title,
                     'status' => $session->status,
                     'is_session' => true,
+                    'channel_id' => $task->channel_id,
+                    'created_by' => $task->created_by,
                     'channel' => $task->channel
                         ? ['name' => $task->channel->name, 'color' => $task->channel->color]
                         : null,
@@ -331,11 +376,11 @@ class PlanningCalendarService
         $orphanSessions = WorkSession::where('date', '>=', $weekStart)
             ->where('date', '<', $weekEnd)
             ->with('videoTask.channel')
-            ->whereHas('videoTask', fn ($q) => $q
-                ->visibleTo()
-                ->where('task_date', '<', $weekStart)
-                ->orWhere('task_date', '>=', $weekEnd)
-            )
+            ->whereHas('videoTask', function ($q) use ($weekStart, $weekEnd, $filters) {
+                $q->visibleTo()
+                    ->where(fn ($qq) => $qq->where('task_date', '<', $weekStart)->orWhere('task_date', '>=', $weekEnd));
+                $this->applyTaskFilters($q, $filters);
+            })
             ->get();
 
         foreach ($orphanSessions as $session) {
@@ -352,6 +397,8 @@ class PlanningCalendarService
                 'title' => $task->title,
                 'status' => $session->status,
                 'is_session' => true,
+                'channel_id' => $task->channel_id,
+                'created_by' => $task->created_by,
                 'channel' => $task->channel
                     ? ['name' => $task->channel->name, 'color' => $task->channel->color]
                     : null,
@@ -396,7 +443,7 @@ class PlanningCalendarService
             ->values()
             ->all();
 
-        $sessionEntries = WorkSession::where('date', $date)
+        $sessionEntries = WorkSession::whereDate('date', $date)
             ->with('videoTask.channel')
             ->when($orgId, fn ($q) => $q->whereHas('videoTask', fn ($sq) => $sq->visibleTo()->where('organization_id', $orgId)))
             ->get()
@@ -420,9 +467,11 @@ class PlanningCalendarService
             'title' => $task->title,
             'script' => $task->script,
             'copy' => $task->copy,
+            'notes' => $task->notes,
             'key_phrases' => $task->key_phrases,
             'youtube_url' => $task->youtube_url,
             'status' => $session->status,
+            'locale' => $session->locale ?: ($task->locale ?: 'es'),
             'is_session' => true,
             'channel' => $task->channel
                 ? ['name' => $task->channel->name, 'color' => $task->channel->color]
@@ -450,8 +499,10 @@ class PlanningCalendarService
             'time_range' => $task->time_range,
             'title' => $task->title,
             'status' => $task->status,
+            'channel_id' => $task->channel_id ?? null,
+            'created_by' => $task->created_by ?? null,
             'channel' => $task->channel
-                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                ? ['id' => $task->channel->id, 'name' => $task->channel->name, 'color' => $task->channel->color]
                 : null,
         ];
     }
@@ -468,12 +519,15 @@ class PlanningCalendarService
             'title' => $task->title,
             'script' => $task->script,
             'copy' => $task->copy,
+            'notes' => $task->notes,
             'key_phrases' => $task->key_phrases,
             'youtube_url' => $task->youtube_url,
             'status' => $task->status,
             'created_by' => $task->created_by,
+            'channel_id' => $task->channel_id,
+            'locale' => $task->locale ?: 'es',
             'channel' => $task->channel
-                ? ['name' => $task->channel->name, 'color' => $task->channel->color]
+                ? ['id' => $task->channel->id, 'name' => $task->channel->name, 'color' => $task->channel->color]
                 : null,
             'shared_by_user_name' => $myShare?->sharedByUser?->name,
             'share_role' => $myShare?->role,

@@ -1,14 +1,15 @@
 <script setup>
-import { ref, watch } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useDebounce } from '@/Composables/useDebounce'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import Pagination from '@/Components/UI/Pagination.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import { FileDown, Trash2, Search } from 'lucide-vue-next'
 
-const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 
 const props = defineProps({
     histories: Object,
@@ -19,6 +20,12 @@ const search = ref(props.filters?.search || '')
 const scopeFilter = ref(props.filters?.scope || '')
 const perPage = ref(props.filters?.per_page || 10)
 
+const hasActiveFilters = computed(() => Boolean(search.value.trim()) || Boolean(scopeFilter.value))
+function clearFilters() {
+    search.value = ''
+    scopeFilter.value = ''
+}
+
 function load() {
     router.get('/report-history', {
         search: search.value || '',
@@ -27,12 +34,7 @@ function load() {
     }, { preserveState: true, replace: true })
 }
 
-let debounceTimer
-watch(search, () => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(load, 400)
-})
-
+useDebounce(search, load)
 watch(scopeFilter, load)
 watch(perPage, load)
 
@@ -60,9 +62,7 @@ const scopeLabel = (scope) => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Historial de reportes</h1>
-            </div>
+            <PageHeader title="Historial de reportes" />
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -158,7 +158,11 @@ const scopeLabel = (scope) => {
                             </tr>
                             <tr v-if="!histories?.data?.length">
                                 <td colspan="5" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 italic">
-                                    Aún no se han generado reportes
+                                    <p>{{ hasActiveFilters ? 'No hay reportes que coincidan con tu búsqueda' : 'Aún no se han generado reportes' }}</p>
+                                    <button v-if="hasActiveFilters" @click="clearFilters"
+                                        class="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition not-italic">
+                                        Limpiar filtros
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>

@@ -29,6 +29,8 @@ class StoreChannelRequest extends FormRequest
                     ->ignore($channel?->id),
             ],
             'color' => ['required', 'string', 'max:20'],
+            'locales' => ['required', 'array', 'min:1', 'max:9'],
+            'locales.*' => ['string', 'max:5', 'alpha_dash'],
             'youtube_channel_id' => ['nullable', 'string', 'max:120'],
             'channel_url' => ['nullable', 'url', 'max:500'],
         ];

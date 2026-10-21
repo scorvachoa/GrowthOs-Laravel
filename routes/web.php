@@ -1,14 +1,16 @@
 <?php
 
+use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\AI\AudioController;
 use App\Http\Controllers\AI\CopyController;
 use App\Http\Controllers\AI\PhrasesController;
 use App\Http\Controllers\AIController;
-use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtraTaskController;
+use App\Http\Controllers\FacebookController;
 use App\Http\Controllers\IdeaController;
+use App\Http\Controllers\InstagramController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
@@ -26,14 +28,23 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => true,
-        'canRegister' => true,
-    ]);
+    return Inertia::render('Welcome');
 })->name('welcome');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth')->get('/subscription/blocked', function () {
+    $user = auth()->user();
+    $org = $user?->organization;
+
+    return Inertia::render('Subscription/Blocked', [
+        'statusLabel' => $org?->isAccessBlocked() ? ($org->statusLabels()[$org->effectiveStatus()] ?? $org->status) : null,
+        'plan' => $org?->plan,
+        'trialEndsAt' => $org?->trial_ends_at?->format('d/m/Y'),
+    ]);
+})->name('subscription.blocked');
+
+Route::middleware(['auth', 'subscription'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('can:view dashboard')->name('dashboard');
+    Route::get('/dashboard/weekly-summary', [DashboardController::class, 'weeklySummary'])->middleware(['can:view dashboard', 'throttle:5,1'])->name('dashboard.weekly-summary');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -76,12 +87,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/tasks/create', [VideoTaskController::class, 'create'])->middleware('can:create planning')->name('tasks.create');
     Route::post('/tasks', [VideoTaskController::class, 'store'])->middleware('can:create planning')->name('tasks.store');
     Route::get('/tasks/pending', [VideoTaskController::class, 'pending'])->middleware('can:view planning')->name('tasks.pending.index');
+    Route::get('/tasks/today-summary', [VideoTaskController::class, 'todaySummary'])->middleware('can:view planning')->name('tasks.today-summary');
+    Route::get('/tasks/today-tasks', [VideoTaskController::class, 'todayTasks'])->middleware('can:view planning')->name('tasks.today-tasks');
+    Route::get('/tasks/translate-candidates', [VideoTaskController::class, 'translateCandidates'])->middleware('can:view planning')->name('tasks.translate-candidates');
     Route::get('/tasks/extra', [ExtraTaskController::class, 'index'])->middleware('can:view planning')->name('tasks.extra.index');
     Route::post('/tasks/extra', [ExtraTaskController::class, 'store'])->middleware('can:create planning')->name('tasks.extra.store');
     Route::patch('/tasks/extra/{extra_task}', [ExtraTaskController::class, 'update'])->middleware('can:edit planning')->name('tasks.extra.update');
     Route::delete('/tasks/extra/{extra_task}', [ExtraTaskController::class, 'destroy'])->middleware('can:delete planning')->name('tasks.extra.destroy');
     Route::get('/tasks/{video_task}', [VideoTaskController::class, 'show'])->middleware('can:view planning')->name('tasks.show');
-    Route::post('/tasks/generate-copy', [VideoTaskController::class, 'generateCopy'])->middleware(['can:generate ai', 'throttle:10,1'])->name('tasks.generate-copy');
+    Route::post('/tasks/generate-copy', [VideoTaskController::class, 'generateCopy'])->middleware(['can:generate ai', 'quota:tasks.generate-copy', 'throttle:10,1'])->name('tasks.generate-copy');
+    Route::post('/tasks/translate', [VideoTaskController::class, 'translate'])->middleware(['can:generate ai', 'quota:tasks.translate', 'throttle:10,1'])->name('tasks.translate');
+    Route::post('/tasks/{video_task}/translate', [VideoTaskController::class, 'translateTask'])->middleware(['can:create planning', 'can:generate ai', 'quota:tasks.translate-task', 'throttle:10,1'])->name('tasks.translate-task');
+    Route::post('/tasks/{video_task}/translate-content', [VideoTaskController::class, 'translateContent'])->middleware(['can:create planning', 'can:generate ai', 'quota:tasks.translate-content', 'throttle:10,1'])->name('tasks.translate-content');
+    Route::post('/tasks/generate-title-thumbnails', [VideoTaskController::class, 'generateTitlesAndThumbnails'])->middleware(['can:generate ai', 'quota:tasks.generate-title-thumbnails', 'throttle:10,1'])->name('tasks.generate-title-thumbnails');
     Route::get('/tasks/{video_task}/edit', [VideoTaskController::class, 'edit'])->middleware('can:edit planning')->name('tasks.edit');
     Route::put('/tasks/{video_task}', [VideoTaskController::class, 'update'])->middleware('can:edit planning')->name('tasks.update');
     Route::patch('/tasks/{video_task}/status', [VideoTaskController::class, 'updateStatus'])->middleware('can:edit planning')->name('tasks.status');
@@ -95,22 +113,9 @@ Route::middleware('auth')->group(function () {
     // Backward compatibility redirects
     Route::redirect('/video-tasks/create', '/tasks/create');
     Route::redirect('/video-tasks/pending', '/tasks/pending');
-    Route::post('/video-tasks', [VideoTaskController::class, 'store'])->middleware('can:create planning');
     Route::redirect('/video-tasks/{video_task}', '/tasks/{video_task}');
     Route::redirect('/video-tasks/{video_task}/edit', '/tasks/{video_task}/edit');
-    Route::put('/video-tasks/{video_task}', [VideoTaskController::class, 'update'])->middleware('can:edit planning');
-    Route::patch('/video-tasks/{video_task}/status', [VideoTaskController::class, 'updateStatus'])->middleware('can:edit planning');
-    Route::post('/video-tasks/{video_task}/sessions', [VideoTaskController::class, 'storeSession'])->middleware('can:edit planning');
-    Route::patch('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'updateSession'])->middleware('can:edit planning');
-    Route::delete('/video-tasks/{video_task}/sessions/{session}', [VideoTaskController::class, 'destroySession'])->middleware('can:delete planning');
-    Route::post('/video-tasks/{video_task}/move', [VideoTaskController::class, 'move'])->middleware('can:edit planning');
-    Route::patch('/video-tasks/{video_task}/pending', [VideoTaskController::class, 'moveToPending'])->middleware('can:edit planning');
-    Route::patch('/video-tasks/{video_task}/restore', [VideoTaskController::class, 'restorePending'])->middleware('can:edit planning');
-    Route::delete('/video-tasks/{video_task}', [VideoTaskController::class, 'destroy'])->middleware('can:delete planning');
     Route::redirect('/extra-tasks', '/tasks/extra');
-    Route::post('/extra-tasks', [ExtraTaskController::class, 'store'])->middleware('can:create planning');
-    Route::patch('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'update'])->middleware('can:edit planning');
-    Route::delete('/extra-tasks/{extra_task}', [ExtraTaskController::class, 'destroy'])->middleware('can:delete planning');
     Route::get('/planning/observation', [PlanningController::class, 'getObservation'])->middleware('can:view planning')->name('planning.observation.get');
     Route::post('/planning/observation', [PlanningController::class, 'saveObservation'])->middleware('can:view planning')->name('planning.observation.save');
 
@@ -118,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ideas', [IdeaController::class, 'index'])->middleware('can:view ideas')->name('ideas.index');
     Route::post('/ideas', [IdeaController::class, 'store'])->middleware('can:create ideas')->name('ideas.store');
     Route::post('/ideas/import', [IdeaController::class, 'import'])->middleware('can:import ideas')->name('ideas.import');
+    Route::post('/ideas/generate', [IdeaController::class, 'generate'])->middleware(['can:create ideas', 'can:generate ai', 'quota:ideas.generate', 'throttle:10,1'])->name('ideas.generate');
     Route::get('/ideas/export', [IdeaController::class, 'export'])->middleware('can:export ideas')->name('ideas.export');
     Route::post('/ideas/bulk-update', [IdeaController::class, 'bulkUpdate'])->middleware('can:edit ideas')->name('ideas.bulk-update');
     Route::patch('/ideas/{idea}/used', [IdeaController::class, 'toggleUsed'])->middleware('can:edit ideas')->name('ideas.toggle-used');
@@ -125,7 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/ideas/{idea}', [IdeaController::class, 'destroy'])->middleware('can:delete ideas')->name('ideas.destroy');
 
     // Reports
-    Route::get('/task-reports/pdf', [TaskReportController::class, 'exportPdf'])->middleware('can:download reports')->name('reports.pdf');
+    Route::get('/task-reports/pdf', [TaskReportController::class, 'exportPdf'])->name('reports.pdf');
     Route::get('/report-history', [ReportHistoryController::class, 'index'])->middleware('can:view reports')->name('report-history.index');
     Route::get('/report-history/{report_history}/download', [ReportHistoryController::class, 'download'])->middleware('can:download reports')->name('report-history.download');
     Route::delete('/report-history/{report_history}', [ReportHistoryController::class, 'destroy'])->middleware('can:delete reports')->name('report-history.destroy');
@@ -148,22 +154,48 @@ Route::middleware('auth')->group(function () {
     Route::post('/company/channels/{channel}/delete', [CompanyController::class, 'destroyChannel'])->middleware('can:delete empresa');
     Route::post('/company/generate-invite', [CompanyController::class, 'generateInviteCode'])->middleware('can:edit empresa');
 
+    // Facebook (social connections)
+    Route::get('/facebook', [FacebookController::class, 'index'])->middleware('can:view empresa')->name('facebook.index');
+    Route::get('/facebook/comments', [FacebookController::class, 'comments'])->middleware('can:view empresa')->name('facebook.comments');
+    Route::post('/facebook/comments/reply', [FacebookController::class, 'reply'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.reply');
+    Route::post('/facebook/comments/hide', [FacebookController::class, 'hideComment'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.comments.hide');
+    Route::post('/facebook/comments/delete', [FacebookController::class, 'deleteComment'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.comments.delete');
+    Route::get('/facebook/messages', [FacebookController::class, 'messages'])->middleware('can:view empresa')->name('facebook.messages');
+    Route::post('/facebook/messages/send', [FacebookController::class, 'send'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.send');
+    Route::post('/facebook/publish', [FacebookController::class, 'publish'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.publish');
+    Route::post('/facebook/posts/update', [FacebookController::class, 'updatePost'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.posts.update');
+    Route::post('/facebook/posts/delete', [FacebookController::class, 'deletePost'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('facebook.posts.delete');
+    Route::post('/company/facebook/connect', [FacebookController::class, 'connect'])->middleware('can:edit empresa')->name('company.facebook.connect');
+    Route::post('/company/facebook/disconnect', [FacebookController::class, 'disconnect'])->middleware('can:edit empresa')->name('company.facebook.disconnect');
+
+    // Instagram (rides on the connected Facebook page token)
+    Route::get('/instagram', [InstagramController::class, 'index'])->middleware('can:view empresa')->name('instagram.index');
+    Route::get('/instagram/comments', [InstagramController::class, 'comments'])->middleware('can:view empresa')->name('instagram.comments');
+    Route::post('/instagram/comments/reply', [InstagramController::class, 'reply'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.reply');
+    Route::post('/instagram/comments/hide', [InstagramController::class, 'hideComment'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.comments.hide');
+    Route::post('/instagram/comments/delete', [InstagramController::class, 'deleteComment'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.comments.delete');
+    Route::post('/instagram/comments/like', [InstagramController::class, 'likeComment'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.comments.like');
+    Route::get('/instagram/messages', [InstagramController::class, 'messages'])->middleware('can:view empresa')->name('instagram.messages');
+    Route::post('/instagram/messages/send', [InstagramController::class, 'sendMessage'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.messages.send');
+    Route::post('/instagram/publish', [InstagramController::class, 'publish'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.publish');
+    Route::post('/instagram/media/delete', [InstagramController::class, 'deleteMedia'])->middleware('can:edit empresa')->middleware('throttle:10,1')->name('instagram.media.delete');
+
     // User Settings (per-user preferences)
     Route::get('/settings', [UserSettingsController::class, 'index'])->middleware('can:view configuracion')->name('settings.index');
     Route::put('/settings', [UserSettingsController::class, 'update'])->middleware('can:view configuracion')->name('settings.update');
-    Route::post('/settings/backup-schedule', [UserSettingsController::class, 'updateBackupSchedule'])->middleware('can:configure backup')->name('settings.backup-schedule');
 
     // YouTube
     Route::get('/youtube', [YoutubeController::class, 'index'])->middleware('can:view youtube')->name('youtube.index');
+    Route::get('/youtube/comments', [YoutubeController::class, 'comments'])->middleware('can:view youtube')->name('youtube.comments');
 
     // AI Generator
     Route::get('/ai', [AIController::class, 'index'])->middleware('can:generate ai')->name('ai.index');
-    Route::post('/ai/generate', [AIController::class, 'generateScript'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.generate');
-    Route::post('/ai/audio', [AudioController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.audio');
-    Route::post('/ai/copy', [CopyController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy');
-    Route::post('/ai/phrases', [PhrasesController::class, 'generate'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.phrases');
-    Route::post('/ai/copy-phrases', [PhrasesController::class, 'generateWithCopy'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.copy-phrases');
-    Route::post('/ai/create-task', [AIController::class, 'createTask'])->middleware(['can:generate ai', 'throttle:10,1'])->name('ai.create-task');
+    Route::post('/ai/generate', [AIController::class, 'generateScript'])->middleware(['can:generate ai', 'quota:ai.generate', 'throttle:10,1'])->name('ai.generate');
+    Route::post('/ai/audio', [AudioController::class, 'generate'])->middleware(['can:generate ai', 'quota:ai.audio', 'throttle:10,1'])->name('ai.audio');
+    Route::post('/ai/copy', [CopyController::class, 'generate'])->middleware(['can:generate ai', 'quota:ai.copy', 'throttle:10,1'])->name('ai.copy');
+    Route::post('/ai/phrases', [PhrasesController::class, 'generate'])->middleware(['can:generate ai', 'quota:ai.phrases', 'throttle:10,1'])->name('ai.phrases');
+    Route::post('/ai/copy-phrases', [PhrasesController::class, 'generateWithCopy'])->middleware(['can:generate ai', 'quota:ai.copy-phrases', 'throttle:10,1'])->name('ai.copy-phrases');
+    Route::post('/ai/create-task', [AIController::class, 'createTask'])->middleware(['can:generate ai', 'quota:ai.create-task', 'throttle:10,1'])->name('ai.create-task');
 
     Route::get('/ai/history', [AIController::class, 'history'])->middleware('can:view ai history')->name('ai.history');
     Route::get('/ai/history/{id}', [AIController::class, 'show'])->middleware('can:view ai history')->name('ai.show');
@@ -177,13 +209,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/vacations/{vacation}/reject', [VacationController::class, 'reject'])->middleware('can:reject vacations')->name('vacations.reject');
     Route::patch('/vacations/{vacation}', [VacationController::class, 'update'])->middleware('can:edit vacations')->name('vacations.update');
     Route::delete('/vacations/{vacation}', [VacationController::class, 'destroy'])->middleware('can:delete vacations')->name('vacations.destroy');
-
-    // Backups
-    Route::get('/backup', [BackupController::class, 'index'])->middleware('can:view backup')->name('backup.index');
-    Route::get('/backup/export', [BackupController::class, 'export'])->middleware('can:create backup')->name('backup.export');
-    Route::post('/backup/import', [BackupController::class, 'import'])->middleware('can:create backup')->name('backup.import');
-    Route::get('/backup/scheduled/{filename}/download', [BackupController::class, 'downloadScheduled'])->middleware('can:download backups')->name('backup.scheduled.download');
-    Route::delete('/backup/scheduled/{filename}', [BackupController::class, 'deleteScheduled'])->middleware('can:create backup')->name('backup.scheduled.delete');
 
     // Time Off
     Route::get('/time-off', [TimeOffController::class, 'index'])->middleware('can:view time off')->name('time-off.index');
@@ -199,6 +224,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/task-shares/unshare', [TaskShareController::class, 'unshare'])->middleware('can:edit planning')->name('task-shares.unshare');
     Route::post('/task-shares/{taskShare}/accept', [TaskShareController::class, 'accept'])->middleware('can:view planning')->name('task-shares.accept');
     Route::post('/task-shares/{taskShare}/reject', [TaskShareController::class, 'reject'])->middleware('can:view planning')->name('task-shares.reject');
+
+    // Admin console (Super Admin only)
+    Route::prefix('admin')->name('admin.')->middleware('role:Super Admin')->group(function () {
+        Route::get('/organizations', [AdminOrganizationController::class, 'index'])->name('organizations.index');
+        Route::patch('/organizations/{organization}/suspend', [AdminOrganizationController::class, 'suspend'])->name('organizations.suspend');
+        Route::patch('/organizations/{organization}/activate', [AdminOrganizationController::class, 'activate'])->name('organizations.activate');
+        Route::patch('/organizations/{organization}/plan', [AdminOrganizationController::class, 'setPlan'])->name('organizations.plan');
+    });
 });
 
 require __DIR__.'/auth.php';

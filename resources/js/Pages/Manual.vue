@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import {
     LayoutDashboard, Users, Shield, CalendarDays,
     Lightbulb, FileClock, Youtube, Settings, Building2, Sparkles,
-    BookOpen, ChevronRight, ArrowRight, Umbrella, CalendarClock, HardDrive
+    BookOpen, ArrowRight, Umbrella, CalendarClock, Video
 } from 'lucide-vue-next'
 
 const activeSection = ref('')
@@ -19,6 +20,8 @@ const sections = [
             'Resumen visual del rendimiento del equipo. Muestra métricas clave como tareas completadas, videos programados, y actividad reciente.',
             'Las cards se adaptan según los permisos del usuario: si no tienes permiso "view users", las secciones de usuarios se ocultan automáticamente sin dejar espacios vacíos.',
             'Incluye un gráfico de rendimiento circular con el porcentaje de completitud del periodo y las tareas del día.',
+            'Resumen semanal con IA: un botón genera un análisis de la semana (Resumen general, Lo que funcionó, Atención requerida, Próximos pasos) con Gemini, guardado en caché hasta el fin de semana.',
+            'El resumen considera las sesiones de trabajo: si todas las sesiones de una tarea están completadas, la tarea cuenta como "Completado" aunque su estado siga en "Edición". La IA señala en "Atención requerida" los estados desactualizados para que se actualicen.',
         ],
     },
     {
@@ -36,6 +39,23 @@ const sections = [
             'Restaurar tarea pendiente: haz clic en "Restaurar" para seleccionar una nueva fecha y bloque horario. La validación verifica que el bloque esté libre y que sea un día laborable.',
             'Compartir desde el sidebar: cada tarea tiene un icono de compartir que abre un modal para seleccionar usuarios y asignar roles (editor/lector).',
             'Gestionar sesiones desde el sidebar: las sesiones muestran botones de editar (modal inline) y eliminar directamente desde el calendario.',
+            'Sesión rápida: el botón "+ Sesión" abre un mini-modal para elegir fecha y bloque horario de la sesión. Si el bloque elegido está ocupado, se sugiere el primero libre. El idioma de la sesión se hereda del idioma de la tarea.',
+            'Chips de idioma: cada tarea y sesión se muestra en el calendario con el chip de su idioma (ES, EN, PT...), definido por el idioma de la tarea.',
+        ],
+    },
+    {
+        id: 'tasks',
+        icon: Video,
+        title: 'Tareas de video',
+        content: [
+            'Cada tarea tiene una vista de detalle en /tasks/{id} con guion, copy, video embebido (YouTube/TikTok), historial de cambios y sesiones de trabajo.',
+            'Sesiones de trabajo: registra el avance de la tarea en uno o varios días. Cada sesión tiene fecha, bloque horario, estado (en curso o completada) e idioma (heredado de la tarea).',
+            'Una tarea = un idioma: cada canal puede tener uno o varios idiomas (se configuran en Empresa) y al crear o editar la tarea se elige su idioma entre los del canal.',
+            'Cambiar el idioma: en el editor de tareas, el selector "Idioma" muestra los idiomas disponibles; si cambias de canal, el idioma se ajusta automáticamente a uno compatible con el nuevo canal.',
+            'Traducir con DeepL: en el detalle de tarea, el botón "Traducir" abre un modal para elegir idioma, canal destino (cualquier canal que soporte ese idioma, incluido el mismo), fecha y bloque. Se crea una nueva tarea (título, guion y copy traducidos con DeepL) vinculada a la original. Requiere permisos "create planning" y "generate ai", con 10 solicitudes por minuto.',
+            'Traducir desde una tarea existente: al crear una tarea, la sección "Traducir desde una tarea existente" permite buscar una tarea origen y rellenar el formulario con su contenido ya traducido al idioma seleccionado, quedando enlazadas.',
+            'Las tareas vinculadas por traducción se agrupan con un identificador común y se muestran en el detalle de cada tarea en la sección "Tareas vinculadas por traducción", con badges de Original/Actual y acceso directo a cada versión.',
+            'Desde la vista de detalle puedes compartir la tarea, moverla a Pendientes o restaurarla al calendario.',
         ],
     },
     {
@@ -75,6 +95,7 @@ const sections = [
         content: [
             'Registro de todos los reportes generados y descargados. Incluye reportes diarios, semanales, mensuales y anuales.',
             'Cada entrada muestra el tipo de reporte, fecha de generación, filtros aplicados y el archivo PDF para descargar.',
+            'Dentro del PDF, cada tarea y sesión de video indica su enlace de YouTube.',
         ],
     },
     {
@@ -95,7 +116,7 @@ const sections = [
             'Define roles con permisos específicos para controlar el acceso a cada sección del sistema.',
             'Los permisos disponibles incluyen: ver/crear/editar/eliminar para cada modulo.',
             'El rol "Super Admin" tiene todos los permisos (organization_id = null, alcance global).',
-            'Los permisos de configuración son granulares: "configure work hours", "configure youtube", "configure dashboard", "configure backup".',
+            'Los permisos de configuración son granulares: "configure work hours", "configure youtube", "configure dashboard".',
         ],
     },
     {
@@ -138,28 +159,16 @@ const sections = [
             'Horario laboral: define hora de inicio y fin de jornada, duración de bloques (1h, 2h), días laborables y bloques fijos o personalizados.',
             'YouTube: configuración del gráfico y máximo de videos recientes a mostrar.',
             'Dashboard: vista por defecto (semana/mes/año) y alcance de reporte predeterminado.',
-            'Idiomas: configura los idiomas disponibles para traducir título, script, copy y enlace de YouTube en las tareas de video. El español siempre está presente.',
-            'Backup: programación de backup automático (hora y día de la semana). Solo visible con permiso "configure backup".',
-        ],
-    },
-    {
-        id: 'backup',
-        icon: HardDrive,
-        title: 'Backup',
-        content: [
-            'Respaldo y restauración de datos. Accesible desde el icono de disco en el topbar.',
-            'Exporta todas las tablas del sistema (incluyendo sesiones de trabajo y permisos) a un archivo JSON descargable, con soporte para grandes volúmenes de datos mediante streaming y chunking.',
-            'Restauración: sube un archivo JSON de backup previo para restaurar los datos. El proceso valida que los datos correspondan a la organización correcta.',
-            'Backups programados: se generan automáticamente según la configuración de horario en Ajustes. Descarga o elimina backups desde la misma página.',
         ],
     },
 ]
 
 const generalTips = [
-    'Usa el panel lateral izquierdo para navegar entre las secciones. El orden sigue el flujo de trabajo: Panel, Planificación, YouTube, Ideas, Generador IA, Historial, Usuarios, Roles, Vacaciones, Permisos, Empresa, Configuración, Manual.',
-    'El topbar superior muestra tu empresa activa, el botón de Backup y tu perfil. Los Super Admins pueden cambiar de empresa desde el nombre de la empresa.',
+    'Usa el panel lateral izquierdo para navegar entre las secciones. El orden sigue el flujo de trabajo: Panel, Planificación, YouTube, Facebook, Instagram, Ausencias (Vacaciones y Permisos), Ideas, Generador IA, Historial, Usuarios, Roles, Empresa, Configuración, Manual. YouTube, Facebook, Instagram y Ausencias despliegan un submenú al hacer clic.',
+    'El topbar superior muestra tu empresa activa y tu perfil. Los Super Admins pueden cambiar de empresa desde el nombre de la empresa.',
     'Los permisos determinan qué secciones y acciones están disponibles. Contacta a un Super Admin si necesitas acceso a algo.',
     'Todas las acciones importantes muestran notificaciones de éxito/error en la parte superior de la pantalla.',
+    'Las confirmaciones, alertas y errores se muestran en modales del sistema (ventana con botón "Entendido"), no en ventanas emergentes del navegador.',
 ]
 
 function scrollTo(id) {
@@ -202,15 +211,19 @@ onUnmounted(() => {
 <template>
     <AppLayout>
         <div class="flex flex-col h-[calc(100vh-8rem)] sm:h-[calc(100vh-9.5rem)] w-full">
-            <div class="flex items-center gap-3 mb-6 shrink-0">
-                <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
-                    <BookOpen class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manual de Usuario</h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1">Guía completa de uso del sistema GrowthOS</p>
-                </div>
-            </div>
+            <PageHeader title="Manual de Usuario" subtitle="Guía completa de uso del sistema GrowthOS" class="mb-6 shrink-0">
+                <template #title>
+                    <span class="flex items-center gap-3">
+                        <span class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
+                            <BookOpen class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                        </span>
+                        <span>
+                            <span class="block text-3xl font-bold text-gray-900 dark:text-white">Manual de Usuario</span>
+                            <span class="block text-gray-500 dark:text-gray-400 mt-1">Guía completa de uso del sistema GrowthOS</span>
+                        </span>
+                    </span>
+                </template>
+            </PageHeader>
 
             <div class="flex gap-8 flex-1 min-h-0 w-full">
                 <nav class="hidden lg:block w-56 shrink-0">

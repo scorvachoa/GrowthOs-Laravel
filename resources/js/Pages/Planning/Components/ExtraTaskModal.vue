@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import TextInput from '@/Components/Forms/TextInput.vue'
+import SearchInput from '@/Components/Forms/SearchInput.vue'
 import { Trash2, Users, X } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -148,11 +150,7 @@ function submit() {
                     <button @click="emit('close')" class="text-gray-500 hover:text-gray-700 text-xl leading-none">&times;</button>
                 </div>
                 <form @submit.prevent="submit" class="space-y-4">
-                    <div>
-                        <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
-                        <input v-model="form.title" type="text" required
-                            class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
+                    <TextInput v-model="form.title" label="Título" required />
                     <div>
                         <label class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
                         <textarea v-model="form.description" rows="3" placeholder="Detalla lo que se hizo..."
@@ -200,9 +198,8 @@ function submit() {
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Compartir con</span>
                         </div>
                         <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">Solo los usuarios seleccionados podran ver esta tarea</p>
-                        <div class="relative mb-3">
-                            <input v-model="shareSearch" type="text" placeholder="Buscar usuario..."
-                                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                        <div class="mb-3">
+                            <SearchInput v-model="shareSearch" placeholder="Buscar usuario..." class="!w-full" />
                         </div>
                         <div v-if="selectedUsers.length" class="space-y-2 mb-3">
                             <div v-for="uid in selectedUsers" :key="uid"

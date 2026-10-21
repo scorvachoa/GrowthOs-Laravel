@@ -3,11 +3,14 @@
 namespace App\Http\Resources;
 
 use App\Enums\VideoTaskStatus;
+use App\Http\Resources\Concerns\RendersShares;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class VideoTaskResource extends JsonResource
 {
+    use RendersShares;
+
     public function toArray(Request $request): array
     {
         $data = [
@@ -16,13 +19,13 @@ class VideoTaskResource extends JsonResource
             'time_range' => $this->time_range,
             'title' => $this->title,
             'status' => $this->status,
-            'status_label' => VideoTaskStatus::labels()[$this->status] ?? $this->status,
+            'status_label' => VideoTaskStatus::labelFor($this->status),
             'script' => $this->script,
             'copy' => $this->copy,
-            'copy_ai_generated' => (bool) $this->copy_ai_generated,
+            'notes' => $this->notes,
             'key_phrases' => $this->key_phrases,
             'youtube_url' => $this->youtube_url,
-            'translations' => $this->translations,
+            'locale' => $this->locale ?: 'es',
             'created_by' => $this->created_by,
         ];
 
@@ -32,6 +35,7 @@ class VideoTaskResource extends JsonResource
                 'date' => $s->date->format('Y-m-d'),
                 'time_range' => $s->time_range,
                 'status' => $s->status,
+                'locale' => $s->locale,
             ]);
         }
 
@@ -40,31 +44,10 @@ class VideoTaskResource extends JsonResource
                 'id' => $this->channel->id,
                 'name' => $this->channel->name,
                 'color' => $this->channel->color,
+                'locales' => $this->channel->locales ?: ['es'],
             ];
         }
 
-        if ($this->relationLoaded('creator') && $this->creator) {
-            $data['creator'] = [
-                'id' => $this->creator->id,
-                'name' => $this->creator->name,
-            ];
-        }
-
-        if ($this->relationLoaded('shares')) {
-            $data['shared_user_ids'] = $this->shares->pluck('shared_with_user_id')->toArray();
-            $currentUserId = $request->user()?->id;
-            $myShare = $this->shares->firstWhere('shared_with_user_id', $currentUserId);
-            if ($myShare) {
-                $data['shared_by_user_name'] = $myShare->sharedByUser?->name;
-            }
-            $data['shared_with_users'] = $this->shares->map(fn ($s) => [
-                'id' => $s->shared_with_user_id,
-                'name' => $s->sharedWithUser?->name,
-                'accepted' => $s->isAccepted(),
-                'role' => $s->role,
-            ])->values()->all();
-        }
-
-        return $data;
+        return $this->withShares($request, $data);
     }
 }

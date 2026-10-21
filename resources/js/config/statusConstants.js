@@ -17,7 +17,7 @@ export const statusColors = {
 export const statusLabels = {
     pending: 'Pendiente',
     script_ready: 'Guion listo',
-    editing: 'Editando',
+    editing: 'Edición',
     review: 'Revisión',
     scheduled: 'Programado',
     in_progress: 'En progreso',

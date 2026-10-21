@@ -1,35 +1,32 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
-import { Plus, X, Check, AlertTriangle, Umbrella, Pencil, Search, Eye } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useAbsenceActions } from '@/Composables/useAbsenceActions'
+import { useDebounce } from '@/Composables/useDebounce'
+import { Plus, X, Check, AlertTriangle, Umbrella, Pencil, Eye } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDelete from '@/Components/Modals/ConfirmDelete.vue'
 import { statusColors, statusLabels } from '@/config/statusConstants'
 
 const props = defineProps({
     vacations: Array,
     remaining_days: Number,
-    can_approve: Boolean,
     filters: {
         type: Object,
         default: () => ({}),
     },
 })
 
-const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 
 const search = ref(props.filters?.search || '')
 
-let debounceTimer
-watch(search, (value) => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-        router.get('/vacations', { search: value }, { preserveState: true, replace: true })
-    }, 400)
+useDebounce(search, (value) => {
+    router.get('/vacations', { search: value }, { preserveState: true, replace: true })
 })
 
 const showForm = ref(false)
@@ -77,48 +74,7 @@ function openDetail(v) {
     showDetail.value = true
 }
 
-const showApprove = ref(false)
-const showReject = ref(false)
-const showDelete = ref(false)
-const targetItem = ref(null)
-
-function confirmApprove(v) {
-    targetItem.value = v
-    showApprove.value = true
-}
-
-function executeApprove() {
-    if (!targetItem.value) return
-    router.patch(`/vacations/${targetItem.value.id}/approve`, {}, {
-        preserveScroll: true,
-        onSuccess: () => { showApprove.value = false; targetItem.value = null },
-    })
-}
-
-function confirmReject(v) {
-    targetItem.value = v
-    showReject.value = true
-}
-
-function executeReject() {
-    if (!targetItem.value) return
-    router.patch(`/vacations/${targetItem.value.id}/reject`, {}, {
-        preserveScroll: true,
-        onSuccess: () => { showReject.value = false; targetItem.value = null },
-    })
-}
-
-function confirmDelete(v) {
-    targetItem.value = v
-    showDelete.value = true
-}
-
-function executeDelete() {
-    if (!targetItem.value) return
-    router.delete(`/vacations/${targetItem.value.id}`, {
-        onSuccess: () => { showDelete.value = false; targetItem.value = null },
-    })
-}
+const { showApprove, showReject, showDelete, targetItem, confirmApprove, executeApprove, confirmReject, executeReject, confirmDelete, executeDelete } = useAbsenceActions('/vacations')
 
 const showEdit = ref(false)
 const editingId = ref(null)
@@ -156,24 +112,20 @@ function submitEdit() {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Vacaciones</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Dias disponibles: <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ remaining_days }}</span> / 30
-                    </p>
-                    <div v-if="remaining_days === 0"
-                        class="mt-3 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-                        Ya has utilizado los 30 días de vacaciones de este año. Contacta con el administrador si deseas vacaciones anticipadas.
-                    </div>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <SearchInput v-model="search" />
-                    <button @click="openForm" :disabled="remaining_days === 0"
-                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Plus class="w-4 h-4" /> Solicitar
-                    </button>
-                </div>
+            <PageHeader title="Vacaciones">
+                <template #subtitle>
+                    Días disponibles: <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ remaining_days }}</span> / 30
+                </template>
+                <SearchInput v-model="search" />
+                <button @click="openForm" :disabled="remaining_days === 0"
+                    class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Plus class="w-4 h-4" /> Solicitar
+                </button>
+            </PageHeader>
+
+            <div v-if="remaining_days === 0"
+                class="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+                Ya has utilizado los 30 días de vacaciones de este año. Contacta con el administrador si deseas vacaciones anticipadas.
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">

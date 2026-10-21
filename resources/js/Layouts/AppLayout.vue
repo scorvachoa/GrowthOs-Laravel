@@ -3,15 +3,11 @@ import { ref, computed, provide, onUnmounted } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import Sidebar from '@/Components/Navigation/Sidebar.vue'
 import FlashMessage from '@/Components/UI/FlashMessage.vue'
+import ErrorModal from '@/Components/UI/ErrorModal.vue'
 import Topbar from '@/Components/Navigation/Topbar.vue'
-import { useTheme } from '@/Composables/useTheme'
 import { Building2, ArrowRight } from 'lucide-vue-next'
 
 const page = usePage()
-
-const { isDark, toggleDark } = useTheme()
-provide('isDark', isDark)
-provide('toggleDark', toggleDark)
 
 const sidebarCollapsed = ref(localStorage.getItem('sidebar_collapsed') === 'true')
 const mobileSidebarOpen = ref(false)
@@ -58,7 +54,6 @@ onUnmounted(() => {
 provide('sidebarCollapsed', sidebarCollapsed)
 provide('toggleSidebar', toggleSidebar)
 provide('mobileSidebarOpen', mobileSidebarOpen)
-provide('toggleMobileSidebar', toggleMobileSidebar)
 provide('closeMobileSidebar', closeMobileSidebar)
 </script>
 
@@ -84,6 +79,8 @@ provide('closeMobileSidebar', closeMobileSidebar)
                     @click="closeMobileSidebar"></div>
             </Transition>
         </Teleport>
+
+        <ErrorModal />
 
         <Teleport to="body">
             <Transition name="fade">

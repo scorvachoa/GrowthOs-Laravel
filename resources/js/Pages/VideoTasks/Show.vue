@@ -3,18 +3,24 @@ import { ref, computed, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
-import { Copy, Check, ExternalLink, Globe, Users, Share2, Pencil, Trash2, Plus, X, ArrowLeft, ChevronLeft, ChevronRight, Download } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, Users, Share2, Plus, X, ArrowLeft, ChevronLeft, ChevronRight, Download, Languages, Loader2 } from 'lucide-vue-next'
 import ShareModal from '@/Components/Modals/ShareModal.vue'
+import CompleteVideoUrlModal from '@/Pages/Planning/Components/CompleteVideoUrlModal.vue'
 import axios from 'axios'
+import { statusLabels } from '@/config/statusConstants'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useCopyFeedback } from '@/Composables/useCopyFeedback'
+import { useFormat } from '@/Composables/useFormat'
+import { localeLabel } from '@/config/localeLabels'
 
 const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
+const { formatDateTime } = useFormat()
 const currentUserId = page.props.auth?.user?.id
 const isAdmin = computed(() => {
     const roles = page.props.auth?.user?.roles ?? []
     return roles.includes('Super Admin') || roles.includes('Admin')
 })
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 const canDeleteTask = computed(() => props.task.created_by === currentUserId || isAdmin.value)
 
 const props = defineProps({
@@ -22,6 +28,7 @@ const props = defineProps({
     statuses: Array,
     channels: Array,
     activities: { type: Array, default: () => [] },
+    translation_history: { type: Array, default: () => [] },
     prev_task: { type: Object, default: null },
     next_task: { type: Object, default: null },
 })
@@ -46,6 +53,27 @@ const statusColor = (value) => {
 
 const showDeleteModal = ref(false)
 const showShareModal = ref(false)
+
+const showVideoUrlModal = ref(false)
+const publishing = ref(false)
+
+function openPublishModal() {
+    showVideoUrlModal.value = true
+}
+
+async function confirmPublish(url) {
+    if (publishing.value) return
+    publishing.value = true
+    try {
+        await axios.patch(`/tasks/${props.task.id}/status`, { status: 'published', youtube_url: url })
+        showVideoUrlModal.value = false
+        router.reload({ only: ['task'] })
+    } catch (e) {
+        console.error('Failed to publish task', e)
+    } finally {
+        publishing.value = false
+    }
+}
 
 const userSettings = computed(() => page.props.auth?.user?.settings ?? {})
 const useBlocks = computed(() => userSettings.value.use_blocks ?? true)
@@ -108,12 +136,7 @@ const confirmDelete = () => {
     })
 }
 
-const copiedKey = ref(null)
-function copyText(text, key) {
-    navigator.clipboard.writeText(text)
-    copiedKey.value = key
-    setTimeout(() => { copiedKey.value = null }, 1500)
-}
+const { copiedKey, copy: copyText } = useCopyFeedback()
 
 const expandedActivity = ref(null)
 
@@ -147,18 +170,6 @@ const attrLabels = {
     deleted_at: 'Eliminado',
 }
 
-const statusLabels = {
-    pending: 'Pendiente',
-    script_ready: 'Guion listo',
-    editing: 'Edición',
-    review: 'Revisión',
-    scheduled: 'Programado',
-    published: 'Publicado',
-    cancelled: 'Cancelado',
-    in_progress: 'En progreso',
-    completed: 'Completado',
-}
-
 function formatAttrValue(key, val) {
     if (val === null || val === '' || val === undefined) return null
     if (key === 'status') return statusLabels[val] || val
@@ -167,16 +178,9 @@ function formatAttrValue(key, val) {
         return ch ? ch.name : `Canal #${val}`
     }
     if (key === 'task_date') {
-        const d = new Date(val + (val.includes('T') ? '' : 'T00:00:00'))
-        return d.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        return formatDateTime(val)
     }
-    if (Array.isArray(val)) {
-        const userNames = val.map(id => {
-            const u = props.activities?.length ? null : null
-            return `#${id}`
-        })
-        return val.join(', ')
-    }
+    if (Array.isArray(val)) return val.join(', ')
     return String(val)
 }
 
@@ -221,9 +225,20 @@ async function saveEditSession() {
     }
 }
 
+const showDeleteSessionModal = ref(false)
+const deleteSessionTarget = ref(null)
+
 function deleteSession(session) {
-    if (!confirm('¿Eliminar esta sesión?')) return
-    axios.delete(`/tasks/${props.task.id}/sessions/${session.id}`).then(() => {
+    deleteSessionTarget.value = session
+    showDeleteSessionModal.value = true
+}
+
+function confirmDeleteSession() {
+    if (!deleteSessionTarget.value) return
+    const sessionId = deleteSessionTarget.value.id
+    showDeleteSessionModal.value = false
+    deleteSessionTarget.value = null
+    axios.delete(`/tasks/${props.task.id}/sessions/${sessionId}`).then(() => {
         router.reload({ only: ['task'] })
     }).catch(e => console.error('Failed to delete session', e))
 }
@@ -254,40 +269,69 @@ async function saveCreateSession() {
     }
 }
 
-const translations = computed(() => props.task.translations || {})
-const langs = computed(() => {
-    const keys = Object.keys(translations.value)
-    const withContent = keys.filter(k =>
-        translations.value[k]?.title ||
-        translations.value[k]?.script ||
-        translations.value[k]?.copy ||
-        translations.value[k]?.youtube_url
-    )
-    return ['es', ...withContent]
-})
-const langLabels = { es: 'ES', en: 'EN', pt: 'PT', fr: 'FR', de: 'DE', it: 'IT', ja: 'JA', ko: 'KO', zh: 'ZH' }
-const currentLang = ref('es')
+const showTranslateModal = ref(false)
+const translating = ref(false)
+const translateError = ref('')
+const translateLocale = ref('es')
+const translateChannelId = ref(null)
+const translateDate = ref(props.task.task_date)
+const translateTimeRange = ref('')
 
-const currentTitle = computed(() => {
-    if (currentLang.value === 'es') return props.task.title
-    return translations.value[currentLang.value]?.title || ''
-})
-const currentScript = computed(() => {
-    if (currentLang.value === 'es') return props.task.script
-    return translations.value[currentLang.value]?.script || ''
-})
-const currentCopy = computed(() => {
-    if (currentLang.value === 'es') return props.task.copy
-    return translations.value[currentLang.value]?.copy || ''
+const translateLocales = computed(() => {
+    const locales = [...new Set((props.channels || []).flatMap(c => c.locales || []))]
+    return locales.length ? locales : ['es']
 })
 
-const currentYoutubeUrl = computed(() => {
-    if (currentLang.value === 'es') return props.task.youtube_url
-    return translations.value[currentLang.value]?.youtube_url || ''
+const translateChannels = computed(() => {
+    const list = (props.channels || []).filter(c => (c.locales || []).includes(translateLocale.value))
+    if (list.length && !list.some(c => c.id === translateChannelId.value)) {
+        translateChannelId.value = list[0].id
+    }
+    return list
 })
+
+const canTranslateTask = computed(() => can('create planning') && can('generate ai'))
+
+function openTranslateModal() {
+    const locales = translateLocales.value
+    const taskLocale = props.task.locale || 'es'
+    translateLocale.value = locales.includes(taskLocale) ? taskLocale : (locales[0] || 'es')
+    translateChannelId.value = null
+    translateDate.value = props.task.task_date
+    translateTimeRange.value = ''
+    translateError.value = ''
+    showTranslateModal.value = true
+}
+
+async function submitTranslate() {
+    if (translating.value) return
+    translateError.value = ''
+    translating.value = true
+    try {
+        const res = await axios.post(`/tasks/${props.task.id}/translate`, {
+            locale: translateLocale.value,
+            channel_id: translateChannelId.value,
+            task_date: translateDate.value,
+            time_range: translateTimeRange.value,
+        })
+        showTranslateModal.value = false
+        if (res.data?.redirect) {
+            router.visit(res.data.redirect)
+        }
+    } catch (error) {
+        const data = error.response?.data
+        if (data?.errors) {
+            translateError.value = Object.values(data.errors).flat().join(' ')
+        } else {
+            translateError.value = data?.error || 'No se pudo traducir la tarea. Inténtalo de nuevo.'
+        }
+    } finally {
+        translating.value = false
+    }
+}
 
 const embedUrl = computed(() => {
-    const url = currentYoutubeUrl.value
+    const url = props.task.youtube_url
     if (!url) return null
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (ytMatch) return { src: `https://www.youtube.com/embed/${ytMatch[1]}`, type: 'youtube', shorts: url.includes('/shorts/') }
@@ -305,14 +349,17 @@ function exportTxt() {
     if (props.task.channel) lines.push(`CANAL: ${props.task.channel.name}`)
     lines.push('')
     lines.push('--- GUION ---')
-    lines.push(currentScript.value || 'Sin guion')
+    lines.push(props.task.script || 'Sin guion')
     lines.push('')
     lines.push('--- COPY / DESCRIPCIÓN ---')
-    lines.push(currentCopy.value || 'Sin copy')
-    if (currentYoutubeUrl.value) {
+    lines.push(props.task.copy || 'Sin copy')
+    lines.push('')
+    lines.push('--- NOTAS ---')
+    lines.push(props.task.notes || 'Sin notas')
+    if (props.task.youtube_url) {
         lines.push('')
         lines.push(`--- VIDEO ---`)
-        lines.push(currentYoutubeUrl.value)
+        lines.push(props.task.youtube_url)
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -357,10 +404,20 @@ function exportTxt() {
                         <Download class="w-4 h-4" />
                         TXT
                     </button>
+                    <button v-if="canTranslateTask" @click="openTranslateModal"
+                        class="px-4 py-2 rounded-xl border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-sm font-medium hover:bg-teal-50 dark:hover:bg-teal-900/30 transition flex items-center gap-2">
+                        <Languages class="w-4 h-4" />
+                        Traducir
+                    </button>
                     <button v-if="!task.shared_by_user_name" @click="showShareModal = true"
                         class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
                         <Share2 class="w-4 h-4" />
                         Compartir
+                    </button>
+                    <button v-if="can('edit planning')" @click="openPublishModal"
+                        class="px-4 py-2 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition flex items-center gap-2">
+                        <Check class="w-4 h-4" />
+                        Publicado
                     </button>
                     <Link v-if="can('edit planning')" :href="`/tasks/${task.id}/edit`"
                         class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">
@@ -410,29 +467,22 @@ function exportTxt() {
                 </div>
             </div>
 
-            <!-- Language tabs -->
-            <div v-if="langs.length > 1" class="flex items-center gap-1">
-                <button v-for="lang in langs" :key="lang" @click="currentLang = lang"
-                    class="px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5"
-                    :class="currentLang === lang
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'">
-                    <Globe class="w-3 h-3" />
-                    {{ langLabels[lang] || lang.toUpperCase() }}
-                </button>
-            </div>
-
             <!-- Title card -->
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Título del video</h2>
-                    <button @click="copyText(currentTitle, 'title')"
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Título del video</h2>
+                        <span v-if="task.locale" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+                            {{ localeLabel(task.locale) }}
+                        </span>
+                    </div>
+                    <button @click="copyText(task.title, 'title')"
                         class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                         <Check v-if="copiedKey === 'title'" class="w-4 h-4 text-green-500" />
                         <Copy v-else class="w-4 h-4" />
                     </button>
                 </div>
-                <p class="text-gray-900 dark:text-white font-medium">{{ currentTitle }}</p>
+                <p class="text-gray-900 dark:text-white font-medium">{{ task.title }}</p>
             </div>
 
             <!-- Content grid -->
@@ -441,27 +491,29 @@ function exportTxt() {
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Guion</h2>
-                        <button v-if="currentScript" @click="copyText(currentScript, 'script')"
+                        <button v-if="task.script" @click="copyText(task.script, 'script')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'script'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
                         </button>
                     </div>
-                    <p v-if="currentScript" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ currentScript }}</p>
+                    <p v-if="task.script" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.script }}</p>
                     <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin guion</p>
                 </div>
 
                 <!-- Copy -->
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                     <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Copy / Descripción</h2>
-                        <button v-if="currentCopy" @click="copyText(currentCopy, 'copy')"
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Copy / Descripción</h2>
+                        </div>
+                        <button v-if="task.copy" @click="copyText(task.copy, 'copy')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'copy'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
                         </button>
                     </div>
-                    <p v-if="currentCopy" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ currentCopy }}</p>
+                    <p v-if="task.copy" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.copy }}</p>
                     <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin copy</p>
                 </div>
 
@@ -469,7 +521,7 @@ function exportTxt() {
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 flex flex-col">
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Video</h2>
-                        <button v-if="currentYoutubeUrl" @click="copyText(currentYoutubeUrl, 'url')"
+                        <button v-if="task.youtube_url" @click="copyText(task.youtube_url, 'url')"
                             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                             <Check v-if="copiedKey === 'url'" class="w-4 h-4 text-green-500" />
                             <Copy v-else class="w-4 h-4" />
@@ -487,13 +539,29 @@ function exportTxt() {
                         frameborder="0"
                         allowfullscreen>
                     </iframe>
-                    <a v-if="currentYoutubeUrl" :href="currentYoutubeUrl" target="_blank"
+                    <a v-if="task.youtube_url" :href="task.youtube_url" target="_blank"
                         class="mt-2 text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 truncate inline-flex items-center gap-1">
                         <ExternalLink class="w-3 h-3 flex-shrink-0" />
-                        {{ currentYoutubeUrl }}
+                        {{ task.youtube_url }}
                     </a>
-                    <p v-if="!currentYoutubeUrl" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
+                    <p v-if="!task.youtube_url" class="text-gray-400 dark:text-gray-500 text-sm italic text-center py-10 mt-auto">Sin enlace de video</p>
                 </div>
+            </div>
+
+            <!-- Notas -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Notas</h2>
+                    </div>
+                    <button v-if="task.notes" @click="copyText(task.notes, 'notes')"
+                        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                        <Check v-if="copiedKey === 'notes'" class="w-4 h-4 text-green-500" />
+                        <Copy v-else class="w-4 h-4" />
+                    </button>
+                </div>
+                <p v-if="task.notes" class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm leading-relaxed">{{ task.notes }}</p>
+                <p v-else class="text-gray-400 dark:text-gray-500 text-sm italic">Sin notas</p>
             </div>
 
             <!-- Sessions -->
@@ -508,6 +576,9 @@ function exportTxt() {
                         <div class="flex-1 flex items-center gap-4">
                             <span class="text-gray-700 dark:text-gray-300 font-medium">{{ task.task_date }}</span>
                             <span class="text-gray-500 dark:text-gray-400">{{ task.time_range || '—' }}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-medium">
+                                {{ localeLabel(task.locale) }}
+                            </span>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">
                                 Inicial
                             </span>
@@ -518,6 +589,9 @@ function exportTxt() {
                         <div class="flex-1 flex items-center gap-4">
                             <span class="text-gray-700 dark:text-gray-300 font-medium">{{ session.date }}</span>
                             <span class="text-gray-500 dark:text-gray-400">{{ session.time_range || '—' }}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-medium">
+                                {{ localeLabel(session.locale) }}
+                            </span>
                             <span class="text-xs px-2 py-0.5 rounded-full font-medium"
                                 :class="session.status === 'completed'
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
@@ -539,6 +613,45 @@ function exportTxt() {
                     class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition flex items-center gap-1.5">
                     <Plus class="w-3.5 h-3.5" /> Agregar sesión
                 </button>
+            </div>
+
+            <!-- Translation history -->
+            <div v-if="translation_history.length > 1" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <div class="flex items-center gap-2 mb-4">
+                    <Languages class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tareas vinculadas por traducción</h3>
+                </div>
+                <div class="space-y-2">
+                    <div v-for="item in translation_history" :key="item.id"
+                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm border transition"
+                        :class="item.is_self
+                            ? 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-900/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer'"
+                        @click="!item.is_self && router.visit(`/tasks/${item.id}`)">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+                            {{ localeLabel(item.locale) }}
+                        </span>
+                        <span v-if="item.is_original"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            Original
+                        </span>
+                        <span v-if="item.is_self"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                            Actual
+                        </span>
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: item.channel_color || '#94a3b8' }"></span>
+                        <span class="flex-1 min-w-0 truncate text-gray-800 dark:text-gray-200 font-medium">{{ item.title }}</span>
+                        <span class="text-xs text-gray-400 shrink-0">{{ item.channel_name || 'Sin canal' }}</span>
+                        <span class="text-xs text-gray-400 shrink-0">{{ item.task_date }} · {{ item.time_range || '—' }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" :class="statusColor(item.status)">
+                            {{ item.status_label }}
+                        </span>
+                        <a v-if="item.youtube_url" :href="item.youtube_url" target="_blank" @click.stop
+                            class="text-gray-400 hover:text-red-600 dark:hover:text-red-400 shrink-0">
+                            <ExternalLink class="w-4 h-4" />
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Activity log -->
@@ -595,6 +708,14 @@ function exportTxt() {
                 @confirm="confirmDelete"
             />
 
+            <ConfirmDeleteModal
+                :show="showDeleteSessionModal"
+                title="Eliminar sesión"
+                message="¿Eliminar esta sesión de trabajo?"
+                @close="showDeleteSessionModal = false"
+                @confirm="confirmDeleteSession"
+            />
+
             <ShareModal
                 :show="showShareModal"
                 :shareable-type="'video_tasks'"
@@ -602,6 +723,14 @@ function exportTxt() {
                 :current-shares="task.shared_with_users || []"
                 @close="showShareModal = false"
                 @saved="router.reload({ only: ['task'] })"
+            />
+
+            <CompleteVideoUrlModal
+                :show="showVideoUrlModal"
+                :task="task"
+                :confirm-label="publishing ? 'Guardando...' : 'Publicar'"
+                @close="showVideoUrlModal = false"
+                @confirm="confirmPublish"
             />
 
             <Teleport to="body">
@@ -680,6 +809,72 @@ function exportTxt() {
                                 class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition"
                                 :disabled="savingSession">
                                 {{ savingSession ? 'Guardando...' : 'Guardar sesión' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Teleport>
+            <Teleport to="body">
+                <div v-if="showTranslateModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="showTranslateModal = false">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
+                        <div class="flex items-center gap-2 mb-4">
+                            <Languages class="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Traducir tarea</h3>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                            Se creará una nueva tarea en el idioma y canal elegidos, vinculada a esta. Título, guion y copy se traducirán con DeepL.
+                        </p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Idioma destino</label>
+                                <select v-model="translateLocale"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option v-for="lang in translateLocales" :key="lang" :value="lang">
+                                        {{ localeLabel(lang) }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Canal destino</label>
+                                <select v-model="translateChannelId"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option v-for="ch in translateChannels" :key="ch.id" :value="ch.id">{{ ch.name }}</option>
+                                </select>
+                                <p v-if="!translateChannels.length" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                    No hay canales con el idioma {{ localeLabel(translateLocale) }}.
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</label>
+                                <input v-model="translateDate" type="date"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            <div v-if="useBlocks">
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Bloque horario</label>
+                                <select v-model="translateTimeRange"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option :value="''">Seleccionar bloque...</option>
+                                    <option v-for="block in workBlocks" :key="block" :value="block">{{ block }}</option>
+                                </select>
+                            </div>
+                            <div v-else>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Horario (ej. 10:00-12:00)</label>
+                                <input v-model="translateTimeRange" type="text" placeholder="10:00-12:00"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                        </div>
+                        <p v-if="translateError" class="mt-3 text-sm text-red-500">{{ translateError }}</p>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" @click="showTranslateModal = false"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition">
+                                Cancelar
+                            </button>
+                            <button type="button" @click="submitTranslate"
+                                :disabled="translating || !translateChannelId || !translateTimeRange"
+                                class="px-4 py-2 text-sm font-medium bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <Loader2 v-if="translating" class="w-4 h-4 animate-spin" />
+                                <Languages v-else class="w-4 h-4" />
+                                {{ translating ? 'Traduciendo...' : 'Traducir' }}
                             </button>
                         </div>
                     </div>

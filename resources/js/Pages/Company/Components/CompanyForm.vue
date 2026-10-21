@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import TextInput from '@/Components/Forms/TextInput.vue'
 import { Building2, Upload } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -60,12 +61,8 @@ function submit() {
 
 <template>
     <form @submit.prevent="submit" class="space-y-6">
-        <div>
-            <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de la empresa</label>
-            <input v-model="form.name" type="text" required :placeholder="isEditing ? '' : 'Ej: Mi Empresa S.A.'"
-                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-            <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
-        </div>
+        <TextInput v-model="form.name" label="Nombre de la empresa" required
+            :placeholder="isEditing ? '' : 'Ej: Mi Empresa S.A.'" :error="errors.name" />
 
         <div>
             <label class="block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Logo de empresa</label>

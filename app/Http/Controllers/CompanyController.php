@@ -8,15 +8,18 @@ use App\Http\Requests\UpdateOrganizationRequest;
 use App\Models\Channel;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Facebook\AuthService;
+use App\Services\RoleProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class CompanyController extends Controller
 {
-    public function index()
+    public function index(AuthService $facebook)
     {
         $user = Auth::user();
 
@@ -37,17 +40,12 @@ class CompanyController extends Controller
                 'isSuperAdmin' => true,
                 'organization' => null,
                 'channels' => [],
+                'facebook' => null,
             ]);
         }
 
         $org = Organization::find($user->organization_id);
-        $channels = Channel::query()->orderBy('name')->get()->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'color' => $c->color,
-            'youtube_channel_id' => $c->youtube_channel_id,
-            'channel_url' => $c->channel_url,
-        ]);
+        $channels = Channel::query()->orderBy('name')->get()->map(fn ($c) => $this->serializeChannel($c));
 
         return Inertia::render('Company/Index', [
             'companies' => null,
@@ -61,6 +59,7 @@ class CompanyController extends Controller
                 'invite_code' => $org->invite_code,
             ] : null,
             'channels' => $channels,
+            'facebook' => $org ? $facebook->pageInfo($org->id) : null,
         ]);
     }
 
@@ -73,6 +72,8 @@ class CompanyController extends Controller
 
     public function store(StoreOrganizationRequest $request)
     {
+        $this->authorize('create', Organization::class);
+
         $data = $request->validated();
         $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $data['name']), 0, 5)).'-'.random_int(10000, 99999);
 
@@ -82,25 +83,24 @@ class CompanyController extends Controller
             'admin_invite_code' => $code,
         ]);
 
+        app(RoleProvisioningService::class)->ensureDefaultsFor($org->id);
+
         if ($request->hasFile('logo')) {
             $org->update(['logo_path' => $request->file('logo')->store('logos', 'public')]);
         }
+
+        // El selector de empresas del Super Admin se cachea en HandleInertiaRequests.
+        Cache::forget('inertia:companies');
 
         return redirect()->route('company.index')
             ->with('success', "Empresa \"{$org->name}\" creada. Código admin: $code");
     }
 
-    public function show(Organization $company)
+    public function show(Organization $company, AuthService $facebook)
     {
         $this->authorize('view', $company);
 
-        $channels = Channel::where('organization_id', $company->id)->orderBy('name')->get()->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'color' => $c->color,
-            'youtube_channel_id' => $c->youtube_channel_id,
-            'channel_url' => $c->channel_url,
-        ]);
+        $channels = Channel::where('organization_id', $company->id)->orderBy('name')->get()->map(fn ($c) => $this->serializeChannel($c));
 
         return Inertia::render('Company/Index', [
             'companies' => null,
@@ -114,6 +114,7 @@ class CompanyController extends Controller
                 'invite_code' => $company->invite_code,
             ],
             'channels' => $channels,
+            'facebook' => $facebook->pageInfo($company->id),
         ]);
     }
 
@@ -154,6 +155,8 @@ class CompanyController extends Controller
 
         $company->save();
 
+        Cache::forget('inertia:companies');
+
         return redirect()->route('company.index')->with('success', 'Empresa actualizada');
     }
 
@@ -168,6 +171,8 @@ class CompanyController extends Controller
 
         $company->channels()->delete();
         $company->delete();
+        YoutubeController::bustCache();
+        Cache::forget('inertia:companies');
 
         return redirect()->route('company.index')->with('success', 'Empresa eliminada');
     }
@@ -175,6 +180,7 @@ class CompanyController extends Controller
     public function storeChannel(StoreChannelRequest $request)
     {
         Channel::create($request->validated());
+        YoutubeController::bustCache();
 
         return redirect()->back()->with('success', 'Canal creado');
     }
@@ -182,6 +188,7 @@ class CompanyController extends Controller
     public function updateChannel(StoreChannelRequest $request, Channel $channel)
     {
         $channel->update($request->validated());
+        YoutubeController::bustCache();
 
         return redirect()->back()->with('success', 'Canal actualizado');
     }
@@ -189,6 +196,7 @@ class CompanyController extends Controller
     public function destroyChannel(Channel $channel)
     {
         $channel->delete();
+        YoutubeController::bustCache();
 
         return redirect()->back()->with('success', 'Canal eliminado');
     }
@@ -223,5 +231,17 @@ class CompanyController extends Controller
         $org->update(['invite_code' => $code]);
 
         return redirect()->back()->with('success', "Código de invitación generado: $code");
+    }
+
+    private function serializeChannel(Channel $channel): array
+    {
+        return [
+            'id' => $channel->id,
+            'name' => $channel->name,
+            'color' => $channel->color,
+            'locales' => $channel->locales ?: ['es'],
+            'youtube_channel_id' => $channel->youtube_channel_id,
+            'channel_url' => $channel->channel_url,
+        ];
     }
 }

@@ -1,15 +1,18 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useDebounce } from '@/Composables/useDebounce'
+import { useFormat } from '@/Composables/useFormat'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
+import AlertModal from '@/Components/Modals/AlertModal.vue'
 import UseTaskModal from '@/Components/AI/UseTaskModal.vue'
 import { ChevronLeft, ChevronRight, Sparkles, FileText, CopyCheck, Quote, Eye, Trash2, Download, CalendarPlus, Search, CalendarCheck, History as HistoryIcon, Filter } from 'lucide-vue-next'
 import axios from 'axios'
 
-const page = usePage()
-const permissions = page.props.auth?.user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
+const { can } = usePermissions()
 
 const props = defineProps({
     videos: Object,
@@ -24,7 +27,18 @@ const hasScript = ref(props.filters?.has_script === '1')
 const hasCopy = ref(props.filters?.has_copy === '1')
 const hasPhrases = ref(props.filters?.has_phrases === '1')
 const usedFilter = ref(props.filters?.used_in_planner || '')
-let searchTimer = null
+
+const hasActiveFilters = computed(() =>
+    Boolean(search.value.trim()) || hasScript.value || hasCopy.value || hasPhrases.value || Boolean(usedFilter.value)
+)
+function clearFilters() {
+    search.value = ''
+    hasScript.value = false
+    hasCopy.value = false
+    hasPhrases.value = false
+    usedFilter.value = ''
+    applyFilters()
+}
 
 function applyFilters() {
     router.get('/ai/history', {
@@ -36,10 +50,7 @@ function applyFilters() {
     }, { preserveState: true, replace: true })
 }
 
-watch(search, () => {
-    clearTimeout(searchTimer)
-    searchTimer = setTimeout(() => applyFilters(), 400)
-})
+useDebounce(search, applyFilters)
 
 const modalVideoId = ref(null)
 const modalIdea = ref('')
@@ -57,6 +68,7 @@ function downloadTxt(id) {
 
 const deleteTargetId = ref(null)
 const showDeleteModal = computed(() => deleteTargetId.value !== null)
+const errorMessage = ref(null)
 
 function deleteVideo(id) {
     deleteTargetId.value = id
@@ -69,19 +81,12 @@ async function executeDelete() {
         router.reload({ preserveState: true })
         deleteTargetId.value = null
     } catch {
-        alert('Error al eliminar')
+        errorMessage.value = 'Error al eliminar'
         deleteTargetId.value = null
     }
 }
 
-const formatDate = (dateStr) => {
-    if (!dateStr) return '—'
-    const d = new Date(dateStr)
-    return d.toLocaleDateString('es-PE', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    })
-}
+const { formatDateTime: formatDate } = useFormat()
 
 const activeFilters = computed(() => {
     let count = 0
@@ -97,24 +102,24 @@ const activeFilters = computed(() => {
     <AppLayout>
         <div class="space-y-6">
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <div class="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
+            <PageHeader title="Historial de generaciones">
+                <template #title>
+                    <span class="flex items-center gap-3">
+                        <span class="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
                             <HistoryIcon class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        Historial de generaciones
-                    </h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1 ml-11">
-                        {{ videos.total || 0 }} registros en total
-                    </p>
-                </div>
+                        </span>
+                        <span class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Historial de generaciones</span>
+                    </span>
+                </template>
+                <template #subtitle>
+                    {{ videos.total || 0 }} registros en total
+                </template>
                 <button @click="router.get('/ai')"
                     class="shrink-0 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition flex items-center gap-2 shadow-sm shadow-indigo-200 dark:shadow-indigo-900/50">
                     <Sparkles class="w-4 h-4" />
                     Nuevo
                 </button>
-            </div>
+            </PageHeader>
 
             <!-- Filters -->
             <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
@@ -241,7 +246,11 @@ const activeFilters = computed(() => {
                                             <HistoryIcon class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                                         </div>
                                         <p class="text-gray-500 dark:text-gray-400 font-medium">No hay generaciones en el historial</p>
-                                        <button @click="router.get('/ai')"
+                                        <button v-if="hasActiveFilters" @click="clearFilters"
+                                            class="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">
+                                            Limpiar filtros
+                                        </button>
+                                        <button v-else @click="router.get('/ai')"
                                             class="mt-3 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">
                                             Ir al generador
                                         </button>
@@ -255,7 +264,7 @@ const activeFilters = computed(() => {
                 <!-- Pagination -->
                 <div v-if="videos.last_page > 1" class="flex items-center justify-between px-5 py-4 border-t border-gray-100 dark:border-gray-800">
                     <span class="text-xs text-gray-500 dark:text-gray-400">
-                        Pagina {{ videos.current_page }} de {{ videos.last_page }}
+                        Página {{ videos.current_page }} de {{ videos.last_page }}
                         <span class="text-gray-400 dark:text-gray-500">({{ videos.total }} registros)</span>
                     </span>
                     <div class="flex gap-1">
@@ -280,6 +289,13 @@ const activeFilters = computed(() => {
             message="¿Eliminar este registro del historial?"
             @close="deleteTargetId = null"
             @confirm="executeDelete"
+        />
+
+        <AlertModal
+            :show="errorMessage !== null"
+            title="Error"
+            :message="errorMessage || ''"
+            @close="errorMessage = null"
         />
 
         <UseTaskModal

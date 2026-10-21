@@ -1,20 +1,33 @@
 <script setup>
+import { ref } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
+import { useModalA11y } from '@/Composables/useModalA11y'
 
-defineProps({
+const props = defineProps({
     show: Boolean,
     title: { type: String, default: 'Eliminar' },
     message: { type: String, default: null },
 })
 
 const emit = defineEmits(['confirm', 'close'])
+
+const dialogRef = ref(null)
+
+useModalA11y(dialogRef, () => props.show, () => emit('close'))
 </script>
 
 <template>
     <Teleport to="body">
         <Transition name="fade">
             <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="emit('close')">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4">
+                <div
+                    ref="dialogRef"
+                    role="alertdialog"
+                    aria-modal="true"
+                    :aria-label="title"
+                    tabindex="-1"
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 mx-4 outline-none"
+                >
                     <div class="flex items-center gap-3 mb-4">
                         <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900">
                             <Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />

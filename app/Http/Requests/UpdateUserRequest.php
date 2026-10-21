@@ -32,7 +32,7 @@ class UpdateUserRequest extends FormRequest
                     ->ignore($this->route('user')),
             ],
             'password' => ['nullable', 'min:8'],
-            'role' => ['nullable'],
+            'role' => ['nullable', 'string'],
         ];
     }
 }

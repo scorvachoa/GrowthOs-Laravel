@@ -40,6 +40,11 @@ enum VideoTaskStatus: string
         return $result;
     }
 
+    public static function labelFor(string $status): string
+    {
+        return self::labels()[$status] ?? $status;
+    }
+
     public static function options(): array
     {
         return array_map(fn (self $case) => [

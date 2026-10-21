@@ -3,6 +3,8 @@ import { ref, computed, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
+import { useDebounce } from '@/Composables/useDebounce'
 import Pagination from '@/Components/UI/Pagination.vue'
 import { Bell, Share2, Search, Eye, CheckCircle, XCircle, RefreshCw, Video, FileText, Clock } from 'lucide-vue-next'
 
@@ -22,6 +24,13 @@ const statusFilter = ref(props.filters?.status || '')
 const typeFilter = ref(props.filters?.type || '')
 const perPage = ref(15)
 
+const hasActiveFilters = computed(() => Boolean(search.value.trim()) || Boolean(statusFilter.value) || Boolean(typeFilter.value))
+function clearFilters() {
+    search.value = ''
+    statusFilter.value = ''
+    typeFilter.value = ''
+}
+
 const showDetail = ref(false)
 const selectedNotif = ref(null)
 const processing = ref(false)
@@ -37,11 +46,7 @@ function load() {
     router.get('/notifications', params, { preserveState: true, replace: true })
 }
 
-let debounceTimer
-watch(search, () => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(load, 400)
-})
+useDebounce(search, load)
 watch(statusFilter, load)
 watch(typeFilter, load)
 watch(perPage, load)
@@ -125,9 +130,7 @@ const paginatedData = computed(() => activeTab.value === 'notifications' ? props
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Notificaciones</h1>
-            </div>
+            <PageHeader title="Notificaciones" />
 
             <!-- Tabs -->
             <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
@@ -263,7 +266,13 @@ const paginatedData = computed(() => activeTab.value === 'notifications' ? props
                                     </td>
                                 </tr>
                                 <tr v-if="!notifications?.data?.length">
-                                    <td colspan="5" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 text-sm italic">No hay notificaciones</td>
+                                    <td colspan="5" class="px-4 py-16 text-center text-gray-400 dark:text-gray-500 text-sm italic">
+                                        <p>{{ hasActiveFilters ? 'No hay notificaciones que coincidan con tu búsqueda' : 'No hay notificaciones' }}</p>
+                                        <button v-if="hasActiveFilters" @click="clearFilters"
+                                            class="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition not-italic">
+                                            Limpiar filtros
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -321,7 +330,11 @@ const paginatedData = computed(() => activeTab.value === 'notifications' ? props
                         <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-3">
                             <Share2 class="w-6 h-6 text-gray-300 dark:text-gray-500" />
                         </div>
-                        <p class="text-gray-400 dark:text-gray-500 text-sm">No hay compartidos</p>
+                        <p class="text-gray-400 dark:text-gray-500 text-sm">{{ hasActiveFilters ? 'No hay compartidos que coincidan con tu búsqueda' : 'No hay compartidos' }}</p>
+                        <button v-if="hasActiveFilters" @click="clearFilters"
+                            class="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">
+                            Limpiar filtros
+                        </button>
                     </div>
                 </div>
             </div>

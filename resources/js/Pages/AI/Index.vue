@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import { router, usePage } from '@inertiajs/vue3'
 import UseTaskModal from '@/Components/AI/UseTaskModal.vue'
 import axios from 'axios'
@@ -126,10 +127,10 @@ function buildExportContent() {
         script.value.trim() || 'Sin guion.',
         '',
         'COPY',
-        `Titulo: ${copyTitle.value || 'Sin titulo.'}`,
+        `Título: ${copyTitle.value || 'Sin título.'}`,
         '',
-        'Descripcion',
-        descText || 'Sin descripcion.',
+        'Descripción',
+        descText || 'Sin descripción.',
         '',
         'Tags',
         copyTags.value || 'Sin tags.',
@@ -142,7 +143,7 @@ function buildExportContent() {
 async function generateScript() {
     const ideaText = idea.value.trim()
     if (ideaText.length < 3) {
-        showToast('Escribe una idea mas especifica.', 'error')
+        showToast('Escribe una idea más específica.', 'error')
         return
     }
 
@@ -171,7 +172,7 @@ function skeletonLines(count) {
 
 async function generateCopyAction() {
     if (!hasValidScript.value) {
-        showToast('Primero genera o escribe un guion mas completo.', 'error')
+        showToast('Primero genera o escribe un guion más completo.', 'error')
         return
     }
 
@@ -195,7 +196,7 @@ async function generateCopyAction() {
 
 async function generatePhrasesAction() {
     if (!hasValidScript.value) {
-        showToast('Primero genera o escribe un guion mas completo.', 'error')
+        showToast('Primero genera o escribe un guion más completo.', 'error')
         return
     }
 
@@ -214,7 +215,7 @@ async function generatePhrasesAction() {
 
 async function downloadAudio() {
     if (!hasValidScript.value) {
-        showToast('Primero genera o escribe un guion mas completo.', 'error')
+        showToast('Primero genera o escribe un guion más completo.', 'error')
         return
     }
 
@@ -285,24 +286,21 @@ async function copyText(text, emptyMessage, successMessage) {
     <AppLayout>
         <div class="space-y-6">
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <div class="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
+            <PageHeader title="Generador de guiones" subtitle="Genera guiones, copy y frases para YouTube Shorts con Gemini IA">
+                <template #title>
+                    <span class="flex items-center gap-3">
+                        <span class="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
                             <Wand2 class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        Generador de guiones
-                    </h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1 ml-11">
-                        Genera guiones, copy y frases para YouTube Shorts con Gemini IA
-                    </p>
-                </div>
+                        </span>
+                        <span class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Generador de guiones</span>
+                    </span>
+                </template>
                 <button v-if="can('view ai history')" @click="router.get('/ai/history')"
                     class="shrink-0 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2 shadow-sm">
                     <History class="w-4 h-4" />
                     Historial
                 </button>
-            </div>
+            </PageHeader>
 
             <!-- Step Indicator -->
             <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
@@ -361,7 +359,7 @@ async function copyText(text, emptyMessage, successMessage) {
                         <div class="p-5">
                             <textarea
                                 v-model="idea"
-                                placeholder="Ejemplo: Los 3 errores mas comunes al visitar Machu Picchu..."
+                                placeholder="Ejemplo: Los 3 errores más comunes al visitar Machu Picchu..."
                                 rows="4"
                                 class="w-full resize-y rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             ></textarea>
@@ -391,7 +389,7 @@ async function copyText(text, emptyMessage, successMessage) {
                             </div>
                             <div class="flex items-center gap-1.5">
                                 <button
-                                    @click="copyText(script.trim(), 'Todavia no hay guion para copiar.', 'Guion copiado.')"
+                                    @click="copyText(script.trim(), 'Todavía no hay guion para copiar.', 'Guion copiado.')"
                                     class="px-2.5 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
                                 >Copiar</button>
                                 <button
@@ -419,7 +417,7 @@ async function copyText(text, emptyMessage, successMessage) {
                                 ref="scriptRef"
                                 v-model="script"
                                 @input="autoResize($event.target)"
-                                placeholder="Aqui aparecera el guion editable para narrar con voz IA..."
+                                placeholder="Aquí aparecerá el guion editable para narrar con voz IA..."
                                 class="w-full resize-none overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition placeholder:text-gray-400 dark:placeholder:text-gray-500 font-mono"
                             ></textarea>
                             <p v-if="loadingAudio" class="mt-2 text-xs text-indigo-500 flex items-center gap-1">
@@ -440,7 +438,7 @@ async function copyText(text, emptyMessage, successMessage) {
                                 </div>
                                 <div>
                                     <h3 class="text-sm font-bold text-gray-900 dark:text-white">Copy para redes</h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Titulo, descripcion, hashtags y tags</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Título, descripción, hashtags y tags</p>
                                 </div>
                             </div>
                             <button
@@ -467,24 +465,24 @@ async function copyText(text, emptyMessage, successMessage) {
                                 <!-- Title -->
                                 <div class="mb-4">
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Titulo</span>
-                                        <button @click="copyText(copyTitle, 'No hay titulo para copiar.', 'Titulo copiado.')"
+                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título</span>
+                                        <button @click="copyText(copyTitle, 'No hay título para copiar.', 'Título copiado.')"
                                             class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">Copiar</button>
                                     </div>
                                     <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ copyTitle || 'El titulo aparecera aqui.' }}</p>
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ copyTitle || 'El título aparecerá aquí.' }}</p>
                                     </div>
                                 </div>
 
                                 <!-- Description -->
                                 <div class="mb-4">
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Descripcion</span>
-                                        <button @click="copyText(copyDescriptionText, 'No hay descripcion para copiar.', 'Descripcion copiada.')"
+                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Descripción</span>
+                                        <button @click="copyText(copyDescriptionText, 'No hay descripción para copiar.', 'Descripción copiada.')"
                                             class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">Copiar</button>
                                     </div>
                                     <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
-                                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{{ copyDescriptionText || 'La descripcion aparecera aqui.' }}</p>
+                                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{{ copyDescriptionText || 'La descripción aparecerá aquí.' }}</p>
                                     </div>
                                 </div>
 
@@ -542,7 +540,7 @@ async function copyText(text, emptyMessage, successMessage) {
                                         class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">Copiar</button>
                                 </div>
                                 <div class="w-full rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 p-4">
-                                    <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono">{{ phrases || 'Aqui apareceran frases clave, hooks visuales y texto en pantalla para edicion.' }}</p>
+                                    <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono">{{ phrases || 'Aquí aparecerán frases clave, hooks visuales y texto en pantalla para edición.' }}</p>
                                 </div>
                             </template>
                         </div>

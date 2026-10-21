@@ -11,6 +11,7 @@ use App\Models\VideoTask;
 use App\Services\AI\AIContentService;
 use App\Services\PlanningCalendarService;
 use App\Services\PlanningValidator;
+use App\Support\TimeRange;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -241,11 +242,8 @@ class AIController extends Controller
 
         $validated = $request->validate($rules);
 
-        if (! $useBlocks && isset($validated['time_range']) && str_contains($validated['time_range'], '-')) {
-            [$start, $end] = explode('-', $validated['time_range'], 2);
-            if (strlen($start) === 5 && strlen($end) === 5 && $end <= $start) {
-                return response()->json(['errors' => ['time_range' => ['La hora fin debe ser mayor a la hora de inicio']]], 422);
-            }
+        if (! $useBlocks && isset($validated['time_range']) && ! TimeRange::endsAfterStart($validated['time_range'])) {
+            return response()->json(['errors' => ['time_range' => [TimeRange::INVALID_MESSAGE]]], 422);
         }
 
         $this->planningValidator->assertWorkingDay($validated['task_date'], $workingDays);

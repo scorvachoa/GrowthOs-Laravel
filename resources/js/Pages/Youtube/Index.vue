@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
-import { Youtube, Film, BarChart3, ExternalLink, Users, Eye, Video, Globe, AlertCircle, ChevronRight, MessageCircle, LayoutGrid, List } from 'lucide-vue-next'
+import { useFormat } from '@/Composables/useFormat'
+import { Youtube, Film, BarChart3, ExternalLink, Users, Eye, Video, Globe, AlertCircle, MessageCircle, MessageSquare, LayoutGrid, List } from 'lucide-vue-next'
+import { statusLabels, statusColors } from '@/config/statusConstants'
 import { Line } from 'vue-chartjs'
 import {
     Chart as ChartJS,
@@ -31,33 +34,13 @@ const viewMode = ref('cards')
 
 const activeChannel = computed(() => props.channels[activeTab.value] || null)
 
-const statusLabel = (status) => {
-    const labels = {
-        pending: 'Pendiente',
-        script_ready: 'Guion listo',
-        editing: 'Edición',
-        review: 'Revisión',
-        scheduled: 'Programada',
-        published: 'Publicada',
-        cancelled: 'Cancelada',
-    }
-    return labels[status] || status
-}
+const statusLabel = (status) => statusLabels[status] || status
 
-const statusColor = (status) => {
-    const colors = {
-        pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-        script_ready: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-        editing: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-        review: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-        scheduled: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-        published: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-}
+const statusColor = (status) => statusColors[status] || 'bg-gray-100 text-gray-800'
 
 const statusKeys = computed(() => Object.keys(props.stats.statuses || {}))
+
+const { formatDate, formatChartDate } = useFormat()
 
 const chartVideos = computed(() => {
     const videos = activeChannel.value?.videos
@@ -73,10 +56,7 @@ const chartData = computed(() => {
     const isDark = document.documentElement.classList.contains('dark')
 
     return {
-        labels: sorted.map(v => {
-            const d = new Date(v.published_at)
-            return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
-        }),
+        labels: sorted.map(v => formatChartDate(v.published_at)),
         datasets: [{
             label: 'Vistas',
             data: sorted.map(v => v.view_count || 0),
@@ -174,17 +154,18 @@ const formatNumber = (n) => {
 <template>
     <AppLayout>
         <div class="space-y-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">YouTube</h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1">Canales y rendimiento de contenido</p>
-                </div>
+            <PageHeader title="YouTube" subtitle="Canales y rendimiento de contenido">
+                <Link href="/youtube/comments"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow-sm transition">
+                    <MessageSquare class="w-4 h-4" />
+                    Comentarios
+                </Link>
                 <div v-if="!stats.api_connected"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
                     <AlertCircle class="w-4 h-4" />
                     <span>API key no configurada</span>
                 </div>
-            </div>
+            </PageHeader>
 
             <div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-5 gap-6">
                 <StatCard title="Canales" :value="stats.total_channels" color="#ef4444" />
@@ -330,7 +311,7 @@ const formatNumber = (n) => {
                                 </div>
                                 <div class="p-3">
                                     <p class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition">{{ video.title }}</p>
-                                    <p class="text-xs text-gray-400 mt-1">{{ video.published_at ? new Date(video.published_at).toLocaleDateString() : '' }}</p>
+                                    <p class="text-xs text-gray-400 mt-1">{{ video.published_at ? formatDate(video.published_at) : '' }}</p>
                                 </div>
                             </a>
                         </div>
@@ -361,7 +342,7 @@ const formatNumber = (n) => {
                                         </td>
                                         <td class="py-3 px-3 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatNumber(video.view_count) }}</td>
                                         <td class="py-3 px-3 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatNumber(video.comment_count) }}</td>
-                                        <td class="py-3 px-3 text-right text-gray-400 text-xs whitespace-nowrap">{{ video.published_at ? new Date(video.published_at).toLocaleDateString() : '' }}</td>
+                                        <td class="py-3 px-3 text-right text-gray-400 text-xs whitespace-nowrap">{{ video.published_at ? formatDate(video.published_at) : '' }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -433,13 +414,3 @@ const formatNumber = (n) => {
         </div>
     </AppLayout>
 </template>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active {
-    transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.fade-enter-from, .fade-leave-to {
-    opacity: 0;
-    transform: translateY(4px);
-}
-</style>

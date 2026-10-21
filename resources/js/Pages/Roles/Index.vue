@@ -1,9 +1,12 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { router, Link, usePage } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router, Link } from '@inertiajs/vue3'
+import { usePermissions } from '@/Composables/usePermissions'
+import { useDebounce } from '@/Composables/useDebounce'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import SearchInput from '@/Components/Forms/SearchInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import { Shield, Plus, Pencil, Trash2, Users, KeyRound, Building2 } from 'lucide-vue-next'
 
@@ -13,20 +16,12 @@ const props = defineProps({
     companies: Array,
 })
 
-const page = usePage()
-const user = page.props.auth?.user
-const permissions = user?.permissions ?? []
-const can = (perm) => permissions.includes(perm)
-const isSuperAdmin = computed(() => user?.roles?.includes('Super Admin'))
+const { can } = usePermissions()
 
 const search = ref(props.filters?.search || '')
 
-let debounceTimer
-watch(search, (value) => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-        router.get('/roles', { search: value || '' }, { preserveState: true, replace: true })
-    }, 400)
+useDebounce(search, (value) => {
+    router.get('/roles', { search: value || '' }, { preserveState: true, replace: true })
 })
 
 const deleteTarget = ref(null)
@@ -48,19 +43,14 @@ const executeDelete = () => {
 <template>
     <AppLayout>
         <div class="space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Roles</h1>
-                </div>
-                <div class="flex gap-3">
-                    <SearchInput v-model="search" />
-                    <Link v-if="can('create roles')" href="/roles/create">
-                        <PrimaryButton class="inline-flex items-center gap-2">
-                            <Plus class="w-4 h-4 mr-1.5" /> Nuevo rol
-                        </PrimaryButton>
-                    </Link>
-                </div>
-            </div>
+            <PageHeader title="Roles">
+                <SearchInput v-model="search" />
+                <Link v-if="can('create roles')" href="/roles/create">
+                    <PrimaryButton class="inline-flex items-center gap-2">
+                        <Plus class="w-4 h-4 mr-1.5" /> Nuevo rol
+                    </PrimaryButton>
+                </Link>
+            </PageHeader>
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div class="overflow-x-auto">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Idea;
+use App\Support\FullTextSearch;
 use Illuminate\Support\Facades\Auth;
 
 class IdeaService
@@ -23,8 +24,15 @@ class IdeaService
         $this->scopeVisibleTo($query);
 
         if ($search = trim($search)) {
-            $escaped = addcslashes($search, '%_');
-            $query->where('content', 'like', "%{$escaped}%");
+            if (FullTextSearch::applies($search)) {
+                $query->whereRaw(
+                    'MATCH(content) AGAINST (? IN BOOLEAN MODE)',
+                    [FullTextSearch::booleanTerm($search)]
+                );
+            } else {
+                $escaped = addcslashes($search, '%_');
+                $query->where('content', 'like', "%{$escaped}%");
+            }
         }
 
         match ($status) {

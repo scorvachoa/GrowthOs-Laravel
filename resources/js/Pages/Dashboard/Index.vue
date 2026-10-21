@@ -1,19 +1,27 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import axios from 'axios'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import StatCard from '@/Components/UI/StatCard.vue'
 import ExportPdfModal from '@/Components/ExportPdfModal.vue'
 import {
     ListChecks, TrendingUp, Eye, FileDown,
     Users, Activity, BarChart3, CalendarCheck,
-    CheckCircle, XCircle, Umbrella, Clock
+    CheckCircle, XCircle, Umbrella, Clock,
+    Sparkles, Loader2, RefreshCw
 } from 'lucide-vue-next'
 
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 const canViewUsers = computed(() =>
     user.value?.permissions?.includes('view users')
+)
+const canExportPdf = computed(() =>
+    ['download reports', 'export planning'].some((permission) =>
+        user.value?.permissions?.includes(permission)
+    )
 )
 
 const props = defineProps({
@@ -73,23 +81,67 @@ const statusSummary = computed(() => {
 const totalWithStatus = computed(() => statusSummary.value.reduce((s, i) => s + i.count, 0) || 1)
 
 const circumference = 2 * Math.PI * 15.5
+
+const weeklySummary = ref('')
+const weeklyGeneratedAt = ref('')
+const weeklyPeriod = ref('')
+const loadingWeekly = ref(false)
+const weeklyError = ref('')
+const weeklyLoaded = ref(false)
+
+async function loadWeeklySummary() {
+    loadingWeekly.value = true
+    weeklyError.value = ''
+    try {
+        const res = await axios.get('/dashboard/weekly-summary')
+        weeklySummary.value = res.data.summary || ''
+        weeklyGeneratedAt.value = res.data.generated_at || ''
+        weeklyPeriod.value = res.data.period || ''
+        weeklyLoaded.value = true
+    } catch (error) {
+        weeklyError.value = error.response?.data?.error || 'No se pudo cargar el resumen semanal.'
+    } finally {
+        loadingWeekly.value = false
+    }
+}
+
+onMounted(loadWeeklySummary)
+
+const weeklyBlocks = computed(() => {
+    if (!weeklySummary.value) return []
+    return weeklySummary.value
+        .split(/\n\s*\n/)
+        .map(block => {
+            const match = block.match(/^([A-ZÁÉÍÓÚÑ\s]{3,40}):\s*\n?([\s\S]*)$/)
+            if (match) return { label: match[1].trim(), body: match[2].trim() }
+            return { label: '', body: block.trim() }
+        })
+        .filter(block => block.body)
+})
+
+const weeklyGeneratedLabel = computed(() => {
+    if (!weeklyGeneratedAt.value) return ''
+    try {
+        return new Date(weeklyGeneratedAt.value).toLocaleString('es-PE', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+        })
+    } catch {
+        return ''
+    }
+})
 </script>
 
 <template>
     <AppLayout>
         <div class="space-y-6 sm:space-y-8">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                    <p class="text-gray-500 dark:text-gray-400 mt-1">Resumen de producción de video</p>
-                </div>
-                <button @click="showPdfModal = true"
+            <PageHeader title="Dashboard" subtitle="Resumen de producción de video">
+                <button v-if="canExportPdf" @click="showPdfModal = true"
                     class="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition flex items-center gap-2 text-sm">
                     <FileDown class="w-4 h-4" />
                     <span class="hidden sm:inline">Exportar PDF</span>
                     <span class="sm:hidden">PDF</span>
                 </button>
-            </div>
+            </PageHeader>
 
             <div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-6">
                 <StatCard title="Tareas de video" :value="stats.total_video_tasks" color="#6366f1" />
@@ -276,6 +328,54 @@ const circumference = 2 * Math.PI * 15.5
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 rounded-xl bg-purple-100 dark:bg-purple-900">
+                            <Sparkles class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Resumen semanal</h2>
+                            <p class="text-sm text-gray-500">
+                                Análisis con IA
+                                <span v-if="weeklyPeriod"> · Semana del {{ weeklyPeriod }}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <span v-if="weeklyLoaded && weeklyGeneratedLabel"
+                        class="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">
+                        Generado {{ weeklyGeneratedLabel }}
+                    </span>
+                </div>
+
+                <div v-if="loadingWeekly" class="flex items-center gap-2 py-8 justify-center text-sm text-gray-500 dark:text-gray-400">
+                    <Loader2 class="w-4 h-4 animate-spin text-purple-500" />
+                    Generando resumen con IA...
+                </div>
+
+                <div v-else-if="weeklyError" class="py-6 text-center space-y-3">
+                    <p class="text-sm text-red-500">{{ weeklyError }}</p>
+                    <button @click="loadWeeklySummary"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        <RefreshCw class="w-3 h-3" /> Reintentar
+                    </button>
+                </div>
+
+                <div v-else-if="weeklyBlocks.length" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
+                    <div v-for="block in weeklyBlocks" :key="block.label || block.body">
+                        <p v-if="block.label"
+                            class="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider mb-1.5">
+                            {{ block.label }}
+                        </p>
+                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ block.body }}</p>
+                    </div>
+                </div>
+
+                <div v-else class="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
+                    Sin resumen disponible.
                 </div>
             </div>
 

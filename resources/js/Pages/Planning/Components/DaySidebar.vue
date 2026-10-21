@@ -5,6 +5,7 @@ import { Plus, ExternalLink, Trash2, X, StickyNote, ChevronDown, ChevronRight, C
 import ShareModal from '@/Components/Modals/ShareModal.vue'
 import ConfirmDeleteModal from '@/Components/Modals/ConfirmDelete.vue'
 import CompleteVideoUrlModal from './CompleteVideoUrlModal.vue'
+import { localeLabel } from '@/config/localeLabels'
 
 const page = usePage()
 const currentUserId = page.props.auth?.user?.id
@@ -63,9 +64,9 @@ const videoUrlAction = ref(null)
 const statusSelectKey = ref(0)
 
 function handleStatusChange(task, status) {
-    if (status === 'published') {
+    if (status === 'published' || status === 'scheduled') {
         videoUrlTarget.value = task
-        videoUrlAction.value = 'status'
+        videoUrlAction.value = status === 'scheduled' ? 'scheduled' : 'status'
         showVideoUrlModal.value = true
         statusSelectKey.value++
         return
@@ -95,6 +96,8 @@ function confirmVideoUrl(url) {
     if (!task || !action) return
     if (action === 'session') {
         emit('completeSession', task, url)
+    } else if (action === 'scheduled') {
+        emit('updateStatus', task, 'scheduled', url || null)
     } else {
         emit('updateStatus', task, 'published', url)
     }
@@ -108,6 +111,10 @@ function canEditTask(task) {
     if (task.created_by === currentUserId || isAdmin.value) return true
     if (task.shared_by_user_name && task.share_role === 'editor') return true
     return props.canEdit && !task.shared_by_user_name
+}
+
+function taskUrl(task) {
+    return task.youtube_url || ''
 }
 
 const showVideoTasks = ref(true)
@@ -221,7 +228,12 @@ onUnmounted(() => {
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900 dark:text-white truncate">{{ task.title }}</h4>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ task.time_range }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                    {{ task.time_range }}
+                                    <span v-if="task.locale" class="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-semibold">
+                                        {{ localeLabel(task.locale) }}
+                                    </span>
+                                </p>
                                 <p v-if="task.channel" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
                                     <span class="w-2 h-2 rounded-full inline-flex flex-shrink-0" :style="{ backgroundColor: task.channel.color }"></span>
                                     {{ task.channel.name }}
@@ -247,16 +259,19 @@ onUnmounted(() => {
                             </span>
                         </div>
 
-                        <div v-if="task.youtube_url" class="mb-2">
-                            <a :href="task.youtube_url" target="_blank"
+                        <div v-if="taskUrl(task)" class="mb-2">
+                            <a :href="taskUrl(task)" target="_blank"
                                 class="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1 truncate">
                                 <ExternalLink class="w-3 h-3" />
-                                {{ task.youtube_url }}
+                                {{ taskUrl(task) }}
                             </a>
                         </div>
 
                         <div v-if="task.is_session" class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                             <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">Sesión</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-medium">
+                                {{ localeLabel(task.locale) }}
+                            </span>
                             <span v-if="task.status === 'completed'"
                                 class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 font-medium">
                                 Completado
@@ -445,6 +460,8 @@ onUnmounted(() => {
     <CompleteVideoUrlModal
         :show="showVideoUrlModal"
         :task="videoUrlTarget"
+        :optional="videoUrlAction === 'scheduled'"
+        :confirm-label="videoUrlAction === 'scheduled' ? 'Programar' : 'Completar'"
         @close="closeVideoUrlModal"
         @confirm="confirmVideoUrl"
     />

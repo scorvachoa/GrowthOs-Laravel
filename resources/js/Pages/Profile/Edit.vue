@@ -1,12 +1,9 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
-import DeleteUserForm from './Partials/DeleteUserForm.vue';
-import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
-import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue'
 import TextInput from '@/Components/Forms/TextInput.vue'
 import PrimaryButton from '@/Components/UI/PrimaryButton.vue'
 
-import { Head } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3'
 
 const props = defineProps({
@@ -30,17 +27,7 @@ const submit = () => {
 
         <div class="">
 
-            <div class="mb-8">
-
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                    Mi Perfil
-                </h1>
-
-                <p class="text-gray-500 dark:text-gray-400 mt-2">
-                    Gestiona la configuración de tu cuenta
-                </p>
-
-            </div>
+            <PageHeader title="Mi Perfil" subtitle="Gestiona la configuración de tu cuenta" class="mb-8" />
 
             <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
 

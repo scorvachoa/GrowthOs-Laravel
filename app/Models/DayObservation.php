@@ -22,9 +22,4 @@ class DayObservation extends Model
             'task_date' => 'date:Y-m-d',
         ];
     }
-
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
 }

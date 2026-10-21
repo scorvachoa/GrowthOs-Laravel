@@ -16,6 +16,11 @@ class TaskReportController extends Controller
 
     public function exportPdf(Request $request)
     {
+        abort_unless(
+            $request->user()?->can('download reports') || $request->user()?->can('export planning'),
+            403,
+        );
+
         $validated = $request->validate([
             'scope' => ['required', Rule::in(['anual', 'mensual', 'semanal', 'dia'])],
             'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
@@ -48,6 +53,6 @@ class TaskReportController extends Controller
 
         $this->reportService->createHistory($orgId, $user, $scope, $filename, $validated);
 
-        return Storage::disk('public')->download('reports/'.$filename, $filename);
+        return Storage::disk('local')->download('reports/'.$filename, $filename);
     }
 }

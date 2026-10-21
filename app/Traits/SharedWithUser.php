@@ -42,11 +42,6 @@ trait SharedWithUser
         return $this->morphMany(TaskShare::class, 'shareable');
     }
 
-    public function sharedUserIds(): array
-    {
-        return $this->shares()->pluck('shared_with_user_id')->toArray();
-    }
-
     public function isSharedWithUser(int $userId): bool
     {
         return $this->shares()
@@ -71,20 +66,5 @@ trait SharedWithUser
             ->first();
 
         return $share?->role;
-    }
-
-    public function canEditForUser(int $userId): bool
-    {
-        if ($this->created_by === $userId) {
-            return true;
-        }
-
-        if (Auth::user() && Auth::user()->hasRole(['Super Admin', 'Admin'])) {
-            return true;
-        }
-
-        $role = $this->shareRoleForUser($userId);
-
-        return $role === 'editor';
     }
 }

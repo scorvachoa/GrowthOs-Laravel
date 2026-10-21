@@ -32,13 +32,13 @@ return [
         'api_key' => env('YOUTUBE_API_KEY'),
     ],
 
-    'gemini' => [
-        'api_key' => env('GEMINI_API_KEY'),
-        'api_key_1' => env('GEMINI_KEY_1'),
-        'api_key_2' => env('GEMINI_KEY_2'),
-        'api_key_3' => env('GEMINI_KEY_3'),
-        'api_key_4' => env('GEMINI_KEY_4'),
+    'facebook' => [
+        'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v22.0'),
+        'client_id' => env('FACEBOOK_APP_ID'),
+        'client_secret' => env('FACEBOOK_APP_SECRET'),
+    ],
 
+    'gemini' => [
         // All API keys aggregated for multi-key rotation
         'api_keys' => array_values(array_filter([
             env('GEMINI_API_KEY'),
@@ -55,11 +55,8 @@ return [
         'model_id' => env('ELEVENLABS_MODEL_ID', 'eleven_multilingual_v2'),
     ],
 
-    'slack' => [
-        'notifications' => [
-            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
-            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
-        ],
+    'deepl' => [
+        'api_key' => env('DEEPL_API_KEY'),
     ],
 
 ];

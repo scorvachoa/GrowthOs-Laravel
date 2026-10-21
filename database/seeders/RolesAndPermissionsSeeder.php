@@ -2,115 +2,27 @@
 
 namespace Database\Seeders;
 
+use App\Services\RoleProvisioningService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[PermissionRegistrar::class]
-            ->forgetCachedPermissions();
+        $provisioning = app(RoleProvisioningService::class);
 
-        $permissions = [
-            'view dashboard',
+        $provisioning->syncPermissions();
 
-            'view users',
-            'create users',
-            'edit users',
-            'delete users',
-
-            'view roles',
-            'create roles',
-            'edit roles',
-            'delete roles',
-
-            'view planning',
-            'create planning',
-            'edit planning',
-            'delete planning',
-            'export planning',
-
-            'view ideas',
-            'create ideas',
-            'edit ideas',
-            'delete ideas',
-            'import ideas',
-            'export ideas',
-
-            'view reports',
-            'download reports',
-            'delete reports',
-
-            'view youtube',
-
-            'generate ai',
-            'view ai history',
-            'download ai',
-
-            'view empresa',
-            'create empresa',
-            'edit empresa',
-            'delete empresa',
-
-            'view configuracion',
-            'configure work hours',
-            'configure youtube',
-            'configure dashboard',
-            'configure backup',
-
-            'view vacations',
-            'create vacations',
-            'edit vacations',
-            'delete vacations',
-
-            'view time off',
-            'create time off',
-            'edit time off',
-            'delete time off',
-            'approve time off',
-            'reject time off',
-
-            'approve vacations',
-            'reject vacations',
-
-            'view backup',
-            'create backup',
-            'download backups',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate([
-                'name' => $permission,
-            ]);
+        foreach (DB::table('organizations')->pluck('id') as $orgId) {
+            $provisioning->ensureDefaultsFor((int) $orgId);
         }
 
         $superAdmin = Role::firstOrCreate([
-            'name' => 'Super Admin',
+            'name' => RoleProvisioningService::ROLE_SUPER_ADMIN,
         ]);
-
-        $superAdmin->givePermissionTo($permissions);
-
-        $orgIds = \DB::table('organizations')->pluck('id');
-        $adminPermissions = array_values(array_filter($permissions, fn ($p) => ! str_ends_with($p, 'roles')));
-
-        foreach ($orgIds as $orgId) {
-            $employee = Role::firstOrCreate([
-                'name' => 'Employee',
-                'organization_id' => $orgId,
-            ]);
-
-            $admin = Role::firstOrCreate([
-                'name' => 'Admin',
-                'organization_id' => $orgId,
-            ]);
-
-            if ($admin->permissions()->count() === 0) {
-                $admin->givePermissionTo($adminPermissions);
-            }
-        }
 
         $oldPermissions = [
             'manage users',
@@ -119,6 +31,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'view ai',
             'view video tasks',
             'view tasks',
+            'edit configuracion',
+            'view backup',
+            'create backup',
+            'download backups',
+            'configure backup',
         ];
 
         foreach ($oldPermissions as $old) {

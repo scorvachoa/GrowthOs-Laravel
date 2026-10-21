@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\RoleProvisioningService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class RegisteredUserController extends Controller
         $org = Organization::where('admin_invite_code', $request->invite_code)->orWhere('invite_code', $request->invite_code)->first();
 
         if (! $org) {
-            throw ValidationException::withMessages(['invite_code' => 'Invalid invitation code']);
+            throw ValidationException::withMessages(['invite_code' => 'El código de invitación no es válido']);
         }
 
         $isAdminCode = $org->admin_invite_code === $request->invite_code;
@@ -62,7 +63,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $user->assignRole($isAdminCode ? 'Admin' : 'Employee');
+        $roleName = $isAdminCode ? RoleProvisioningService::ROLE_ADMIN : RoleProvisioningService::ROLE_EMPLOYEE;
+
+        $user->assignRole(
+            app(RoleProvisioningService::class)->resolveFor($org->id, $roleName)
+        );
 
         event(new Registered($user));
 

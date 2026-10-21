@@ -1,7 +1,6 @@
 # Dependencies
 /node_modules
 /vendor
-/package-lock.json
 
 # Build files
 /public/build
@@ -11,13 +10,19 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/storage/backups
 
 # Environment
 .env
 .env.backup
-.env.production
+.env.*.local
 /auth.json
+
+# Local / accidental artifacts
+/composer-setup.php
+/composer.phar
+/growthos
+/-p/
+name('tasks.history.show')
 
 # IDE
 /.fleet

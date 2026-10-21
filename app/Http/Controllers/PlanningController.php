@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\VideoTaskStatus;
+use App\Models\Channel;
 use App\Models\DayObservation;
 use App\Models\ExtraTask;
 use App\Models\VideoTask;
 use App\Models\WorkSession;
 use App\Services\PlanningCalendarService;
+use App\Support\FullTextSearch;
 use App\Support\WorkBlocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -24,6 +27,29 @@ class PlanningController extends Controller
         $settings = Auth::user()->merged_settings;
 
         return WorkBlocks::fromSettings($settings);
+    }
+
+    private function requestFilters(Request $request): array
+    {
+        $filters = [];
+
+        if ($request->filled('channel_id') && $request->integer('channel_id') > 0) {
+            $filters['channel_id'] = $request->integer('channel_id');
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->string('status')->toString();
+            if (VideoTaskStatus::isValid($status)) {
+                $filters['status'] = $status;
+            }
+        }
+
+        $owner = $request->string('owner')->toString();
+        if (in_array($owner, ['mine', 'shared'], true)) {
+            $filters['owner'] = $owner;
+        }
+
+        return $filters;
     }
 
     public function index(Request $request)
@@ -56,8 +82,13 @@ class PlanningController extends Controller
         }
 
         return Inertia::render('Planning/Index', [
-            'calendar' => $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks()),
+            'calendar' => $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks(), $this->requestFilters($request)),
             'initial_view' => $view,
+            'channels' => Channel::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'color'])
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -81,7 +112,7 @@ class PlanningController extends Controller
         }
 
         return response()->json(
-            $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks())
+            $this->calendar->snapshot($year, $month, $weekStart, $this->userWorkBlocks(), $this->requestFilters($request))
         );
     }
 
@@ -93,14 +124,25 @@ class PlanningController extends Controller
 
         $q = trim($request->string('q')->toString());
         $like = '%'.$q.'%';
+        $useFullText = FullTextSearch::applies($q);
 
         $videos = VideoTask::query()
             ->visibleTo()
             ->where('is_pending', false)
-            ->where(function ($query) use ($like) {
+            ->where(function ($query) use ($like, $q, $useFullText) {
+                if ($useFullText) {
+                    $query->whereRaw(
+                        'MATCH(title, script, copy, notes) AGAINST (? IN BOOLEAN MODE)',
+                        [FullTextSearch::booleanTerm($q)]
+                    );
+
+                    return;
+                }
+
                 $query->where('title', 'like', $like)
                     ->orWhere('script', 'like', $like)
-                    ->orWhere('copy', 'like', $like);
+                    ->orWhere('copy', 'like', $like)
+                    ->orWhere('notes', 'like', $like);
             })
             ->orderBy('task_date')
             ->orderBy('time_range')

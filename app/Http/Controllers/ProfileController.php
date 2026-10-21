@@ -43,25 +43,24 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-        ]);
+        $user->name = $request->name;
+        $user->email = $request->email;
 
-        if ($request->filled('password')) {
-
-            $user->update([
-                'password' => Hash::make(
-                    $request->password
-                ),
-            ]);
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        $user->save();
+
         return redirect()
-            ->back()
+            ->route('profile.edit')
             ->with(
                 'success',
-                'Profile updated successfully.'
+                'Perfil actualizado correctamente.'
             );
     }
 }

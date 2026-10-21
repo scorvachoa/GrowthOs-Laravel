@@ -57,13 +57,13 @@ class ReportHistoryController extends Controller
 
         $filePath = 'reports/'.$reportHistory->filename;
 
-        if (! Storage::disk('public')->exists($filePath)) {
+        if (! Storage::disk('local')->exists($filePath)) {
             return redirect()
                 ->route('report-history.index')
                 ->with('error', 'El archivo PDF ya no está disponible. Genera un nuevo reporte.');
         }
 
-        return Storage::disk('public')->download($filePath, $reportHistory->filename);
+        return Storage::disk('local')->download($filePath, $reportHistory->filename);
     }
 
     public function destroy(ReportHistory $reportHistory)
@@ -74,8 +74,8 @@ class ReportHistoryController extends Controller
         }
 
         $filePath = 'reports/'.$reportHistory->filename;
-        if (Storage::disk('public')->exists($filePath)) {
-            Storage::disk('public')->delete($filePath);
+        if (Storage::disk('local')->exists($filePath)) {
+            Storage::disk('local')->delete($filePath);
         }
 
         $reportHistory->delete();

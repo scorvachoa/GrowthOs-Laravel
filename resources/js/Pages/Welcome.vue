@@ -1,8 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
-import { Youtube, BarChart3, Wand2, Users, ChevronRight, Calendar, FileText, Lightbulb, Shield, Zap, Clock, CheckCircle, Globe, Github, Brain, Share2, Search } from 'lucide-vue-next'
-
-defineProps({ canLogin: Boolean, canRegister: Boolean })
+import { Youtube, BarChart3, Users, ChevronRight, Calendar, FileText, Lightbulb, Shield, Zap, Clock, CheckCircle, Globe, Github, Brain, Share2, Facebook, Instagram, MessageSquare, TicketCheck } from 'lucide-vue-next'
 
 const colorMap = {
     indigo: { bg: 'bg-indigo-500/20', hover: 'group-hover:bg-indigo-500/30', text: 'text-indigo-400' },
@@ -14,6 +12,7 @@ const colorMap = {
     orange: { bg: 'bg-orange-500/20', hover: 'group-hover:bg-orange-500/30', text: 'text-orange-400' },
     teal: { bg: 'bg-teal-500/20', hover: 'group-hover:bg-teal-500/30', text: 'text-teal-400' },
     violet: { bg: 'bg-violet-500/20', hover: 'group-hover:bg-violet-500/30', text: 'text-violet-400' },
+    blue: { bg: 'bg-blue-500/20', hover: 'group-hover:bg-blue-500/30', text: 'text-blue-400' },
 }
 
 const features = [
@@ -44,7 +43,7 @@ const features = [
     {
         icon: BarChart3,
         title: 'Dashboard en tiempo real',
-        description: 'KPIs reales con StatCards: tareas, publicaciones, sesiones del día. Gráficos Chart.js, exportación PDF y filtros por período.',
+        description: 'KPIs reales con StatCards: tareas, publicaciones, sesiones del día. Gráficos Chart.js, exportación PDF y resumen semanal con IA que analiza la semana incluyendo las sesiones de trabajo.',
         color: 'purple',
     },
     {
@@ -54,29 +53,47 @@ const features = [
         color: 'cyan',
     },
     {
+        icon: Facebook,
+        title: 'Facebook e Instagram',
+        description: 'Conecta tus páginas y cuentas profesionales: publica, edita y borra posts, mira insights, y responde comentarios y mensajes (Messenger e Instagram DMs) desde un solo hub.',
+        color: 'blue',
+    },
+    {
+        icon: MessageSquare,
+        title: 'Bandeja de comentarios YouTube',
+        description: 'Revisa y responde los últimos comentarios de tus canales de YouTube desde una bandeja centralizada, con avatares y últimos 7 días.',
+        color: 'rose',
+    },
+    {
         icon: FileText,
         title: 'Reportes PDF',
-        description: 'Exporta reportes diarios, semanales, mensuales o anuales. Incluye tareas, sesiones, tareas extra, observaciones y links de YouTube.',
+        description: 'Exporta reportes diarios, semanales, mensuales o anuales. Incluye tareas, sesiones, tareas extra, observaciones, idioma de cada video y links de YouTube.',
         color: 'orange',
     },
     {
         icon: Users,
         title: 'Multi-empresa y RBAC',
-        description: '51 permisos granulares en 15 módulos. Roles por organización, datos aislados. Super Admin puede gestionar todas las empresas.',
+        description: '47 permisos granulares en 13 módulos. Roles por organización, datos aislados. Super Admin puede gestionar todas las empresas.',
         color: 'violet',
     },
     {
         icon: Clock,
         title: 'Tareas extra y sesiones',
-        description: 'Registra actividades fuera del flujo: reuniones, capacitaciones. Sesiones de trabajo multi-día con gestión desde el calendario.',
+        description: 'Registra actividades fuera del flujo: reuniones, capacitaciones. Sesiones de trabajo multi-día con su propio idioma, gestionadas desde el calendario.',
         color: 'teal',
+    },
+    {
+        icon: Globe,
+        title: 'Traducción con DeepL',
+        description: 'Una tarea por idioma: traduce título, guion y copy con DeepL y crea tareas vinculadas por traducción, con historial de versiones en cada tarea.',
+        color: 'orange',
     },
 ]
 
 const steps = [
-    { number: '01', title: 'Crea tu cuenta', description: 'Regístrate y configura tu empresa con canales y bloques de tiempo.' },
+    { number: '01', title: 'Crea tu cuenta', description: 'Pide tu código de invitación, regístrate y configura tu empresa con canales y bloques de tiempo.' },
     { number: '02', title: 'Planifica contenido', description: 'Crea tareas en el calendario, asígnale horarios y estados de producción.' },
-    { number: '03', title: 'Genera con IA', description: 'Usa Gemini para scripts, copy y frases. Exporta reportes y comparte con tu equipo.' },
+    { number: '03', title: 'Genera y publica', description: 'Usa Gemini para scripts, copy y frases. Publica y monitorea YouTube, Facebook e Instagram desde GrowthOS.' },
 ]
 </script>
 
@@ -112,17 +129,21 @@ const steps = [
                 </h1>
                 <p class="mt-6 text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
                     Planifica, organiza y da seguimiento a tus videos, tareas e ideas.
-                    Genera scripts con inteligencia artificial, comparte tareas con tu equipo
-                    y exporta reportes detallados — todo en una sola plataforma.
+                    Genera scripts con inteligencia artificial, publica y monitorea YouTube, Facebook e Instagram,
+                    comparte tareas con tu equipo y exporta reportes detallados — todo en una sola plataforma.
                 </p>
                 <div class="mt-10 flex items-center justify-center gap-4">
                     <Link :href="route('register')" class="px-8 py-4 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition flex items-center gap-2 shadow-lg shadow-indigo-600/25 text-lg">
-                        Comenzar gratis <ChevronRight class="w-5 h-5" />
+                        Crear cuenta <ChevronRight class="w-5 h-5" />
                     </Link>
                     <a href="#features" class="px-8 py-4 rounded-xl border border-white/20 text-white/80 font-medium hover:bg-white/5 transition text-lg">
                         Conocer más
                     </a>
                 </div>
+                <p class="mt-4 text-sm text-gray-500 flex items-center justify-center gap-1.5">
+                    <TicketCheck class="w-4 h-4" />
+                    El registro requiere código de invitación
+                </p>
 
                 <!-- Stats -->
                 <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
@@ -131,7 +152,7 @@ const steps = [
                         <div class="text-sm text-gray-500 mt-1">Módulos</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-3xl font-bold text-white">51</div>
+                        <div class="text-3xl font-bold text-white">47</div>
                         <div class="text-sm text-gray-500 mt-1">Permisos</div>
                     </div>
                     <div class="text-center">
@@ -205,7 +226,11 @@ const steps = [
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                <span class="text-gray-300">Sesiones de trabajo multi-día con edición desde el calendario</span>
+                                <span class="text-gray-300">Sesiones de trabajo multi-día con edición desde el calendario y su idioma</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span class="text-gray-300">Traduce tareas con DeepL y revisa el resumen semanal generado con IA</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -214,6 +239,14 @@ const steps = [
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <span class="text-gray-300">Historial de cambios por tarea con timeline expandible</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span class="text-gray-300">Publica, responde y analiza Facebook e Instagram desde un hub unificado</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                <span class="text-gray-300">Bandeja de comentarios de YouTube y auto-publicación de tareas programadas</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <CheckCircle class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -259,6 +292,15 @@ const steps = [
                                     <div>
                                         <div class="text-white font-medium text-sm">Video publicado</div>
                                         <div class="text-gray-500 text-xs">YouTube &bull; Canal Principal</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                                    <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                        <Instagram class="w-5 h-5 text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-medium text-sm">Comentario respondido</div>
+                                        <div class="text-gray-500 text-xs">Instagram &bull; desde el hub unificado</div>
                                     </div>
                                 </div>
                             </div>
@@ -333,7 +375,7 @@ const steps = [
                                         </div>
                                         <div>
                                             <h4 class="text-white font-semibold mb-1">Multi-organización</h4>
-                                            <p class="text-sm text-gray-400">51 permisos granulares, 3 roles por defecto, datos aislados por empresa</p>
+                                            <p class="text-sm text-gray-400">47 permisos granulares, 3 roles por defecto, datos aislados por empresa</p>
                                         </div>
                                     </div>
                                 </div>
@@ -347,7 +389,7 @@ const steps = [
         <footer class="border-t border-white/10 py-8 text-center text-sm text-gray-500">
             <p>GrowthOS &mdash; Plataforma de gestión de contenido audiovisual</p>
             <p class="mt-2">Creado por <a href="https://github.com/scorvachoa" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">scorvachoa</a></p>
-            <p class="mt-1">Licencia Elastic License 2.0 — Uso gratuito, prohibido ofrecer como servicio</p>
+            <p class="mt-1">Licencia MIT — Uso libre</p>
         </footer>
     </div>
 </template>

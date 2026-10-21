@@ -19,11 +19,6 @@ function toggleDark() {
     applyTheme(newValue)
 }
 
-function setDark(value) {
-    localStorage.setItem('theme', value ? 'dark' : 'light')
-    applyTheme(value)
-}
-
 export function useTheme() {
     if (!initialized) {
         initialized = true
@@ -44,5 +39,5 @@ export function useTheme() {
         })
     }
 
-    return { isDark, toggleDark, setDark }
+    return { isDark, toggleDark }
 }

@@ -6,12 +6,14 @@ import {
     FileClock,
     Settings,
     Youtube,
+    Facebook,
+    Instagram,
     Lightbulb,
     Sparkles,
     Building2,
     BookOpen,
     Umbrella,
-    CalendarClock,
+    Gauge,
 } from 'lucide-vue-next'
 
 export default [
@@ -34,6 +36,31 @@ export default [
         icon: Youtube,
         route: '/youtube',
         permission: 'view youtube',
+        children: [
+            { title: 'Comentarios', route: '/youtube/comments', permission: 'view youtube' },
+        ],
+    },
+
+    {
+        title: 'Facebook',
+        icon: Facebook,
+        route: '/facebook',
+        permission: 'view empresa',
+        children: [
+            { title: 'Mensajes', route: '/facebook/messages', permission: 'view empresa' },
+            { title: 'Comentarios', route: '/facebook/comments', permission: 'view empresa' },
+        ],
+    },
+
+    {
+        title: 'Instagram',
+        icon: Instagram,
+        route: '/instagram',
+        permission: 'view empresa',
+        children: [
+            { title: 'Mensajes', route: '/instagram/messages', permission: 'view empresa' },
+            { title: 'Comentarios', route: '/instagram/comments', permission: 'view empresa' },
+        ],
     },
 
     {
@@ -72,17 +99,13 @@ export default [
     },
 
     {
-        title: 'Vacaciones',
+        title: 'Ausencias',
         icon: Umbrella,
         route: '/vacations',
-        permission: 'view vacations',
-    },
-
-    {
-        title: 'Permisos',
-        icon: CalendarClock,
-        route: '/time-off',
-        permission: 'view time off',
+        children: [
+            { title: 'Vacaciones', route: '/vacations', permission: 'view vacations' },
+            { title: 'Permisos', route: '/time-off', permission: 'view time off' },
+        ],
     },
 
     {
@@ -90,6 +113,13 @@ export default [
         icon: Building2,
         route: '/company',
         permission: 'view empresa',
+    },
+
+    {
+        title: 'Consola',
+        icon: Gauge,
+        route: '/admin/organizations',
+        roles: ['Super Admin'],
     },
 
     {
